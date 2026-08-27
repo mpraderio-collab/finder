@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Sora, Inter } from "next/font/google";
 import { CartProvider } from "@/lib/cart-context";
+import { WhatsAppButtonGate } from "@/components/WhatsAppButtonGate";
 import "./globals.css";
 
 const sora = Sora({
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col bg-cream text-ink">
         <CartProvider>{children}</CartProvider>
+        <WhatsAppButtonGate />
       </body>
     </html>
   );
