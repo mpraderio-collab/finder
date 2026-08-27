@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  tagline     String
+  description String
+  price       Int // en pesos ARS enteros (sin centavos)
+  stock       Int      @default(0)
+  status      String   @default("active") // active | archived
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  images   ProductImage[]
+  variants ProductVariant[]
+  features ProductFeature[]
+  reviews  Review[]
+  orderItems OrderItem[]
+
+  @@index([status])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  url       String
+  alt       String  @default("")
+  position  Int     @default(0)
+  isHero    Boolean @default(false)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+
+  @@index([productId])
+}
+
+model ProductVariant {
+  id        String  @id @default(cuid())
+  name      String
+  swatch    String
+  stock     Int     @default(0)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+
+  @@index([productId])
+}
+
+model ProductFeature {
+  id        String  @id @default(cuid())
+  text      String
+  position  Int     @default(0)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+
+  @@index([productId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  author    String
+  rating    Int
+  text      String
+  isMocked  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+
+  @@index([productId])
+}
+
+model Order {
+  id                String      @id @default(cuid())
+  status            String      @default("pending") // pending | paid | failed | cancelled | shipped
+  customerName      String
+  customerEmail     String
+  customerPhone     String
+  shippingAddress   String
+  shippingCity      String
+  shippingProvince  String
+  shippingZip       String
+  subtotal          Int
+  total             Int
+  mpPreferenceId    String?
+  mpPaymentId       String?     @unique
+  mpStatusDetail    String?
+  idempotencyKey    String      @unique
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  items OrderItem[]
+
+  @@index([status])
+  @@index([customerEmail])
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  quantity    Int
+  unitPrice   Int
+  variantName String?
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId     String
+  product     Product @relation(fields: [productId], references: [id])
+  productId   String
+
+  @@index([orderId])
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}

@@ -1,0 +1,55 @@
+import { z } from "zod";
+
+export const productSchema = z.object({
+  name: z.string().trim().min(2, "El nombre es muy corto").max(120),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Usá minúsculas, números y guiones")
+    .max(120),
+  tagline: z.string().trim().min(2).max(160),
+  description: z.string().trim().min(10).max(4000),
+  price: z.coerce
+    .number({ message: "El precio tiene que ser un número" })
+    .int("El precio no puede tener centavos")
+    .positive("El precio tiene que ser mayor a cero")
+    .max(100_000_000, "Precio demasiado alto"),
+  stock: z.coerce
+    .number({ message: "El stock tiene que ser un número" })
+    .int("El stock tiene que ser un entero")
+    .min(0, "El stock no puede ser negativo")
+    .max(1_000_000),
+  status: z.enum(["active", "archived"]),
+});
+
+export type ProductFormValues = z.infer<typeof productSchema>;
+
+export const orderStatuses = [
+  "pending",
+  "paid",
+  "shipped",
+  "cancelled",
+  "failed",
+] as const;
+
+export const orderStatusSchema = z.enum(orderStatuses);
+
+export const checkoutSchema = z.object({
+  customerName: z.string().trim().min(2).max(120),
+  customerEmail: z.string().trim().email(),
+  customerPhone: z.string().trim().min(6).max(30),
+  shippingAddress: z.string().trim().min(4).max(200),
+  shippingCity: z.string().trim().min(2).max(100),
+  shippingProvince: z.string().trim().min(2).max(100),
+  shippingZip: z.string().trim().min(3).max(15),
+  items: z
+    .array(
+      z.object({
+        productId: z.string().min(1),
+        quantity: z.coerce.number().int().min(1).max(50),
+        variantName: z.string().optional(),
+      }),
+    )
+    .min(1, "El carrito está vacío"),
+});

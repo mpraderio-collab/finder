@@ -1,0 +1,39 @@
+import { notFound } from "next/navigation";
+import { db } from "@/lib/db";
+import { updateProduct } from "../actions";
+import { ProductForm } from "../ProductForm";
+import { DangerZone } from "./DangerZone";
+
+export default async function EditProductPage(
+  props: PageProps<"/admin/products/[id]">,
+) {
+  const { id } = await props.params;
+  const product = await db.product.findUnique({ where: { id } });
+  if (!product) notFound();
+
+  const boundAction = updateProduct.bind(null, product.id);
+
+  return (
+    <div>
+      <h1 className="font-heading text-2xl font-extrabold text-ink">
+        {product.name}
+      </h1>
+      <div className="mt-6">
+        <ProductForm
+          action={boundAction}
+          submitLabel="Guardar cambios"
+          defaultValues={{
+            name: product.name,
+            slug: product.slug,
+            tagline: product.tagline,
+            description: product.description,
+            price: product.price,
+            stock: product.stock,
+            status: product.status,
+          }}
+        />
+      </div>
+      <DangerZone id={product.id} status={product.status} />
+    </div>
+  );
+}

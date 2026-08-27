@@ -36,6 +36,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# database (local dev only — production uses a hosted Postgres via DATABASE_URL)
+/prisma/dev.db
+/prisma/dev.db-journal
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.neon
