@@ -118,6 +118,27 @@ export async function restoreProduct(id: string) {
   revalidatePath("/catalogo");
 }
 
+export async function updateVariantStock(
+  variantId: string,
+  stock: number,
+): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  if (!Number.isInteger(stock) || stock < 0) {
+    return { error: "El stock tiene que ser un entero mayor o igual a 0." };
+  }
+
+  const variant = await db.productVariant.update({
+    where: { id: variantId },
+    data: { stock },
+    select: { productId: true },
+  });
+
+  revalidatePath(`/admin/products/${variant.productId}`);
+  revalidatePath("/catalogo");
+  return {};
+}
+
 export async function deleteProduct(id: string): Promise<{ error?: string }> {
   await requireAdmin();
 

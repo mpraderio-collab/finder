@@ -24,10 +24,10 @@ const products = [
       { name: "Rosa", swatch: "#E8A9B0", stock: 4 },
     ],
     images: [
-      { url: "/products/lampara-led/hero-uso-nocturno.jpg", isHero: true, position: 0 },
-      { url: "/products/lampara-led/en-libro.jpg", isHero: false, position: 1 },
-      { url: "/products/lampara-led/detalle-controles.jpg", isHero: false, position: 2 },
-      { url: "/products/lampara-led/dimensiones.jpg", isHero: false, position: 3 },
+      { url: "/products/lampara-led/hero.png", isHero: true, position: 0 },
+      { url: "/products/lampara-led/gallery-1.png", isHero: false, position: 1 },
+      { url: "/products/lampara-led/gallery-2.png", isHero: false, position: 2 },
+      { url: "/products/lampara-led/gallery-3.png", isHero: false, position: 3 },
     ],
     reviews: [
       { author: "Julieta R.", rating: 5, text: "La uso todas las noches, no despierto a mi pareja y el brillo bajo es justo lo que necesitaba." },
@@ -52,10 +52,9 @@ const products = [
     ],
     variants: [],
     images: [
-      { url: "/products/luz-rgb-sensor/hero-ambiente-exterior.jpg", isHero: true, position: 0 },
-      { url: "/products/luz-rgb-sensor/colores-disponibles.jpg", isHero: false, position: 1 },
-      { url: "/products/luz-rgb-sensor/usos-ambientes.jpg", isHero: false, position: 2 },
-      { url: "/products/luz-rgb-sensor/control-remoto.jpg", isHero: false, position: 3 },
+      { url: "/products/luz-rgb-sensor/hero.jpg", isHero: true, position: 0 },
+      { url: "/products/luz-rgb-sensor/gallery-1.jpg", isHero: false, position: 1 },
+      { url: "/products/luz-rgb-sensor/gallery-2.jpg", isHero: false, position: 2 },
     ],
     reviews: [
       { author: "Martín D.", rating: 5, text: "La puse en el pasillo y es un golazo, se enciende justo a tiempo y el control remoto anda perfecto." },
@@ -78,8 +77,8 @@ const products = [
     ],
     variants: [],
     images: [
-      { url: "/products/luz-escritorio-magnetica/hero-uso-escritorio.jpg", isHero: true, position: 0 },
-      { url: "/products/luz-escritorio-magnetica/contenido-caja.jpg", isHero: false, position: 1 },
+      { url: "/products/luz-escritorio-magnetica/hero.jpg", isHero: true, position: 0 },
+      { url: "/products/luz-escritorio-magnetica/gallery-1.jpg", isHero: false, position: 1 },
     ],
     reviews: [
       { author: "Fede L.", rating: 4, text: "Excelente para el escritorio, se pega firme y el control táctil es cómodo." },

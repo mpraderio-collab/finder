@@ -3,12 +3,20 @@ import { db } from "@/lib/db";
 import { updateProduct } from "../actions";
 import { ProductForm } from "../ProductForm";
 import { DangerZone } from "./DangerZone";
+import { ImageManager } from "./ImageManager";
+import { VariantStockEditor } from "./VariantStockEditor";
 
 export default async function EditProductPage(
   props: PageProps<"/admin/products/[id]">,
 ) {
   const { id } = await props.params;
-  const product = await db.product.findUnique({ where: { id } });
+  const product = await db.product.findUnique({
+    where: { id },
+    include: {
+      images: { orderBy: { position: "asc" } },
+      variants: true,
+    },
+  });
   if (!product) notFound();
 
   const boundAction = updateProduct.bind(null, product.id);
@@ -33,6 +41,8 @@ export default async function EditProductPage(
           }}
         />
       </div>
+      <ImageManager productId={product.id} images={product.images} />
+      <VariantStockEditor variants={product.variants} />
       <DangerZone id={product.id} status={product.status} />
     </div>
   );

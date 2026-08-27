@@ -5,7 +5,7 @@ import { formatPrice } from "@/lib/products";
 export default async function AdminProductsPage() {
   const products = await db.product.findMany({
     orderBy: { createdAt: "desc" },
-    include: { _count: { select: { orderItems: true } } },
+    include: { _count: { select: { orderItems: true } }, variants: true },
   });
 
   return (
@@ -40,23 +40,33 @@ export default async function AdminProductsPage() {
               </tr>
             </thead>
             <tbody>
-              {products.map((product) => (
+              {products.map((product) => {
+                const totalStock =
+                  product.variants.length > 0
+                    ? product.variants.reduce((sum, v) => sum + v.stock, 0)
+                    : product.stock;
+                return (
                 <tr key={product.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-3 font-medium text-ink">
                     {product.name}
+                    {product.variants.length > 0 && (
+                      <span className="ml-1.5 text-xs font-normal text-ink-soft">
+                        ({product.variants.length} variantes)
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">{formatPrice(product.price)}</td>
                   <td className="px-4 py-3">
-                    {product.stock === 0 ? (
+                    {totalStock === 0 ? (
                       <span className="rounded-full bg-coral-soft px-2 py-0.5 text-xs font-semibold text-coral">
                         Sin stock
                       </span>
-                    ) : product.stock <= 3 ? (
+                    ) : totalStock <= 3 ? (
                       <span className="rounded-full bg-amber/20 px-2 py-0.5 text-xs font-semibold text-amber-dark">
-                        {product.stock} — bajo
+                        {totalStock} — bajo
                       </span>
                     ) : (
-                      product.stock
+                      totalStock
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -78,7 +88,8 @@ export default async function AdminProductsPage() {
                     </Link>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
