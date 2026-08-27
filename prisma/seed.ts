@@ -19,9 +19,9 @@ const products = [
       "Liviano, entra en cualquier cartera o mochila",
     ],
     variants: [
-      { name: "Blanco", swatch: "#F5F3EE", stock: 8 },
-      { name: "Negro", swatch: "#232019", stock: 8 },
-      { name: "Rosa", swatch: "#E8A9B0", stock: 4 },
+      { name: "Blanco", swatch: "#F5F3EE", stock: 8, imageUrl: "/products/lampara-led/hero.png" },
+      { name: "Negro", swatch: "#232019", stock: 8, imageUrl: null },
+      { name: "Rosa", swatch: "#E8A9B0", stock: 4, imageUrl: null },
     ],
     images: [
       { url: "/products/lampara-led/hero.png", isHero: true, position: 0 },

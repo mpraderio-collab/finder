@@ -110,6 +110,50 @@ export async function deleteProductImage(
   return {};
 }
 
+export async function uploadVariantImage(
+  variantId: string,
+  formData: FormData,
+): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Elegí un archivo de imagen." };
+  }
+
+  const ext = ALLOWED_TYPES[file.type];
+  if (!ext) {
+    return { error: "Formato no soportado. Usá JPG, PNG o WEBP." };
+  }
+  if (file.size > MAX_SIZE) {
+    return { error: "La imagen pesa más de 5MB." };
+  }
+
+  const variant = await db.productVariant.findUnique({
+    where: { id: variantId },
+    include: { product: true },
+  });
+  if (!variant) return { error: "La variante ya no existe." };
+
+  const dir = path.join(process.cwd(), "public", "products", variant.product.slug);
+  await mkdir(dir, { recursive: true });
+
+  const filename = `variant-${randomUUID()}.${ext}`;
+  const bytes = Buffer.from(await file.arrayBuffer());
+  await writeFile(path.join(dir, filename), bytes);
+
+  await db.productVariant.update({
+    where: { id: variantId },
+    data: { imageUrl: `/products/${variant.product.slug}/${filename}` },
+  });
+
+  revalidatePath(`/admin/products/${variant.productId}`);
+  revalidatePath("/catalogo");
+  revalidatePath(`/catalogo/${variant.product.slug}`);
+  revalidatePath("/");
+  return {};
+}
+
 export async function setHeroImage(productId: string, imageId: string) {
   await requireAdmin();
 

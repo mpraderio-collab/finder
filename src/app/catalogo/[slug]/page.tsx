@@ -3,12 +3,10 @@ import type { Metadata } from "next";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Stars } from "@/components/Stars";
-import { AddToCartButton } from "@/components/AddToCartButton";
-import { ImageCarousel } from "@/components/ImageCarousel";
+import { ProductPurchase } from "@/components/ProductPurchase";
 import {
   averageRating,
   formatPrice,
-  getHeroImageUrl,
   getProductBySlug,
 } from "@/lib/products";
 import { db } from "@/lib/db";
@@ -40,7 +38,6 @@ export default async function ProductPage(
   const product = await getProductBySlug(slug);
   if (!product || product.status !== "active") notFound();
 
-  const heroUrl = getHeroImageUrl(product);
   const orderedImages = [...product.images].sort(
     (a, b) => Number(b.isHero) - Number(a.isHero),
   );
@@ -54,58 +51,60 @@ export default async function ProductPage(
     <>
       <Header />
       <main className="flex-1">
-        <section className="mx-auto grid max-w-6xl gap-10 px-6 py-14 md:grid-cols-2">
-          <ImageCarousel images={orderedImages} alt={product.name} />
+        <section className="mx-auto max-w-6xl px-6 py-14">
+          <ProductPurchase
+            productId={product.id}
+            slug={product.slug}
+            name={product.name}
+            price={product.price}
+            stock={product.stock}
+            variants={product.variants}
+            images={orderedImages}
+            aboveActions={
+              <>
+                <h1 className="font-heading text-3xl font-extrabold text-ink sm:text-4xl">
+                  {product.name}
+                </h1>
+                <p className="text-lg text-ink-soft">{product.tagline}</p>
 
-          <div className="flex flex-col gap-5">
-            <h1 className="font-heading text-3xl font-extrabold text-ink sm:text-4xl">
-              {product.name}
-            </h1>
-            <p className="text-lg text-ink-soft">{product.tagline}</p>
+                {product.reviews.length > 0 && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Stars rating={avgRating} />
+                    <span className="text-ink-soft">
+                      {avgRating.toFixed(1)} · {product.reviews.length} reseñas
+                    </span>
+                  </div>
+                )}
 
-            {product.reviews.length > 0 && (
-              <div className="flex items-center gap-2 text-sm">
-                <Stars rating={avgRating} />
-                <span className="text-ink-soft">
-                  {avgRating.toFixed(1)} · {product.reviews.length} reseñas
-                </span>
-              </div>
-            )}
+                <div className="flex items-center gap-3">
+                  <p className="font-heading text-3xl font-extrabold text-ink">
+                    {formatPrice(product.price)}
+                  </p>
+                  {outOfStock && (
+                    <span className="rounded-full bg-coral-soft px-3 py-1 text-xs font-semibold text-coral">
+                      Sin stock
+                    </span>
+                  )}
+                </div>
+              </>
+            }
+            belowActions={
+              <>
+                <p className="border-t border-line pt-5 text-ink-soft">
+                  {product.description}
+                </p>
 
-            <div className="flex items-center gap-3">
-              <p className="font-heading text-3xl font-extrabold text-ink">
-                {formatPrice(product.price)}
-              </p>
-              {outOfStock && (
-                <span className="rounded-full bg-coral-soft px-3 py-1 text-xs font-semibold text-coral">
-                  Sin stock
-                </span>
-              )}
-            </div>
-
-            <AddToCartButton
-              productId={product.id}
-              slug={product.slug}
-              name={product.name}
-              price={product.price}
-              image={heroUrl}
-              stock={product.stock}
-              variants={product.variants}
-            />
-
-            <p className="border-t border-line pt-5 text-ink-soft">
-              {product.description}
-            </p>
-
-            <ul className="space-y-2">
-              {product.features.map((feature) => (
-                <li key={feature.id} className="flex gap-2 text-sm text-ink-soft">
-                  <span className="text-amber-dark">✓</span>
-                  {feature.text}
-                </li>
-              ))}
-            </ul>
-          </div>
+                <ul className="space-y-2">
+                  {product.features.map((feature) => (
+                    <li key={feature.id} className="flex gap-2 text-sm text-ink-soft">
+                      <span className="text-amber-dark">✓</span>
+                      {feature.text}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            }
+          />
         </section>
 
         {product.reviews.length > 0 && (
