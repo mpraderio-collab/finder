@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/ProductCard";
-import { products } from "@/lib/products";
+import { getActiveProducts, getHeroImageUrl } from "@/lib/products";
 
 const valueProps = [
   {
@@ -20,8 +20,10 @@ const valueProps = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const products = await getActiveProducts();
   const featured = products[0];
+  const featuredHero = featured ? getHeroImageUrl(featured) : undefined;
 
   return (
     <>
@@ -47,23 +49,27 @@ export default function Home() {
               >
                 Ver catálogo
               </Link>
-              <Link
-                href={`/catalogo/${featured.slug}`}
-                className="rounded-full border border-line px-6 py-3 text-sm font-semibold text-ink transition-colors hover:border-ink"
-              >
-                Conocé la lámpara de lectura
-              </Link>
+              {featured && (
+                <Link
+                  href={`/catalogo/${featured.slug}`}
+                  className="rounded-full border border-line px-6 py-3 text-sm font-semibold text-ink transition-colors hover:border-ink"
+                >
+                  Conocé la lámpara de lectura
+                </Link>
+              )}
             </div>
           </div>
           <div className="relative aspect-[4/5] w-full overflow-hidden rounded-3xl bg-cream-soft">
-            <Image
-              src={featured.images.hero}
-              alt={featured.name}
-              fill
-              priority
-              className="object-cover"
-              sizes="(min-width: 768px) 50vw, 100vw"
-            />
+            {featuredHero && (
+              <Image
+                src={featuredHero}
+                alt={featured.name}
+                fill
+                priority
+                className="object-cover"
+                sizes="(min-width: 768px) 50vw, 100vw"
+              />
+            )}
           </div>
         </section>
 
@@ -92,11 +98,17 @@ export default function Home() {
               Ver todos →
             </Link>
           </div>
-          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {products.map((product) => (
-              <ProductCard key={product.slug} product={product} />
-            ))}
-          </div>
+          {products.length === 0 ? (
+            <p className="mt-8 text-ink-soft">
+              Estamos cargando el catálogo, volvé pronto.
+            </p>
+          ) : (
+            <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {products.map((product) => (
+                <ProductCard key={product.slug} product={product} />
+              ))}
+            </div>
+          )}
         </section>
       </main>
       <Footer />

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CartLink } from "@/components/CartLink";
 
 const links = [
   { href: "/catalogo", label: "Catálogo" },
@@ -28,12 +29,7 @@ export function Header() {
             </Link>
           ))}
         </nav>
-        <Link
-          href="/catalogo"
-          className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-cream transition-colors hover:bg-amber-dark"
-        >
-          Comprar ahora
-        </Link>
+        <CartLink />
       </div>
     </header>
   );
