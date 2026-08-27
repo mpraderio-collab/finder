@@ -1,10 +1,10 @@
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Stars } from "@/components/Stars";
 import { AddToCartButton } from "@/components/AddToCartButton";
+import { ImageCarousel } from "@/components/ImageCarousel";
 import {
   averageRating,
   formatPrice,
@@ -41,7 +41,9 @@ export default async function ProductPage(
   if (!product || product.status !== "active") notFound();
 
   const heroUrl = getHeroImageUrl(product);
-  const galleryImages = product.images.filter((img) => img.url !== heroUrl);
+  const orderedImages = [...product.images].sort(
+    (a, b) => Number(b.isHero) - Number(a.isHero),
+  );
   const avgRating = averageRating(product.reviews);
   const outOfStock =
     product.variants.length > 0
@@ -53,38 +55,7 @@ export default async function ProductPage(
       <Header />
       <main className="flex-1">
         <section className="mx-auto grid max-w-6xl gap-10 px-6 py-14 md:grid-cols-2">
-          <div className="flex flex-col gap-4">
-            <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-cream-soft">
-              {heroUrl && (
-                <Image
-                  src={heroUrl}
-                  alt={product.name}
-                  fill
-                  priority
-                  className="object-cover"
-                  sizes="(min-width: 768px) 50vw, 100vw"
-                />
-              )}
-            </div>
-            {galleryImages.length > 0 && (
-              <div className="grid grid-cols-3 gap-3">
-                {galleryImages.map((img) => (
-                  <div
-                    key={img.id}
-                    className="relative aspect-square overflow-hidden rounded-xl bg-cream-soft"
-                  >
-                    <Image
-                      src={img.url}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                      sizes="200px"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <ImageCarousel images={orderedImages} alt={product.name} />
 
           <div className="flex flex-col gap-5">
             <h1 className="font-heading text-3xl font-extrabold text-ink sm:text-4xl">

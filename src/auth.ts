@@ -2,10 +2,13 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
+import { authConfig } from "@/auth.config";
 
+// Config completa (Node.js runtime): agrega el provider de credenciales, que
+// depende de Prisma y bcrypt. Se usa en Server Components, Server Actions y
+// la route de NextAuth — nunca en el middleware (ver auth.config.ts).
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  session: { strategy: "jwt" },
-  pages: { signIn: "/admin/login" },
+  ...authConfig,
   providers: [
     Credentials({
       credentials: {
@@ -29,12 +32,4 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    authorized({ auth, request }) {
-      const isAdminRoute = request.nextUrl.pathname.startsWith("/admin");
-      const isLoginPage = request.nextUrl.pathname === "/admin/login";
-      if (!isAdminRoute || isLoginPage) return true;
-      return !!auth?.user;
-    },
-  },
 });
