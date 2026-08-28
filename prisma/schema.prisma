@@ -14,7 +14,8 @@ model Product {
   name        String
   tagline     String
   description String
-  price       Int // en pesos ARS enteros (sin centavos)
+  price       Int // precio de venta, en pesos ARS enteros (sin centavos)
+  costPrice   Int? // precio de costo — interno, nunca se muestra en la tienda
   stock       Int      @default(0)
   status      String   @default("active") // active | archived
   createdAt   DateTime @default(now())

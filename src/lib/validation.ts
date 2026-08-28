@@ -15,6 +15,15 @@ export const productSchema = z.object({
     .int("El precio no puede tener centavos")
     .positive("El precio tiene que ser mayor a cero")
     .max(100_000_000, "Precio demasiado alto"),
+  costPrice: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.coerce
+      .number({ message: "El costo tiene que ser un número" })
+      .int("El costo no puede tener centavos")
+      .min(0, "El costo no puede ser negativo")
+      .max(100_000_000, "Costo demasiado alto")
+      .optional(),
+  ),
   stock: z.coerce
     .number({ message: "El stock tiene que ser un número" })
     .int("El stock tiene que ser un entero")

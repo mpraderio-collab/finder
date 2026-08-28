@@ -24,6 +24,7 @@ function parseForm(formData: FormData) {
     tagline: formData.get("tagline"),
     description: formData.get("description"),
     price: formData.get("price"),
+    costPrice: formData.get("costPrice"),
     stock: formData.get("stock"),
     status: formData.get("status") ?? "active",
   });

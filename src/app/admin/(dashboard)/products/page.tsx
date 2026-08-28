@@ -33,6 +33,7 @@ export default async function AdminProductsPage() {
               <tr>
                 <th className="px-4 py-3 font-medium">Producto</th>
                 <th className="px-4 py-3 font-medium">Precio</th>
+                <th className="px-4 py-3 font-medium">Margen</th>
                 <th className="px-4 py-3 font-medium">Stock</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
                 <th className="px-4 py-3 font-medium">Pedidos</th>
@@ -56,6 +57,27 @@ export default async function AdminProductsPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">{formatPrice(product.price)}</td>
+                  <td className="px-4 py-3 text-ink-soft">
+                    {product.costPrice == null ? (
+                      "—"
+                    ) : (
+                      (() => {
+                        const margin = product.price - product.costPrice;
+                        const marginPct = Math.round(
+                          (margin / product.price) * 100,
+                        );
+                        return (
+                          <span
+                            className={
+                              margin < 0 ? "text-coral font-semibold" : undefined
+                            }
+                          >
+                            {formatPrice(margin)} ({marginPct}%)
+                          </span>
+                        );
+                      })()
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     {totalStock === 0 ? (
                       <span className="rounded-full bg-coral-soft px-2 py-0.5 text-xs font-semibold text-coral">

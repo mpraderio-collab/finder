@@ -14,6 +14,7 @@ type Props = {
     tagline: string;
     description: string;
     price: number;
+    costPrice: number | null;
     stock: number;
     status: string;
   };
@@ -80,7 +81,7 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
       </Field>
 
       <div className="grid grid-cols-2 gap-4">
-        <Field label="Precio (ARS)" name="price" error={state.fieldErrors?.price}>
+        <Field label="Precio de venta (ARS)" name="price" error={state.fieldErrors?.price}>
           <input
             name="price"
             type="number"
@@ -92,18 +93,34 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
           />
         </Field>
 
-        <Field label="Stock" name="stock" error={state.fieldErrors?.stock}>
+        <Field
+          label="Precio de costo (ARS)"
+          name="costPrice"
+          error={state.fieldErrors?.costPrice}
+          hint="Opcional. Solo lo ves vos, nunca se muestra en la tienda."
+        >
           <input
-            name="stock"
+            name="costPrice"
             type="number"
             min={0}
             step={1}
-            defaultValue={defaultValues?.stock ?? 0}
-            required
+            defaultValue={defaultValues?.costPrice ?? undefined}
             className="input"
           />
         </Field>
       </div>
+
+      <Field label="Stock" name="stock" error={state.fieldErrors?.stock}>
+        <input
+          name="stock"
+          type="number"
+          min={0}
+          step={1}
+          defaultValue={defaultValues?.stock ?? 0}
+          required
+          className="input max-w-[calc(50%-0.5rem)]"
+        />
+      </Field>
 
       <Field label="Estado" name="status" error={state.fieldErrors?.status}>
         <select

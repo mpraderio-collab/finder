@@ -6,6 +6,7 @@ const navLinks = [
   { href: "/admin", label: "Resumen" },
   { href: "/admin/products", label: "Productos" },
   { href: "/admin/orders", label: "Pedidos" },
+  { href: "/admin/account", label: "Mi cuenta" },
 ];
 
 export default async function AdminDashboardLayout({
