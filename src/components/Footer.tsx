@@ -26,11 +26,6 @@ export function Footer() {
                 Nosotros
               </Link>
             </li>
-            <li>
-              <Link href="/blog" className="hover:text-cream">
-                Blog
-              </Link>
-            </li>
           </ul>
         </div>
         <div>
