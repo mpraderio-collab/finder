@@ -1,10 +1,13 @@
 "use client";
 
 import Image from "next/image";
+import { upload } from "@vercel/blob/client";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateVariantStock } from "../actions";
-import { uploadVariantImage } from "./image-actions";
+import { attachVariantImage } from "./image-actions";
+
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 type Variant = {
   id: string;
@@ -36,27 +39,44 @@ export function VariantStockEditor({ variants }: { variants: Variant[] }) {
 function VariantRow({ variant }: { variant: Variant }) {
   const [value, setValue] = useState(variant.stock);
   const [pending, startTransition] = useTransition();
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dirty = value !== variant.stock;
 
-  function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const formData = new FormData();
-    formData.set("file", file);
-    startTransition(async () => {
-      const res = await uploadVariantImage(variant.id, formData);
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      setError("La imagen pesa más de 5MB.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const blob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/upload-token",
+      });
+      const res = await attachVariantImage(variant.id, blob.url);
       if (res.error) {
         setError(res.error);
-        return;
+      } else {
+        setError(null);
       }
-      setError(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
       router.refresh();
-    });
+    } catch {
+      setError("No se pudo subir la imagen. Probá de nuevo.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }
+
+  const busy = pending || uploading;
 
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-line bg-card px-3 py-2">
@@ -103,13 +123,13 @@ function VariantRow({ variant }: { variant: Variant }) {
           {pending ? "Guardando…" : "Guardar"}
         </button>
         <label className="cursor-pointer text-xs font-semibold text-amber-dark hover:underline">
-          {variant.imageUrl ? "Cambiar foto" : "+ Agregar foto"}
+          {uploading ? "Subiendo…" : variant.imageUrl ? "Cambiar foto" : "+ Agregar foto"}
           <input
             ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
             onChange={handleUpload}
-            disabled={pending}
+            disabled={busy}
             className="hidden"
           />
         </label>

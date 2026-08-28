@@ -1,8 +1,6 @@
 "use server";
 
-import { mkdir, unlink, writeFile } from "node:fs/promises";
-import path from "node:path";
-import { randomUUID } from "node:crypto";
+import { del } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
@@ -13,43 +11,24 @@ async function requireAdmin() {
   if (!session?.user) redirect("/admin/login");
 }
 
-const ALLOWED_IMAGE_TYPES: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-};
-const ALLOWED_VIDEO_TYPES: Record<string, string> = {
-  "video/mp4": "mp4",
-  "video/webm": "webm",
-  "video/quicktime": "mov",
-};
-const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
+// Los archivos ya no se escriben a disco: se suben directo del navegador a
+// Vercel Blob (ver /api/upload-token) porque las funciones de Vercel
+// rechazan cualquier request de más de 4.5MB, y un video puede pesar mucho
+// más que eso. Estas acciones solo persisten la URL que Blob ya generó.
 
-export async function uploadProductImage(
+async function safeDeleteBlob(url: string) {
+  if (!url.startsWith("http")) return; // archivo local heredado, no en Blob
+  await del(url).catch(() => {
+    // El blob puede ya no existir; no es un error fatal.
+  });
+}
+
+export async function attachProductImage(
   productId: string,
-  formData: FormData,
+  url: string,
+  contentType: string,
 ): Promise<{ error?: string }> {
   await requireAdmin();
-
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
-    return { error: "Elegí un archivo." };
-  }
-
-  const isVideo = file.type in ALLOWED_VIDEO_TYPES;
-  const ext = isVideo ? ALLOWED_VIDEO_TYPES[file.type] : ALLOWED_IMAGE_TYPES[file.type];
-  if (!ext) {
-    return { error: "Formato no soportado. Usá JPG, PNG, WEBP (foto) o MP4, WEBM, MOV (video)." };
-  }
-  const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_SIZE;
-  if (file.size > maxSize) {
-    return {
-      error: isVideo
-        ? "El video pesa más de 50MB."
-        : "La imagen pesa más de 5MB.",
-    };
-  }
 
   const product = await db.product.findUnique({
     where: { id: productId },
@@ -57,24 +36,13 @@ export async function uploadProductImage(
   });
   if (!product) return { error: "El producto ya no existe." };
 
-  const dir = path.join(process.cwd(), "public", "products", product.slug);
-  await mkdir(dir, { recursive: true });
-
-  // Nombre aleatorio: nunca confiar en el nombre de archivo original para
-  // construir una ruta en disco (evita path traversal).
-  const filename = `${randomUUID()}.${ext}`;
-  const bytes = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(dir, filename), bytes);
-
-  // Un video nunca se vuelve automáticamente la foto principal: la
-  // portada del producto (catálogo, tarjetas, carrito) siempre necesita
-  // ser una imagen renderizable con <Image>.
+  const isVideo = contentType.startsWith("video/");
   const hasImageHero = product.images.some((img) => img.type === "image" && img.isHero);
 
   await db.productImage.create({
     data: {
       productId,
-      url: `/products/${product.slug}/${filename}`,
+      url,
       type: isVideo ? "video" : "image",
       position: product.images.length,
       isHero: !isVideo && !hasImageHero,
@@ -116,10 +84,7 @@ export async function deleteProductImage(
     }
   }
 
-  const filePath = path.join(process.cwd(), "public", image.url);
-  await unlink(filePath).catch(() => {
-    // El archivo puede ya no existir en disco; no es un error fatal.
-  });
+  await safeDeleteBlob(image.url);
 
   const product = await db.product.findUnique({ where: { id: productId } });
   revalidatePath(`/admin/products/${productId}`);
@@ -129,24 +94,11 @@ export async function deleteProductImage(
   return {};
 }
 
-export async function uploadVariantImage(
+export async function attachVariantImage(
   variantId: string,
-  formData: FormData,
+  url: string,
 ): Promise<{ error?: string }> {
   await requireAdmin();
-
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
-    return { error: "Elegí un archivo de imagen." };
-  }
-
-  const ext = ALLOWED_IMAGE_TYPES[file.type];
-  if (!ext) {
-    return { error: "Formato no soportado. Usá JPG, PNG o WEBP." };
-  }
-  if (file.size > MAX_SIZE) {
-    return { error: "La imagen pesa más de 5MB." };
-  }
 
   const variant = await db.productVariant.findUnique({
     where: { id: variantId },
@@ -154,16 +106,11 @@ export async function uploadVariantImage(
   });
   if (!variant) return { error: "La variante ya no existe." };
 
-  const dir = path.join(process.cwd(), "public", "products", variant.product.slug);
-  await mkdir(dir, { recursive: true });
-
-  const filename = `variant-${randomUUID()}.${ext}`;
-  const bytes = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(dir, filename), bytes);
+  if (variant.imageUrl) await safeDeleteBlob(variant.imageUrl);
 
   await db.productVariant.update({
     where: { id: variantId },
-    data: { imageUrl: `/products/${variant.product.slug}/${filename}` },
+    data: { imageUrl: url },
   });
 
   revalidatePath(`/admin/products/${variant.productId}`);
