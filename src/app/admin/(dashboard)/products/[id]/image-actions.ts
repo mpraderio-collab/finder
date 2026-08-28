@@ -13,12 +13,18 @@ async function requireAdmin() {
   if (!session?.user) redirect("/admin/login");
 }
 
-const ALLOWED_TYPES: Record<string, string> = {
+const ALLOWED_IMAGE_TYPES: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
 };
+const ALLOWED_VIDEO_TYPES: Record<string, string> = {
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/quicktime": "mov",
+};
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
 
 export async function uploadProductImage(
   productId: string,
@@ -28,15 +34,21 @@ export async function uploadProductImage(
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
-    return { error: "Elegí un archivo de imagen." };
+    return { error: "Elegí un archivo." };
   }
 
-  const ext = ALLOWED_TYPES[file.type];
+  const isVideo = file.type in ALLOWED_VIDEO_TYPES;
+  const ext = isVideo ? ALLOWED_VIDEO_TYPES[file.type] : ALLOWED_IMAGE_TYPES[file.type];
   if (!ext) {
-    return { error: "Formato no soportado. Usá JPG, PNG o WEBP." };
+    return { error: "Formato no soportado. Usá JPG, PNG, WEBP (foto) o MP4, WEBM, MOV (video)." };
   }
-  if (file.size > MAX_SIZE) {
-    return { error: "La imagen pesa más de 5MB." };
+  const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_SIZE;
+  if (file.size > maxSize) {
+    return {
+      error: isVideo
+        ? "El video pesa más de 50MB."
+        : "La imagen pesa más de 5MB.",
+    };
   }
 
   const product = await db.product.findUnique({
@@ -54,12 +66,18 @@ export async function uploadProductImage(
   const bytes = Buffer.from(await file.arrayBuffer());
   await writeFile(path.join(dir, filename), bytes);
 
+  // Un video nunca se vuelve automáticamente la foto principal: la
+  // portada del producto (catálogo, tarjetas, carrito) siempre necesita
+  // ser una imagen renderizable con <Image>.
+  const hasImageHero = product.images.some((img) => img.type === "image" && img.isHero);
+
   await db.productImage.create({
     data: {
       productId,
       url: `/products/${product.slug}/${filename}`,
+      type: isVideo ? "video" : "image",
       position: product.images.length,
-      isHero: product.images.length === 0,
+      isHero: !isVideo && !hasImageHero,
     },
   });
 
@@ -83,10 +101,11 @@ export async function deleteProductImage(
 
   await db.productImage.delete({ where: { id: imageId } });
 
-  // Si se borró la imagen principal, la siguiente pasa a serlo.
+  // Si se borró la imagen principal, la siguiente FOTO (nunca un video)
+  // pasa a serlo.
   if (image.isHero) {
     const next = await db.productImage.findFirst({
-      where: { productId },
+      where: { productId, type: "image" },
       orderBy: { position: "asc" },
     });
     if (next) {
@@ -121,7 +140,7 @@ export async function uploadVariantImage(
     return { error: "Elegí un archivo de imagen." };
   }
 
-  const ext = ALLOWED_TYPES[file.type];
+  const ext = ALLOWED_IMAGE_TYPES[file.type];
   if (!ext) {
     return { error: "Formato no soportado. Usá JPG, PNG o WEBP." };
   }
@@ -154,8 +173,19 @@ export async function uploadVariantImage(
   return {};
 }
 
-export async function setHeroImage(productId: string, imageId: string) {
+export async function setHeroImage(
+  productId: string,
+  imageId: string,
+): Promise<{ error?: string }> {
   await requireAdmin();
+
+  const image = await db.productImage.findUnique({ where: { id: imageId } });
+  if (!image || image.productId !== productId) {
+    return { error: "La imagen ya no existe." };
+  }
+  if (image.type === "video") {
+    return { error: "Un video no puede ser la foto principal." };
+  }
 
   await db.$transaction([
     db.productImage.updateMany({
@@ -170,4 +200,5 @@ export async function setHeroImage(productId: string, imageId: string) {
   revalidatePath("/catalogo");
   if (product) revalidatePath(`/catalogo/${product.slug}`);
   revalidatePath("/");
+  return {};
 }

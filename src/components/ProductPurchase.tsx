@@ -12,7 +12,7 @@ type Variant = {
   imageUrl: string | null;
 };
 
-type GalleryImage = { id: string; url: string };
+type GalleryImage = { id: string; url: string; type: string };
 
 export function ProductPurchase({
   productId,
@@ -50,8 +50,14 @@ export function ProductPurchase({
   const gallery = useMemo(() => {
     if (!activeVariant?.imageUrl) return images;
     const rest = images.filter((img) => img.url !== activeVariant.imageUrl);
-    return [{ id: `variant-${activeVariant.name}`, url: activeVariant.imageUrl }, ...rest];
+    return [
+      { id: `variant-${activeVariant.name}`, url: activeVariant.imageUrl, type: "image" },
+      ...rest,
+    ];
   }, [activeVariant, images]);
+
+  // El carrito y el resumen del pedido necesitan una imagen real, nunca un video.
+  const cartImage = gallery.find((g) => g.type !== "video")?.url;
 
   const maxStock = variants.length === 0 ? stock : (activeVariant?.stock ?? 0);
   const outOfStock = maxStock <= 0;
@@ -68,7 +74,7 @@ export function ProductPurchase({
       slug,
       name,
       price,
-      image: gallery[0]?.url,
+      image: cartImage,
       variantName: selectedVariant,
       maxStock,
     };
@@ -78,16 +84,25 @@ export function ProductPurchase({
     <div className="grid gap-10 md:grid-cols-2">
       <div className="flex flex-col gap-3">
         <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-cream-soft">
-          {gallery[carouselIndex] && (
-            <Image
-              src={gallery[carouselIndex].url}
-              alt={name}
-              fill
-              priority
-              className="object-cover"
-              sizes="(min-width: 768px) 50vw, 100vw"
-            />
-          )}
+          {gallery[carouselIndex] &&
+            (gallery[carouselIndex].type === "video" ? (
+              <video
+                key={gallery[carouselIndex].id}
+                src={gallery[carouselIndex].url}
+                controls
+                playsInline
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <Image
+                src={gallery[carouselIndex].url}
+                alt={name}
+                fill
+                priority
+                className="object-cover"
+                sizes="(min-width: 768px) 50vw, 100vw"
+              />
+            ))}
         </div>
         {gallery.length > 1 && (
           <div className="grid grid-cols-4 gap-3">
@@ -96,18 +111,34 @@ export function ProductPurchase({
                 key={img.id}
                 type="button"
                 onClick={() => setCarouselIndex(i)}
-                aria-label={`Ver foto ${i + 1}`}
+                aria-label={
+                  img.type === "video" ? `Ver video ${i + 1}` : `Ver foto ${i + 1}`
+                }
                 className={`relative aspect-square overflow-hidden rounded-xl border-2 bg-cream-soft transition-colors ${
                   i === carouselIndex ? "border-ink" : "border-transparent"
                 }`}
               >
-                <Image
-                  src={img.url}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="150px"
-                />
+                {img.type === "video" ? (
+                  <>
+                    <video
+                      src={img.url}
+                      muted
+                      playsInline
+                      className="h-full w-full object-cover"
+                    />
+                    <span className="absolute inset-0 flex items-center justify-center bg-ink/20 text-lg text-cream">
+                      ▶
+                    </span>
+                  </>
+                ) : (
+                  <Image
+                    src={img.url}
+                    alt=""
+                    fill
+                    className="object-cover"
+                    sizes="150px"
+                  />
+                )}
               </button>
             ))}
           </div>

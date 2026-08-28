@@ -33,6 +33,7 @@ model Product {
 model ProductImage {
   id        String  @id @default(cuid())
   url       String
+  type      String  @default("image") // "image" | "video"
   alt       String  @default("")
   position  Int     @default(0)
   isHero    Boolean @default(false)

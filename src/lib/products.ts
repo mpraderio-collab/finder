@@ -37,9 +37,10 @@ export type ProductWithRelations = NonNullable<
 export function getHeroImageUrl(
   product: Pick<ProductWithRelations, "images">,
 ): string | undefined {
-  return (
-    product.images.find((img) => img.isHero)?.url ?? product.images[0]?.url
-  );
+  // Un video nunca sirve de portada donde se necesita una <Image> estática
+  // (tarjetas de catálogo, carrito, home).
+  const photos = product.images.filter((img) => img.type !== "video");
+  return photos.find((img) => img.isHero)?.url ?? photos[0]?.url;
 }
 
 export function averageRating(

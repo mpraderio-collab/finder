@@ -9,7 +9,7 @@ import {
   uploadProductImage,
 } from "./image-actions";
 
-type ProductImage = { id: string; url: string; isHero: boolean };
+type ProductImage = { id: string; url: string; type: string; isHero: boolean };
 
 export function ImageManager({
   productId,
@@ -41,7 +41,7 @@ export function ImageManager({
 
   return (
     <div className="mt-10 max-w-2xl">
-      <p className="text-sm font-semibold text-ink">Fotos del producto</p>
+      <p className="text-sm font-semibold text-ink">Fotos y videos del producto</p>
       {error && <p className="mt-2 text-sm text-coral">{error}</p>}
 
       {images.length > 0 && (
@@ -49,13 +49,27 @@ export function ImageManager({
           {images.map((img) => (
             <div key={img.id} className="flex flex-col gap-1.5">
               <div className="relative aspect-square overflow-hidden rounded-lg border border-line bg-cream-soft">
-                <Image
-                  src={img.url}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="150px"
-                />
+                {img.type === "video" ? (
+                  <video
+                    src={img.url}
+                    muted
+                    playsInline
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <Image
+                    src={img.url}
+                    alt=""
+                    fill
+                    className="object-cover"
+                    sizes="150px"
+                  />
+                )}
+                {img.type === "video" && (
+                  <span className="absolute right-1 top-1 rounded-full bg-ink/80 px-1.5 py-0.5 text-[10px] font-semibold text-cream">
+                    ▶ Video
+                  </span>
+                )}
                 {img.isHero && (
                   <span className="absolute left-1 top-1 rounded-full bg-ink/80 px-1.5 py-0.5 text-[10px] font-semibold text-cream">
                     Principal
@@ -63,7 +77,7 @@ export function ImageManager({
                 )}
               </div>
               <div className="flex justify-between gap-1 text-xs">
-                {!img.isHero && (
+                {!img.isHero && img.type !== "video" && (
                   <button
                     type="button"
                     disabled={pending}
@@ -98,19 +112,20 @@ export function ImageManager({
       )}
 
       <label className="mt-4 flex w-fit cursor-pointer items-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink hover:border-ink">
-        {pending ? "Subiendo…" : "+ Subir foto"}
+        {pending ? "Subiendo…" : "+ Subir foto o video"}
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
           onChange={handleUpload}
           disabled={pending}
           className="hidden"
         />
       </label>
       <p className="mt-1.5 text-xs text-ink-soft">
-        JPG, PNG o WEBP, hasta 5MB. La primera foto que subas queda como
-        principal.
+        Fotos: JPG, PNG o WEBP, hasta 5MB. Videos: MP4, WEBM o MOV, hasta
+        50MB. La primera foto que subas queda como principal (los videos
+        nunca son la principal).
       </p>
     </div>
   );
