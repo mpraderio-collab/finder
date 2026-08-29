@@ -1,10 +1,7 @@
 import { Resend } from "resend";
 import { formatPrice } from "@/lib/products";
 
-// Remitente por defecto de Resend: funciona sin verificar un dominio propio.
-// Cuando se verifique findertecno.com en Resend, cambiar a algo como
-// "Finder <pedidos@findertecno.com>".
-const FROM_ADDRESS = "Finder <onboarding@resend.dev>";
+const FROM_ADDRESS = "Finder <pedidos@findertecno.com>";
 
 function getClient(): Resend | null {
   const apiKey = process.env.RESEND_API_KEY;
