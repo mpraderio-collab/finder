@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ClearCartOnMount } from "@/components/ClearCartOnMount";
+import { SuccessCheck } from "@/components/SuccessCheck";
 import { db } from "@/lib/db";
 import { formatPrice, getHeroImageUrl } from "@/lib/products";
 import { getWhatsAppUrl } from "@/lib/whatsapp";
@@ -26,8 +27,8 @@ export default async function CheckoutSuccessPage(
       <ClearCartOnMount />
       <main className="flex-1 px-6 py-16">
         <div className="mx-auto max-w-[820px] text-center">
-          <span className="mx-auto flex h-[62px] w-[62px] items-center justify-center rounded-full border border-amber-line bg-amber-soft text-[28px] text-amber-ink">
-            ✓
+          <span className="mx-auto flex h-[62px] w-[62px] items-center justify-center rounded-full border border-amber-line bg-amber-soft text-amber-ink">
+            <SuccessCheck />
           </span>
           {order && (
             <p className="mt-4 text-xs font-bold uppercase tracking-[0.14em] text-amber-ink">

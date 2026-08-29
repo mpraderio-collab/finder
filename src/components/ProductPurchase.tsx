@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addCartItem } from "@/lib/cart-context";
 import { formatPrice } from "@/lib/products";
@@ -41,8 +41,9 @@ export function ProductPurchase({
     variants[0]?.name,
   );
   const [quantity, setQuantity] = useState(1);
-  const [justAdded, setJustAdded] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const addLabelRef = useRef<HTMLSpanElement>(null);
+  const addLabelTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activeVariant = variants.find((v) => v.name === selectedVariant);
 
@@ -68,6 +69,40 @@ export function ProductPurchase({
     setSelectedVariant(name);
     setQuantity(1);
     setCarouselIndex(0);
+  }
+
+  // Swap the "Agregar al carrito" label to a confirmation and back, per
+  // transitions-dev's text-states-swap (see globals.css for .t-text-swap).
+  function swapAddLabel(next: string) {
+    const el = addLabelRef.current;
+    if (!el) return;
+    // getComputedStyle normalizes CSS <time> values to seconds (e.g. "0.2s"),
+    // not the "200ms" the raw custom property was written as — parseFloat
+    // alone silently reads that as 0.2ms. Convert explicitly.
+    const raw = getComputedStyle(document.documentElement)
+      .getPropertyValue("--text-swap-dur")
+      .trim();
+    const dur = raw.endsWith("ms")
+      ? parseFloat(raw)
+      : parseFloat(raw) * 1000 || 200;
+    el.classList.add("is-exit");
+    setTimeout(() => {
+      el.textContent = next;
+      el.classList.remove("is-exit");
+      el.classList.add("is-enter-start");
+      void el.offsetHeight; // reflow so the re-entry transitions
+      el.classList.remove("is-enter-start");
+    }, dur);
+  }
+
+  function handleAddToCart() {
+    addCartItem(buildCartItem(), quantity);
+    if (addLabelTimeoutRef.current) clearTimeout(addLabelTimeoutRef.current);
+    swapAddLabel("¡Agregado! ✓");
+    addLabelTimeoutRef.current = setTimeout(
+      () => swapAddLabel("Agregar al carrito"),
+      2000,
+    );
   }
 
   function buildCartItem() {
@@ -234,14 +269,16 @@ export function ProductPurchase({
             <button
               type="button"
               disabled={outOfStock}
-              onClick={() => {
-                addCartItem(buildCartItem(), quantity);
-                setJustAdded(true);
-                setTimeout(() => setJustAdded(false), 2000);
-              }}
+              onClick={handleAddToCart}
               className="flex-1 rounded-lg border border-navy bg-bg px-6 py-3.5 font-heading text-sm font-bold text-navy transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:border-line disabled:text-ink-faint"
             >
-              {outOfStock ? "Sin stock" : justAdded ? "¡Agregado! ✓" : "Agregar al carrito"}
+              {outOfStock ? (
+                "Sin stock"
+              ) : (
+                <span ref={addLabelRef} className="t-text-swap">
+                  Agregar al carrito
+                </span>
+              )}
             </button>
             <button
               type="button"
