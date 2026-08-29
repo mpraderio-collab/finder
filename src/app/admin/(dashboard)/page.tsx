@@ -84,6 +84,11 @@ export default async function AdminDashboardPage() {
                   <tr key={order.id} className="border-b border-line last:border-0">
                     <td className="px-4 py-3 font-medium text-ink">
                       {order.customerName}
+                      {order.channel === "manual" && (
+                        <span className="ml-1.5 rounded-full bg-amber/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-dark">
+                          Manual
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">{formatPrice(order.total)}</td>
                     <td className="px-4 py-3">

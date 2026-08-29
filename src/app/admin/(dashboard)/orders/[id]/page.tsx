@@ -21,11 +21,18 @@ export default async function OrderDetailPage(
           <h1 className="font-heading text-2xl font-extrabold text-ink">
             Pedido #{order.id.slice(-8)}
           </h1>
-          <span
-            className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${orderStatusColors[order.status]}`}
-          >
-            {orderStatusLabels[order.status]}
-          </span>
+          <div className="mt-1 flex flex-wrap gap-2">
+            <span
+              className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${orderStatusColors[order.status]}`}
+            >
+              {orderStatusLabels[order.status]}
+            </span>
+            {order.channel === "manual" && (
+              <span className="inline-block rounded-full bg-amber/20 px-2 py-0.5 text-xs font-semibold text-amber-dark">
+                Venta manual
+              </span>
+            )}
+          </div>
         </div>
         <StatusSelect orderId={order.id} currentStatus={order.status} />
       </div>
@@ -77,27 +84,40 @@ export default async function OrderDetailPage(
         </div>
 
         <div className="rounded-xl border border-line bg-card p-5">
-          <p className="text-sm font-semibold text-ink">Datos del cliente</p>
+          <p className="text-sm font-semibold text-ink">
+            {order.channel === "manual" ? "Venta manual" : "Datos del cliente"}
+          </p>
           <dl className="mt-3 space-y-2 text-sm text-ink-soft">
             <div>
               <dt className="text-xs uppercase tracking-wide">Nombre</dt>
               <dd className="text-ink">{order.customerName}</dd>
             </div>
-            <div>
-              <dt className="text-xs uppercase tracking-wide">Email</dt>
-              <dd className="text-ink">{order.customerEmail}</dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase tracking-wide">Teléfono</dt>
-              <dd className="text-ink">{order.customerPhone}</dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase tracking-wide">Envío</dt>
-              <dd className="text-ink">
-                {order.shippingAddress}, {order.shippingCity},{" "}
-                {order.shippingProvince} ({order.shippingZip})
-              </dd>
-            </div>
+            {order.channel === "manual" ? (
+              order.note && (
+                <div>
+                  <dt className="text-xs uppercase tracking-wide">Nota</dt>
+                  <dd className="text-ink">{order.note}</dd>
+                </div>
+              )
+            ) : (
+              <>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide">Email</dt>
+                  <dd className="text-ink">{order.customerEmail}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide">Teléfono</dt>
+                  <dd className="text-ink">{order.customerPhone}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide">Envío</dt>
+                  <dd className="text-ink">
+                    {order.shippingAddress}, {order.shippingCity},{" "}
+                    {order.shippingProvince} ({order.shippingZip})
+                  </dd>
+                </div>
+              </>
+            )}
             <div>
               <dt className="text-xs uppercase tracking-wide">Fecha</dt>
               <dd className="text-ink">

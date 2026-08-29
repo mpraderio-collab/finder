@@ -65,7 +65,14 @@ export default async function AdminOrdersPage(
               {orders.map((order) => (
                 <tr key={order.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-ink">{order.customerName}</p>
+                    <p className="font-medium text-ink">
+                      {order.customerName}
+                      {order.channel === "manual" && (
+                        <span className="ml-1.5 rounded-full bg-amber/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-dark">
+                          Manual
+                        </span>
+                      )}
+                    </p>
                     <p className="text-xs text-ink-soft">{order.customerEmail}</p>
                   </td>
                   <td className="px-4 py-3 text-ink-soft">

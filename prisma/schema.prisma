@@ -81,6 +81,8 @@ model Review {
 model Order {
   id                String      @id @default(cuid())
   status            String      @default("pending") // pending | paid | failed | cancelled | shipped
+  channel           String      @default("online") // online (checkout web) | manual (venta cargada a mano)
+  note              String?     // solo para ventas manuales
   customerName      String
   customerEmail     String
   customerPhone     String

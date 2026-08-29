@@ -62,3 +62,27 @@ export const checkoutSchema = z.object({
     )
     .min(1, "El carrito está vacío"),
 });
+
+export const manualSaleSchema = z.object({
+  customerName: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? "Venta manual" : val),
+    z.string().trim().min(1).max(120),
+  ),
+  note: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().trim().max(500).optional(),
+  ),
+  items: z
+    .array(
+      z.object({
+        productId: z.string().min(1),
+        quantity: z.coerce.number().int().min(1).max(1000),
+        variantName: z.string().optional(),
+        unitPrice: z.coerce
+          .number()
+          .int("El precio no puede tener centavos")
+          .min(0, "El precio no puede ser negativo"),
+      }),
+    )
+    .min(1, "Agregá al menos un producto"),
+});
