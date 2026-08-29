@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { db } from "@/lib/db";
 import { getPayment } from "@/lib/mercadopago";
+import {
+  sendOrderConfirmationToCustomer,
+  sendOrderNotificationToAdmin,
+} from "@/lib/email";
 
 // Ver referencia de firma de webhooks de Mercado Pago:
 // x-signature: "ts=...,v1=..."  x-request-id: "..."
@@ -124,6 +128,40 @@ export async function POST(request: Request) {
           mpStatusDetail: payment.status_detail,
         },
       });
+    }
+
+    // Notificar por mail solo en la transición a pagado, nunca en reintentos
+    // del mismo webhook (evita mandar el mail duplicado varias veces).
+    if (nextStatus === "paid" && order.status !== "paid") {
+      const items = await db.orderItem.findMany({
+        where: { orderId },
+        include: { product: { select: { name: true } } },
+      });
+      const emailData = {
+        id: order.id,
+        customerName: order.customerName,
+        customerEmail: order.customerEmail,
+        customerPhone: order.customerPhone,
+        shippingAddress: order.shippingAddress,
+        shippingCity: order.shippingCity,
+        shippingProvince: order.shippingProvince,
+        shippingZip: order.shippingZip,
+        total: order.total,
+        items: items.map((item) => ({
+          productName: item.product.name,
+          variantName: item.variantName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        })),
+      };
+      await Promise.all([
+        sendOrderNotificationToAdmin(emailData).catch((err) =>
+          console.error("Error notificando pedido al admin:", err),
+        ),
+        sendOrderConfirmationToCustomer(emailData).catch((err) =>
+          console.error("Error confirmando pedido al cliente:", err),
+        ),
+      ]);
     }
 
     return NextResponse.json({ received: true });
