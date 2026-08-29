@@ -94,6 +94,34 @@ export async function deleteProductImage(
   return {};
 }
 
+export async function reorderProductImages(
+  productId: string,
+  orderedIds: string[],
+): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const images = await db.productImage.findMany({ where: { productId } });
+  if (
+    images.length !== orderedIds.length ||
+    !images.every((img) => orderedIds.includes(img.id))
+  ) {
+    return { error: "El orden no coincide con las imágenes actuales." };
+  }
+
+  await db.$transaction(
+    orderedIds.map((id, index) =>
+      db.productImage.update({ where: { id }, data: { position: index } }),
+    ),
+  );
+
+  const product = await db.product.findUnique({ where: { id: productId } });
+  revalidatePath(`/admin/products/${productId}`);
+  revalidatePath("/catalogo");
+  if (product) revalidatePath(`/catalogo/${product.slug}`);
+  revalidatePath("/");
+  return {};
+}
+
 export async function attachVariantImage(
   variantId: string,
   url: string,

@@ -209,7 +209,7 @@ export default function CheckoutPage() {
 
             <div>
               <p className="text-sm font-semibold text-ink">Entrega</p>
-              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+              <div className="mt-2 grid gap-3 grid-cols-1">
                 {(Object.entries(shippingMethods) as [ShippingMethod, (typeof shippingMethods)[ShippingMethod]][]).map(
                   ([key, method]) => (
                     <button

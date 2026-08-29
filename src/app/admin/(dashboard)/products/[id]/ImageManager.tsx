@@ -4,7 +4,12 @@ import Image from "next/image";
 import { upload } from "@vercel/blob/client";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { attachProductImage, deleteProductImage, setHeroImage } from "./image-actions";
+import {
+  attachProductImage,
+  deleteProductImage,
+  reorderProductImages,
+  setHeroImage,
+} from "./image-actions";
 
 type ProductImage = { id: string; url: string; type: string; isHero: boolean };
 
@@ -23,6 +28,41 @@ export function ImageManager({
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  // Copia local para poder reordenar al instante mientras se arrastra; se
+  // resincroniza cuando el server component vuelve a mandar las imágenes
+  // (tras guardar el orden, subir o borrar).
+  const [items, setItems] = useState(images);
+  const [prevImages, setPrevImages] = useState(images);
+  if (images !== prevImages) {
+    setPrevImages(images);
+    setItems(images);
+  }
+  const dragIndexRef = useRef<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+
+  function handleDrop(dropIndex: number) {
+    const from = dragIndexRef.current;
+    dragIndexRef.current = null;
+    setDraggingIndex(null);
+    setDragOverIndex(null);
+    if (from === null || from === dropIndex) return;
+
+    const next = [...items];
+    const [moved] = next.splice(from, 1);
+    next.splice(dropIndex, 0, moved);
+    setItems(next);
+
+    startTransition(async () => {
+      const res = await reorderProductImages(
+        productId,
+        next.map((img) => img.id),
+      );
+      if (res.error) setError(res.error);
+      router.refresh();
+    });
+  }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -61,11 +101,47 @@ export function ImageManager({
       <p className="text-sm font-semibold text-ink">Fotos y videos del producto</p>
       {error && <p className="mt-2 text-sm text-err-ink">{error}</p>}
 
-      {images.length > 0 && (
-        <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4">
-          {images.map((img) => (
-            <div key={img.id} className="flex flex-col gap-1.5">
-              <div className="relative aspect-square overflow-hidden rounded-lg border border-line bg-surface">
+      {items.length > 0 && (
+        <>
+          <p className="mt-3 text-xs text-ink-soft">
+            Arrastrá las fotos para cambiar el orden en que se muestran.
+          </p>
+          <div className="mt-2 grid grid-cols-3 gap-3 sm:grid-cols-4">
+            {items.map((img, index) => (
+            <div
+              key={img.id}
+              draggable={!busy}
+              onDragStart={() => {
+                dragIndexRef.current = index;
+                setDraggingIndex(index);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (dragOverIndex !== index) setDragOverIndex(index);
+              }}
+              onDragLeave={() => {
+                setDragOverIndex((current) => (current === index ? null : current));
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                handleDrop(index);
+              }}
+              onDragEnd={() => {
+                dragIndexRef.current = null;
+                setDraggingIndex(null);
+                setDragOverIndex(null);
+              }}
+              className={`flex cursor-grab flex-col gap-1.5 rounded-lg transition-opacity active:cursor-grabbing ${
+                draggingIndex === index ? "opacity-40" : ""
+              }`}
+            >
+              <div
+                className={`relative aspect-square overflow-hidden rounded-lg border bg-surface ${
+                  dragOverIndex === index && draggingIndex !== index
+                    ? "border-2 border-amber"
+                    : "border-line"
+                }`}
+              >
                 {img.type === "video" ? (
                   <video
                     src={img.url}
@@ -125,8 +201,9 @@ export function ImageManager({
                 </button>
               </div>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
       )}
 
       <label className="mt-4 flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-border-btn px-4 py-2 text-sm font-semibold text-navy hover:bg-surface">
