@@ -85,6 +85,13 @@ body {
   box-shadow: 0 0 0 3px rgba(246, 168, 28, 0.15);
 }
 
+/* El reset de Tailwind deja los <button> en cursor:default (comportamiento
+   nativo del navegador) — el mouse necesita el dedito en cualquier botón
+   clickeable del sitio. */
+button:not(:disabled) {
+  cursor: pointer;
+}
+
 /* transitions-dev — tokens for the transitions actually used on this site
    (text swap, number pop-in, success check). See .agents/skills/transitions-dev. */
 :root {
