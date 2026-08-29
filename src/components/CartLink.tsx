@@ -9,14 +9,9 @@ export function CartLink() {
   return (
     <Link
       href="/carrito"
-      className="relative rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-cream transition-colors hover:bg-amber-dark"
+      className="rounded-lg bg-navy px-5 py-2.5 font-heading text-sm font-bold text-white transition-colors hover:bg-navy-deep"
     >
-      Carrito
-      {itemCount > 0 && (
-        <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-coral px-1 text-xs font-bold text-cream">
-          {itemCount}
-        </span>
-      )}
+      Carrito · {itemCount}
     </Link>
   );
 }

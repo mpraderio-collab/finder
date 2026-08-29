@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { checkoutSchema } from "@/lib/validation";
 import { createPreference, isMercadoPagoConfigured } from "@/lib/mercadopago";
+import { shippingMethods } from "@/lib/shipping";
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -81,6 +82,8 @@ export async function POST(request: Request) {
         });
       }
 
+      const shippingCost = shippingMethods[data.shippingMethod].cost;
+
       return tx.order.create({
         data: {
           customerName: data.customerName,
@@ -90,8 +93,10 @@ export async function POST(request: Request) {
           shippingCity: data.shippingCity,
           shippingProvince: data.shippingProvince,
           shippingZip: data.shippingZip,
+          shippingMethod: data.shippingMethod,
+          shippingCost,
           subtotal,
-          total: subtotal,
+          total: subtotal + shippingCost,
           idempotencyKey: randomUUID(),
           items: { create: orderItemsData },
         },
@@ -109,12 +114,24 @@ export async function POST(request: Request) {
     const preference = await createPreference({
       orderId: order.id,
       payerEmail: order.customerEmail,
-      items: order.items.map((item) => ({
-        title: `${item.product.name}${item.variantName ? ` (${item.variantName})` : ""}`,
-        quantity: item.quantity,
-        unit_price: item.unitPrice,
-        currency_id: "ARS",
-      })),
+      items: [
+        ...order.items.map((item) => ({
+          title: `${item.product.name}${item.variantName ? ` (${item.variantName})` : ""}`,
+          quantity: item.quantity,
+          unit_price: item.unitPrice,
+          currency_id: "ARS" as const,
+        })),
+        ...(order.shippingCost > 0
+          ? [
+              {
+                title: "Envío",
+                quantity: 1,
+                unit_price: order.shippingCost,
+                currency_id: "ARS" as const,
+              },
+            ]
+          : []),
+      ],
     });
 
     await db.order.update({

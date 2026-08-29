@@ -1,14 +1,11 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Stars } from "@/components/Stars";
 import { ProductPurchase } from "@/components/ProductPurchase";
-import {
-  averageRating,
-  formatPrice,
-  getProductBySlug,
-} from "@/lib/products";
+import { averageRating, getProductBySlug } from "@/lib/products";
 import { db } from "@/lib/db";
 
 export async function generateStaticParams() {
@@ -42,16 +39,19 @@ export default async function ProductPage(
     (a, b) => Number(b.isHero) - Number(a.isHero),
   );
   const avgRating = averageRating(product.reviews);
-  const outOfStock =
-    product.variants.length > 0
-      ? product.variants.every((v) => v.stock <= 0)
-      : product.stock <= 0;
 
   return (
     <>
       <Header />
       <main className="flex-1">
-        <section className="mx-auto max-w-6xl px-6 py-14">
+        <p className="mx-auto max-w-6xl px-6 pt-[18px] text-[13px] text-ink-faint">
+          <Link href="/catalogo" className="hover:text-navy">
+            Catálogo
+          </Link>{" "}
+          / <span className="font-semibold text-navy">{product.name}</span>
+        </p>
+
+        <section className="mx-auto max-w-6xl px-6 pb-[52px] pt-[22px]">
           <ProductPurchase
             productId={product.id}
             slug={product.slug}
@@ -62,42 +62,37 @@ export default async function ProductPage(
             images={orderedImages}
             aboveActions={
               <>
-                <h1 className="font-heading text-3xl font-extrabold text-ink sm:text-4xl">
+                <h1 className="font-heading text-[38px] font-extrabold leading-[1.1] tracking-[-0.025em] text-navy">
                   {product.name}
                 </h1>
-                <p className="text-lg text-ink-soft">{product.tagline}</p>
+                <p className="text-[17px]/[1.6] text-ink-soft">
+                  {product.tagline}
+                </p>
 
                 {product.reviews.length > 0 && (
                   <div className="flex items-center gap-2 text-sm">
                     <Stars rating={avgRating} />
                     <span className="text-ink-soft">
-                      {avgRating.toFixed(1)} · {product.reviews.length} reseñas
+                      {avgRating.toFixed(1).replace(".", ",")} ·{" "}
+                      {product.reviews.length} reseñas
                     </span>
                   </div>
                 )}
-
-                <div className="flex items-center gap-3">
-                  <p className="font-heading text-3xl font-extrabold text-ink">
-                    {formatPrice(product.price)}
-                  </p>
-                  {outOfStock && (
-                    <span className="rounded-full bg-coral-soft px-3 py-1 text-xs font-semibold text-coral">
-                      Sin stock
-                    </span>
-                  )}
-                </div>
               </>
             }
             belowActions={
               <>
-                <p className="border-t border-line pt-5 text-ink-soft">
+                <p className="text-[15px]/[1.7] text-ink-soft">
                   {product.description}
                 </p>
 
                 <ul className="space-y-2">
                   {product.features.map((feature) => (
-                    <li key={feature.id} className="flex gap-2 text-sm text-ink-soft">
-                      <span className="text-amber-dark">✓</span>
+                    <li
+                      key={feature.id}
+                      className="flex gap-2 text-sm text-ink-soft"
+                    >
+                      <span className="text-amber-ink">✓</span>
                       {feature.text}
                     </li>
                   ))}
@@ -108,22 +103,22 @@ export default async function ProductPage(
         </section>
 
         {product.reviews.length > 0 && (
-          <section className="border-t border-line bg-card">
-            <div className="mx-auto max-w-6xl px-6 py-14">
-              <h2 className="font-heading text-2xl font-extrabold text-ink">
+          <section className="border-t border-line bg-surface">
+            <div className="mx-auto max-w-6xl px-6 py-11">
+              <h2 className="font-heading text-[26px] font-extrabold text-navy">
                 Lo que dicen nuestros clientes
               </h2>
               <div className="mt-8 grid gap-6 sm:grid-cols-3">
                 {product.reviews.map((review) => (
                   <div
                     key={review.id}
-                    className="rounded-2xl border border-line p-5"
+                    className="rounded-xl border border-line bg-bg p-5"
                   >
                     <Stars rating={review.rating} />
-                    <p className="mt-3 text-sm text-ink-soft">
+                    <p className="mt-3 text-sm/[1.6] text-ink-soft">
                       &ldquo;{review.text}&rdquo;
                     </p>
-                    <p className="mt-3 text-sm font-semibold text-ink">
+                    <p className="mt-3 font-heading text-sm font-bold text-navy">
                       {review.author}
                     </p>
                   </div>

@@ -16,19 +16,21 @@ export default async function CatalogoPage() {
     <>
       <Header />
       <main className="flex-1">
-        <section className="mx-auto max-w-6xl px-6 py-14">
-          <h1 className="font-heading text-4xl font-extrabold text-ink">
+        <section className="mx-auto max-w-6xl px-6 pb-6 pt-10">
+          <h1 className="font-heading text-[40px] font-extrabold tracking-[-0.025em] text-navy">
             Catálogo
           </h1>
-          <p className="mt-2 max-w-lg text-ink-soft">
+          <p className="mt-2 max-w-[520px] text-base/[1.6] text-ink-soft">
             Iluminación moderna para leer, trabajar y ambientar tu casa.
           </p>
+        </section>
+        <section className="mx-auto max-w-6xl px-6 py-7">
           {products.length === 0 ? (
-            <p className="mt-10 text-ink-soft">
+            <p className="text-ink-soft">
               Todavía no hay productos publicados.
             </p>
           ) : (
-            <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-[22px] sm:grid-cols-2 lg:grid-cols-3">
               {products.map((product) => (
                 <ProductCard key={product.slug} product={product} />
               ))}

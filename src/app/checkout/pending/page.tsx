@@ -14,19 +14,21 @@ export default async function CheckoutPendingPage(
       <Header />
       <ClearCartOnMount />
       <main className="flex flex-1 items-center justify-center px-6 py-20">
-        <div className="max-w-md text-center">
-          <span className="text-5xl">⏳</span>
-          <h1 className="mt-4 font-heading text-3xl font-extrabold text-ink">
-            {unavailable ? "Pedido recibido" : "Tu pago está en revisión"}
+        <div className="max-w-[420px] rounded-[14px] border border-amber-line bg-amber-soft p-8 text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-ink">
+            Pago pendiente
+          </p>
+          <h1 className="mt-2 font-heading text-2xl font-extrabold text-navy">
+            {unavailable ? "Pedido recibido" : "Estamos esperando la confirmación"}
           </h1>
-          <p className="mt-3 text-ink-soft">
+          <p className="mt-3 text-sm/[1.6] text-ink-soft">
             {unavailable
               ? "Registramos tu pedido, pero el cobro online todavía no está habilitado en la tienda. Te vamos a contactar para coordinar el pago."
-              : "Algunos medios de pago tardan en confirmarse. Te avisamos por email apenas se acredite."}
+              : "Mercado Pago todavía no confirmó el pago. Apenas se acredite te avisamos por mail; no hace falta que hagas nada."}
           </p>
           <Link
             href="/catalogo"
-            className="mt-6 inline-block rounded-full bg-ink px-6 py-3 text-sm font-semibold text-cream hover:bg-amber-dark"
+            className="mt-6 inline-block rounded-lg bg-navy px-6 py-3 font-heading text-sm font-bold text-white hover:bg-navy-deep"
           >
             Seguir comprando
           </Link>

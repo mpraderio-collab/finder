@@ -90,6 +90,9 @@ model Order {
   shippingCity      String
   shippingProvince  String
   shippingZip       String
+  shippingMethod    String?     // "correo" | "oca" — solo pedidos online
+  shippingCost      Int         @default(0)
+  trackingCode      String?
   subtotal          Int
   total             Int
   mpPreferenceId    String?

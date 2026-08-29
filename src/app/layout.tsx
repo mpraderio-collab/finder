@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
-import { Sora, Inter } from "next/font/google";
+import { Manrope, DM_Sans } from "next/font/google";
 import { CartProvider } from "@/lib/cart-context";
 import { WhatsAppButtonGate } from "@/components/WhatsAppButtonGate";
 import "./globals.css";
 
-const sora = Sora({
-  variable: "--font-sora",
+const manrope = Manrope({
+  variable: "--font-display",
   subsets: ["latin"],
-  weight: ["600", "700", "800"],
+  weight: ["500", "600", "700", "800"],
 });
 
-const inter = Inter({
-  variable: "--font-inter",
+const dmSans = DM_Sans({
+  variable: "--font-body",
   subsets: ["latin"],
+  weight: ["400", "500", "700"],
 });
 
 export const metadata: Metadata = {
@@ -25,9 +26,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
-      className={`${sora.variable} ${inter.variable} h-full antialiased`}
+      className={`${manrope.variable} ${dmSans.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-cream text-ink">
+      <body className="min-h-full flex flex-col bg-bg text-ink">
         <CartProvider>{children}</CartProvider>
         <WhatsAppButtonGate />
       </body>

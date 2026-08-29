@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addCartItem } from "@/lib/cart-context";
+import { formatPrice } from "@/lib/products";
 
 type Variant = {
   name: string;
@@ -61,6 +62,7 @@ export function ProductPurchase({
 
   const maxStock = variants.length === 0 ? stock : (activeVariant?.stock ?? 0);
   const outOfStock = maxStock <= 0;
+  const installment = Math.round(price / 6);
 
   function selectVariant(name: string) {
     setSelectedVariant(name);
@@ -81,9 +83,9 @@ export function ProductPurchase({
   }
 
   return (
-    <div className="grid gap-10 md:grid-cols-2">
+    <div className="grid gap-11 md:grid-cols-2">
       <div className="flex flex-col gap-3">
-        <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-cream-soft">
+        <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-line bg-surface">
           {gallery[carouselIndex] &&
             (gallery[carouselIndex].type === "video" ? (
               <video
@@ -114,8 +116,8 @@ export function ProductPurchase({
                 aria-label={
                   img.type === "video" ? `Ver video ${i + 1}` : `Ver foto ${i + 1}`
                 }
-                className={`relative aspect-square overflow-hidden rounded-xl border-2 bg-cream-soft transition-colors ${
-                  i === carouselIndex ? "border-ink" : "border-transparent"
+                className={`relative aspect-square overflow-hidden rounded-[10px] border-2 bg-surface transition-colors ${
+                  i === carouselIndex ? "border-navy" : "border-line"
                 }`}
               >
                 {img.type === "video" ? (
@@ -126,7 +128,7 @@ export function ProductPurchase({
                       playsInline
                       className="h-full w-full object-cover"
                     />
-                    <span className="absolute inset-0 flex items-center justify-center bg-ink/20 text-lg text-cream">
+                    <span className="absolute inset-0 flex items-center justify-center bg-ink/20 text-lg text-white">
                       ▶
                     </span>
                   </>
@@ -145,103 +147,121 @@ export function ProductPurchase({
         )}
       </div>
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-5">
         {aboveActions}
-        {variants.length > 0 && (
-          <div>
-            <p className="text-sm font-semibold text-ink">
-              Color{activeVariant ? `: ${activeVariant.name}` : ""}
-            </p>
-            <div className="mt-2 flex gap-3">
-              {variants.map((variant) => (
-                <button
-                  key={variant.name}
-                  type="button"
-                  title={
-                    variant.stock <= 0
-                      ? `${variant.name} — sin stock`
-                      : variant.name
-                  }
-                  onClick={() => selectVariant(variant.name)}
-                  disabled={variant.stock <= 0}
-                  className={`relative h-14 w-14 overflow-hidden rounded-full border-2 transition-all disabled:cursor-not-allowed disabled:opacity-30 ${
-                    selectedVariant === variant.name
-                      ? "border-ink"
-                      : "border-line"
-                  }`}
-                  style={{ backgroundColor: variant.swatch }}
-                >
-                  {variant.imageUrl && (
-                    <Image
-                      src={variant.imageUrl}
-                      alt={variant.name}
-                      fill
-                      className="object-cover"
-                      sizes="56px"
-                    />
-                  )}
-                </button>
-              ))}
+
+        <div className="flex flex-col gap-4 rounded-[14px] border border-line bg-surface p-[22px]">
+          <div className="flex items-baseline gap-3.5">
+            <span className="font-heading text-[34px] font-extrabold text-navy">
+              {formatPrice(price)}
+            </span>
+            <span className="text-[13px] text-ink-soft">
+              6 cuotas de {formatPrice(installment)}
+            </span>
+          </div>
+
+          {variants.length > 0 && (
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-ink">
+                Color — {activeVariant?.name ?? ""}
+              </p>
+              <div className="mt-2.5 flex gap-2.5">
+                {variants.map((variant) => (
+                  <button
+                    key={variant.name}
+                    type="button"
+                    title={
+                      variant.stock <= 0
+                        ? `${variant.name} — sin stock`
+                        : variant.name
+                    }
+                    onClick={() => selectVariant(variant.name)}
+                    disabled={variant.stock <= 0}
+                    className={`relative h-[46px] w-[46px] overflow-hidden rounded-full border-2 transition-all disabled:cursor-not-allowed disabled:opacity-30 ${
+                      selectedVariant === variant.name
+                        ? "border-amber"
+                        : "border-border-input"
+                    }`}
+                    style={{ backgroundColor: variant.swatch }}
+                  >
+                    {variant.imageUrl && (
+                      <Image
+                        src={variant.imageUrl}
+                        alt={variant.name}
+                        fill
+                        className="object-cover"
+                        sizes="56px"
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-
-        <div className="flex items-center gap-3">
-          <div className="flex items-center rounded-full border border-line">
-            <button
-              type="button"
-              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              disabled={outOfStock}
-              className="px-3 py-2 text-ink-soft hover:text-ink disabled:opacity-30"
-              aria-label="Restar cantidad"
-            >
-              −
-            </button>
-            <span className="min-w-8 text-center text-sm font-semibold text-ink">
-              {quantity}
-            </span>
-            <button
-              type="button"
-              onClick={() => setQuantity((q) => Math.min(maxStock, q + 1))}
-              disabled={outOfStock || quantity >= maxStock}
-              className="px-3 py-2 text-ink-soft hover:text-ink disabled:opacity-30"
-              aria-label="Sumar cantidad"
-            >
-              +
-            </button>
-          </div>
-          {!outOfStock && maxStock <= 5 && (
-            <span className="text-xs text-amber-dark">
-              Quedan {maxStock} unidades
-            </span>
           )}
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center rounded-lg border border-border-input bg-bg">
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                disabled={outOfStock}
+                className="px-3 py-2 text-ink-soft hover:text-navy disabled:opacity-30"
+                aria-label="Restar cantidad"
+              >
+                −
+              </button>
+              <span className="min-w-8 text-center font-heading text-sm font-bold text-ink">
+                {quantity}
+              </span>
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => Math.min(maxStock, q + 1))}
+                disabled={outOfStock || quantity >= maxStock}
+                className="px-3 py-2 text-ink-soft hover:text-navy disabled:opacity-30"
+                aria-label="Sumar cantidad"
+              >
+                +
+              </button>
+            </div>
+            {!outOfStock && maxStock <= 5 && (
+              <span className="text-[13px] font-semibold text-amber-ink">
+                Quedan {maxStock} unidades
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              disabled={outOfStock}
+              onClick={() => {
+                addCartItem(buildCartItem(), quantity);
+                setJustAdded(true);
+                setTimeout(() => setJustAdded(false), 2000);
+              }}
+              className="flex-1 rounded-lg border border-navy bg-bg px-6 py-3.5 font-heading text-sm font-bold text-navy transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:border-line disabled:text-ink-faint"
+            >
+              {outOfStock ? "Sin stock" : justAdded ? "¡Agregado! ✓" : "Agregar al carrito"}
+            </button>
+            <button
+              type="button"
+              disabled={outOfStock}
+              onClick={() => {
+                addCartItem(buildCartItem(), quantity);
+                router.push("/checkout");
+              }}
+              className="flex-1 rounded-lg bg-navy px-6 py-3.5 font-heading text-sm font-bold text-white transition-colors hover:bg-navy-deep disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-faint"
+            >
+              Comprar ahora
+            </button>
+          </div>
+
+          <p className="text-xs text-ink-faint">
+            Envío a todo el país · Pagos con Mercado Pago · Cambios en 30
+            días
+          </p>
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            disabled={outOfStock}
-            onClick={() => {
-              addCartItem(buildCartItem(), quantity);
-              setJustAdded(true);
-              setTimeout(() => setJustAdded(false), 2000);
-            }}
-            className="flex-1 rounded-full border border-ink px-6 py-3.5 text-sm font-semibold text-ink transition-colors hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:border-line disabled:text-ink-soft"
-          >
-            {outOfStock ? "Sin stock" : justAdded ? "¡Agregado! ✓" : "Agregar al carrito"}
-          </button>
-          <button
-            type="button"
-            disabled={outOfStock}
-            onClick={() => {
-              addCartItem(buildCartItem(), quantity);
-              router.push("/checkout");
-            }}
-            className="flex-1 rounded-full bg-ink px-6 py-3.5 text-sm font-semibold text-cream transition-colors hover:bg-amber-dark disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-soft"
-          >
-            Comprar ahora
-          </button>
-        </div>
         {belowActions}
       </div>
     </div>

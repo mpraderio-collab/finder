@@ -52,6 +52,7 @@ export const checkoutSchema = z.object({
   shippingCity: z.string().trim().min(2).max(100),
   shippingProvince: z.string().trim().min(2).max(100),
   shippingZip: z.string().trim().min(3).max(15),
+  shippingMethod: z.enum(["correo", "oca"]).default("correo"),
   items: z
     .array(
       z.object({

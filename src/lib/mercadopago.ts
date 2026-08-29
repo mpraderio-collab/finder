@@ -21,6 +21,13 @@ export async function createPreference(params: {
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
+  // `auto_return` solo es válido cuando el sitio es un origen HTTPS público:
+  // Mercado Pago rechaza la preferencia (400 invalid_auto_return) si el
+  // back_url.success no es HTTPS — como pasa en desarrollo local. La
+  // redirección post-pago igual funciona sin auto_return, el comprador
+  // solo ve el botón "Volver al sitio" en la pantalla de Mercado Pago.
+  const isPublicHttps = /^https:\/\//.test(siteUrl) && !/localhost|127\.0\.0\.1/.test(siteUrl);
+
   const res = await fetch(`${MP_API}/checkout/preferences`, {
     method: "POST",
     headers: {
@@ -38,7 +45,7 @@ export async function createPreference(params: {
         failure: `${siteUrl}/checkout/failure?order=${params.orderId}`,
         pending: `${siteUrl}/checkout/pending?order=${params.orderId}`,
       },
-      auto_return: "approved",
+      ...(isPublicHttps ? { auto_return: "approved" } : {}),
       notification_url: `${siteUrl}/api/webhooks/mercadopago`,
     }),
   });
