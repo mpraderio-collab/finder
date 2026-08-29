@@ -33,8 +33,8 @@ export default async function AdminProductsPage() {
               <tr>
                 <th className="px-4 py-3 font-medium">Producto</th>
                 <th className="px-4 py-3 font-medium">Precio</th>
-                <th className="px-4 py-3 font-medium">Margen</th>
-                <th className="px-4 py-3 font-medium">Margen</th>
+                <th className="px-4 py-3 font-medium">Margen $</th>
+                <th className="px-4 py-3 font-medium">Margen %</th>
                 <th className="px-4 py-3 font-medium">Stock</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
                 <th className="px-4 py-3 font-medium">Pedidos</th>
