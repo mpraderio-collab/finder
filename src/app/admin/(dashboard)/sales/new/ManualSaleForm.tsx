@@ -106,7 +106,7 @@ export function ManualSaleForm({ products }: { products: ProductOption[] }) {
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
-      <div className="rounded-xl border border-line bg-card p-5">
+      <div className="rounded-xl border border-line bg-bg p-5">
         <p className="text-sm font-semibold text-ink">Agregar producto</p>
         <div className="mt-3 flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1.5">
@@ -168,19 +168,19 @@ export function ManualSaleForm({ products }: { products: ProductOption[] }) {
             type="button"
             onClick={addItem}
             disabled={maxStockForSelection <= 0}
-            className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-cream disabled:opacity-40"
+            className="rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
           >
             + Agregar
           </button>
         </div>
         {maxStockForSelection <= 0 && (
-          <p className="mt-2 text-xs text-coral">Sin stock disponible.</p>
+          <p className="mt-2 text-xs text-err-ink">Sin stock disponible.</p>
         )}
-        {addError && <p className="mt-2 text-xs text-coral">{addError}</p>}
+        {addError && <p className="mt-2 text-xs text-err-ink">{addError}</p>}
       </div>
 
       {items.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-line bg-card">
+        <div className="overflow-x-auto rounded-xl border border-line bg-bg">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-line text-ink-soft">
               <tr>
@@ -205,7 +205,7 @@ export function ManualSaleForm({ products }: { products: ProductOption[] }) {
                     <button
                       type="button"
                       onClick={() => removeItem(i)}
-                      className="text-xs font-semibold text-coral hover:underline"
+                      className="text-xs font-semibold text-err-ink hover:underline"
                     >
                       Quitar
                     </button>
@@ -222,7 +222,7 @@ export function ManualSaleForm({ products }: { products: ProductOption[] }) {
 
       <form
         action={formAction}
-        className="flex flex-col gap-4 rounded-xl border border-line bg-card p-5"
+        className="flex flex-col gap-4 rounded-xl border border-line bg-bg p-5"
       >
         <input type="hidden" name="items" value={JSON.stringify(items)} />
 
@@ -252,7 +252,7 @@ export function ManualSaleForm({ products }: { products: ProductOption[] }) {
         </label>
 
         {state.error && (
-          <p className="rounded-lg bg-coral-soft px-3 py-2 text-sm text-coral">
+          <p className="rounded-lg bg-err-bg px-3 py-2 text-sm text-err-ink">
             {state.error}
           </p>
         )}
@@ -260,7 +260,7 @@ export function ManualSaleForm({ products }: { products: ProductOption[] }) {
         <button
           type="submit"
           disabled={items.length === 0 || pending}
-          className="w-fit rounded-full bg-ink px-6 py-2.5 text-sm font-semibold text-cream disabled:opacity-40"
+          className="w-fit rounded-lg bg-navy px-6 py-2.5 font-heading text-sm font-bold text-white disabled:opacity-40"
         >
           {pending ? "Guardando…" : `Registrar venta — ${formatPrice(total)}`}
         </button>
@@ -269,8 +269,8 @@ export function ManualSaleForm({ products }: { products: ProductOption[] }) {
       <style jsx global>{`
         .input {
           border-radius: 0.5rem;
-          border: 1px solid var(--color-line);
-          background: var(--color-cream);
+          border: 1px solid var(--color-border-input);
+          background: var(--color-bg);
           padding: 0.5rem 0.75rem;
           font-size: 0.875rem;
           outline: none;

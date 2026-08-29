@@ -20,9 +20,12 @@ export function DangerZone({
   const router = useRouter();
 
   return (
-    <div className="mt-10 max-w-2xl rounded-xl border border-line bg-card p-5">
-      <p className="text-sm font-semibold text-ink">Zona de riesgo</p>
-      {error && <p className="mt-2 text-sm text-coral">{error}</p>}
+    <div className="mt-10 max-w-2xl rounded-xl border border-err-line bg-err-bg p-5">
+      <p className="text-sm font-semibold text-err-ink">Zona de eliminación</p>
+      <p className="mt-1 text-xs text-ink-soft">
+        Se quita del catálogo. Los pedidos ya hechos conservan el detalle.
+      </p>
+      {error && <p className="mt-2 text-sm text-err-ink">{error}</p>}
       <div className="mt-3 flex flex-wrap gap-3">
         {status === "active" ? (
           <button
@@ -34,7 +37,7 @@ export function DangerZone({
                 router.refresh();
               })
             }
-            className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink-soft hover:border-ink hover:text-ink disabled:opacity-50"
+            className="rounded-lg border border-border-btn bg-bg px-4 py-2 text-sm font-semibold text-navy hover:bg-surface disabled:opacity-50"
           >
             Archivar (ocultar de la tienda)
           </button>
@@ -48,7 +51,7 @@ export function DangerZone({
                 router.refresh();
               })
             }
-            className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink-soft hover:border-ink hover:text-ink disabled:opacity-50"
+            className="rounded-lg border border-border-btn bg-bg px-4 py-2 text-sm font-semibold text-navy hover:bg-surface disabled:opacity-50"
           >
             Reactivar producto
           </button>
@@ -67,7 +70,7 @@ export function DangerZone({
               router.push("/admin/products");
             })
           }
-          className="rounded-full border border-coral px-4 py-2 text-sm font-semibold text-coral hover:bg-coral-soft disabled:opacity-50"
+          className="rounded-lg border border-err-line bg-bg px-4 py-2 text-sm font-semibold text-err-ink hover:bg-err-bg disabled:opacity-50"
         >
           Borrar definitivamente
         </button>

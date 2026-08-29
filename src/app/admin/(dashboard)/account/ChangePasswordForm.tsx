@@ -18,12 +18,12 @@ export function ChangePasswordForm() {
       className="flex max-w-sm flex-col gap-4"
     >
       {state.error && (
-        <p className="rounded-lg bg-coral-soft px-3 py-2 text-sm text-coral">
+        <p className="rounded-lg bg-err-bg px-3 py-2 text-sm text-err-ink">
           {state.error}
         </p>
       )}
       {state.success && (
-        <p className="rounded-lg bg-emerald-100 px-3 py-2 text-sm text-emerald-700">
+        <p className="rounded-lg bg-ok-bg px-3 py-2 text-sm text-ok-ink">
           Contraseña actualizada correctamente.
         </p>
       )}
@@ -36,7 +36,7 @@ export function ChangePasswordForm() {
           name="currentPassword"
           type="password"
           required
-          className="rounded-lg border border-line bg-card px-3 py-2 text-sm outline-none focus:border-amber"
+          className="rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-amber"
         />
       </label>
 
@@ -49,7 +49,7 @@ export function ChangePasswordForm() {
           type="password"
           required
           minLength={8}
-          className="rounded-lg border border-line bg-card px-3 py-2 text-sm outline-none focus:border-amber"
+          className="rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-amber"
         />
         <span className="text-xs text-ink-soft">Al menos 8 caracteres.</span>
       </label>
@@ -63,14 +63,14 @@ export function ChangePasswordForm() {
           type="password"
           required
           minLength={8}
-          className="rounded-lg border border-line bg-card px-3 py-2 text-sm outline-none focus:border-amber"
+          className="rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-amber"
         />
       </label>
 
       <button
         type="submit"
         disabled={pending}
-        className="mt-2 w-fit rounded-full bg-ink px-6 py-2.5 text-sm font-semibold text-cream transition-colors hover:bg-amber-dark disabled:opacity-50"
+        className="mt-2 w-fit rounded-lg bg-navy px-6 py-2.5 font-heading text-sm font-bold text-white transition-colors hover:bg-navy-deep disabled:opacity-50"
       >
         {pending ? "Guardando…" : "Cambiar contraseña"}
       </button>

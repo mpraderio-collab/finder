@@ -29,7 +29,7 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
   return (
     <form action={formAction} className="flex max-w-2xl flex-col gap-5">
       {state.error && (
-        <p className="rounded-lg bg-coral-soft px-3 py-2 text-sm text-coral">
+        <p className="rounded-lg bg-err-bg px-3 py-2 text-sm text-err-ink">
           {state.error}
         </p>
       )}
@@ -136,22 +136,23 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
       <button
         type="submit"
         disabled={pending}
-        className="mt-2 w-fit rounded-full bg-ink px-6 py-2.5 text-sm font-semibold text-cream transition-colors hover:bg-amber-dark disabled:opacity-50"
+        className="mt-2 w-fit rounded-lg bg-navy px-6 py-2.5 font-heading text-sm font-bold text-white transition-colors hover:bg-navy-deep disabled:opacity-50"
       >
         {pending ? "Guardando…" : submitLabel}
       </button>
 
       <style jsx global>{`
         .input {
-          border-radius: 0.5rem;
-          border: 1px solid var(--color-line);
-          background: var(--color-card);
+          border-radius: 8px;
+          border: 1px solid var(--color-border-input);
+          background: var(--color-bg);
           padding: 0.5rem 0.75rem;
           font-size: 0.875rem;
           outline: none;
         }
         .input:focus {
           border-color: var(--color-amber);
+          box-shadow: 0 0 0 3px rgba(246, 168, 28, 0.15);
         }
       `}</style>
     </form>
@@ -175,7 +176,7 @@ function Field({
       <span className="text-sm font-medium text-ink">{label}</span>
       {children}
       {hint && !error && <span className="text-xs text-ink-soft">{hint}</span>}
-      {error && <span className="text-xs text-coral">{error}</span>}
+      {error && <span className="text-xs text-err-ink">{error}</span>}
     </label>
   );
 }

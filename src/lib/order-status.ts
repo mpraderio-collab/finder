@@ -7,9 +7,9 @@ export const orderStatusLabels: Record<string, string> = {
 };
 
 export const orderStatusColors: Record<string, string> = {
-  pending: "bg-amber/20 text-amber-dark",
-  paid: "bg-emerald-100 text-emerald-700",
-  shipped: "bg-sky-100 text-sky-700",
-  cancelled: "bg-coral-soft text-coral",
-  failed: "bg-coral-soft text-coral",
+  pending: "bg-warn-bg text-warn-ink",
+  paid: "bg-ok-bg text-ok-ink",
+  shipped: "bg-info-bg text-info-ink",
+  cancelled: "bg-err-bg text-err-ink",
+  failed: "bg-err-bg text-err-ink",
 };

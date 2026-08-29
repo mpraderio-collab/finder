@@ -3,10 +3,33 @@ import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/products";
 import { orderStatusColors, orderStatusLabels } from "@/lib/order-status";
 
+function weeklySales(orders: { createdAt: Date; total: number }[]) {
+  const now = new Date();
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  // 5 baldes de 7 días, el más reciente termina hoy.
+  const buckets = Array.from({ length: 5 }, (_, i) => {
+    const end = new Date(now.getTime() - (4 - i) * weekMs);
+    const start = new Date(end.getTime() - weekMs);
+    return { start, end, total: 0 };
+  });
+
+  for (const order of orders) {
+    const bucket = buckets.find(
+      (b) => order.createdAt >= b.start && order.createdAt < b.end,
+    );
+    if (bucket) bucket.total += order.total;
+  }
+
+  return buckets;
+}
+
 export default async function AdminDashboardPage() {
   const [pendingCount, paidOrders, lowStock, recentOrders] = await Promise.all([
     db.order.count({ where: { status: "pending" } }),
-    db.order.findMany({ where: { status: { in: ["paid", "shipped"] } } }),
+    db.order.findMany({
+      where: { status: { in: ["paid", "shipped"] } },
+      select: { createdAt: true, total: true },
+    }),
     db.product.findMany({
       where: { status: "active", stock: { lte: 3 } },
       orderBy: { stock: "asc" },
@@ -15,17 +38,23 @@ export default async function AdminDashboardPage() {
   ]);
 
   const revenue = paidOrders.reduce((sum, o) => sum + o.total, 0);
+  const buckets = weeklySales(paidOrders);
+  const maxBucket = Math.max(...buckets.map((b) => b.total), 1);
 
   const stats = [
     { label: "Pedidos pendientes", value: pendingCount },
     { label: "Ventas confirmadas", value: paidOrders.length },
     { label: "Ingresos (pagados)", value: formatPrice(revenue) },
-    { label: "Productos con stock bajo", value: lowStock.length },
+    {
+      label: "Stock bajo",
+      value: lowStock.length,
+      warn: lowStock.length > 0,
+    },
   ];
 
   return (
     <div>
-      <h1 className="font-heading text-2xl font-extrabold text-ink">
+      <h1 className="font-heading text-2xl font-extrabold text-navy">
         Resumen
       </h1>
 
@@ -33,42 +62,111 @@ export default async function AdminDashboardPage() {
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="rounded-xl border border-line bg-card p-5"
+            className="rounded-xl border border-line bg-bg p-[18px]"
           >
-            <p className="text-sm text-ink-soft">{stat.label}</p>
-            <p className="mt-1 font-heading text-2xl font-extrabold text-ink">
+            <p className="text-[13px] text-ink-soft">{stat.label}</p>
+            <p
+              className={`mt-1 font-heading text-2xl font-extrabold ${stat.warn ? "text-amber-ink" : "text-navy"}`}
+            >
               {stat.value}
             </p>
           </div>
         ))}
       </div>
 
-      {lowStock.length > 0 && (
-        <div className="mt-8 rounded-xl border border-amber/40 bg-amber/10 p-5">
-          <p className="text-sm font-semibold text-amber-dark">
-            Productos con poco stock
-          </p>
-          <ul className="mt-2 space-y-1 text-sm text-ink-soft">
-            {lowStock.map((p) => (
-              <li key={p.id}>
-                <Link href={`/admin/products/${p.id}`} className="hover:underline">
-                  {p.name}
-                </Link>{" "}
-                — {p.stock === 0 ? "sin stock" : `${p.stock} unidades`}
-              </li>
+      <div className="mt-8 grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+        <div className="rounded-xl border border-line bg-bg p-5">
+          <div className="flex items-baseline justify-between">
+            <p className="font-heading text-[15px] font-bold text-navy">
+              Ventas por semana
+            </p>
+            <p className="font-heading text-sm font-bold text-navy">
+              {formatPrice(buckets.reduce((sum, b) => sum + b.total, 0))}
+            </p>
+          </div>
+          <div className="mt-5 flex items-end gap-4" style={{ height: 160 }}>
+            {buckets.map((bucket, i) => {
+              const isLast = i === buckets.length - 1;
+              const heightPct = Math.max((bucket.total / maxBucket) * 100, 3);
+              return (
+                <div
+                  key={i}
+                  className="flex flex-1 flex-col items-center justify-end gap-1.5"
+                >
+                  <span
+                    className={`text-xs font-semibold ${isLast ? "text-amber-ink" : "text-ink-faint"}`}
+                  >
+                    {bucket.total > 0 ? formatPrice(bucket.total) : ""}
+                  </span>
+                  <div
+                    className={`w-full rounded-t-md ${isLast ? "bg-amber" : "bg-[#DCE6EE]"}`}
+                    style={{ height: `${heightPct}%` }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-2 flex gap-4 border-t border-line pt-2">
+            {buckets.map((_, i) => (
+              <span
+                key={i}
+                className="flex-1 text-center text-xs text-ink-faint"
+              >
+                Sem {i + 1}
+              </span>
             ))}
-          </ul>
+          </div>
         </div>
-      )}
+
+        {lowStock.length > 0 ? (
+          <div className="rounded-xl border border-amber-line bg-amber-soft p-5">
+            <p className="text-sm font-semibold text-amber-ink">
+              Productos con poco stock
+            </p>
+            <ul className="mt-3 flex flex-col gap-2">
+              {lowStock.map((p) => (
+                <li
+                  key={p.id}
+                  className="flex items-center justify-between text-sm"
+                >
+                  <span className="text-ink-soft">
+                    {p.name} ·{" "}
+                    <span
+                      className={
+                        p.stock === 0 ? "font-semibold text-err-ink" : "font-semibold text-amber-ink"
+                      }
+                    >
+                      {p.stock === 0 ? "sin stock" : `${p.stock} u.`}
+                    </span>
+                  </span>
+                  <Link
+                    href={`/admin/products/${p.id}`}
+                    className="shrink-0 rounded-lg border border-border-btn bg-bg px-2.5 py-1 text-xs font-semibold text-navy hover:bg-surface"
+                  >
+                    Reponer
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-line bg-bg p-5">
+            <p className="text-sm font-semibold text-navy">Stock</p>
+            <p className="mt-2 text-sm text-ink-soft">
+              Todos los productos tienen stock suficiente.
+            </p>
+          </div>
+        )}
+      </div>
 
       <div className="mt-8">
         <div className="flex items-center justify-between">
-          <p className="font-heading text-lg font-bold text-ink">
+          <p className="font-heading text-lg font-bold text-navy">
             Últimos pedidos
           </p>
           <Link
             href="/admin/orders"
-            className="text-sm font-semibold text-amber-dark hover:underline"
+            className="font-heading text-sm font-bold text-blue hover:text-navy"
           >
             Ver todos →
           </Link>
@@ -77,15 +175,15 @@ export default async function AdminDashboardPage() {
         {recentOrders.length === 0 ? (
           <p className="mt-4 text-ink-soft">Todavía no hay pedidos.</p>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-xl border border-line bg-card">
+          <div className="mt-4 overflow-x-auto rounded-xl border border-line bg-bg">
             <table className="w-full min-w-[560px] text-left text-sm">
               <tbody>
                 {recentOrders.map((order) => (
-                  <tr key={order.id} className="border-b border-line last:border-0">
+                  <tr key={order.id} className="border-b border-line-soft last:border-0">
                     <td className="px-4 py-3 font-medium text-ink">
                       {order.customerName}
                       {order.channel === "manual" && (
-                        <span className="ml-1.5 rounded-full bg-amber/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-dark">
+                        <span className="ml-1.5 rounded-full bg-amber-soft px-1.5 py-0.5 text-[10px] font-semibold text-amber-ink">
                           Manual
                         </span>
                       )}
@@ -93,7 +191,7 @@ export default async function AdminDashboardPage() {
                     <td className="px-4 py-3">{formatPrice(order.total)}</td>
                     <td className="px-4 py-3">
                       <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${orderStatusColors[order.status]}`}
+                        className={`rounded-md px-2 py-0.5 text-xs font-semibold ${orderStatusColors[order.status]}`}
                       >
                         {orderStatusLabels[order.status]}
                       </span>
@@ -101,7 +199,7 @@ export default async function AdminDashboardPage() {
                     <td className="px-4 py-3 text-right">
                       <Link
                         href={`/admin/orders/${order.id}`}
-                        className="text-sm font-semibold text-amber-dark hover:underline"
+                        className="font-heading text-sm font-bold text-blue hover:text-navy"
                       >
                         Ver
                       </Link>

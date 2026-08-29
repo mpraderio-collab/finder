@@ -23,15 +23,21 @@ export async function updateOrderStatus(
   const order = await db.order.findUnique({ where: { id: orderId } });
   if (!order) return { error: "El pedido ya no existe." };
 
-  // Cancelar un pedido pago repone el stock reservado.
+  // Cancelar un pedido pago repone el stock reservado — de la variante
+  // correcta cuando el ítem tiene una, igual que en el webhook de MP.
   if (parsed.data === "cancelled" && order.status !== "cancelled") {
     const items = await db.orderItem.findMany({ where: { orderId } });
     await db.$transaction([
       ...items.map((item) =>
-        db.product.update({
-          where: { id: item.productId },
-          data: { stock: { increment: item.quantity } },
-        }),
+        item.variantName
+          ? db.productVariant.updateMany({
+              where: { productId: item.productId, name: item.variantName },
+              data: { stock: { increment: item.quantity } },
+            })
+          : db.product.update({
+              where: { id: item.productId },
+              data: { stock: { increment: item.quantity } },
+            }),
       ),
       db.order.update({ where: { id: orderId }, data: { status: parsed.data } }),
     ]);
@@ -40,6 +46,26 @@ export async function updateOrderStatus(
   }
 
   revalidatePath("/admin/orders");
+  revalidatePath(`/admin/orders/${orderId}`);
+  return {};
+}
+
+export async function setTrackingCode(
+  orderId: string,
+  trackingCode: string,
+): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const trimmed = trackingCode.trim();
+  if (trimmed.length === 0 || trimmed.length > 60) {
+    return { error: "El código tiene que tener entre 1 y 60 caracteres." };
+  }
+
+  await db.order.update({
+    where: { id: orderId },
+    data: { trackingCode: trimmed },
+  });
+
   revalidatePath(`/admin/orders/${orderId}`);
   return {};
 }

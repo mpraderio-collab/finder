@@ -100,7 +100,7 @@ function VariantRow({ variant }: { variant: Variant }) {
   const busy = pending || uploading;
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-line bg-card px-3 py-2">
+    <div className="flex flex-col gap-2 rounded-lg border border-line bg-bg px-3 py-2">
       <div className="flex items-center gap-3">
         <div
           className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-line"
@@ -123,7 +123,7 @@ function VariantRow({ variant }: { variant: Variant }) {
           step={1}
           value={value}
           onChange={(e) => setValue(Number(e.target.value))}
-          className="w-24 rounded-lg border border-line bg-cream px-2 py-1 text-sm outline-none focus:border-amber"
+          className="w-24 rounded-lg border border-line bg-bg px-2 py-1 text-sm outline-none focus:border-amber"
         />
         <button
           type="button"
@@ -139,7 +139,7 @@ function VariantRow({ variant }: { variant: Variant }) {
               router.refresh();
             })
           }
-          className="rounded-full bg-ink px-3 py-1 text-xs font-semibold text-cream disabled:opacity-40"
+          className="rounded-lg bg-navy px-3 py-1 text-xs font-semibold text-white disabled:opacity-40"
         >
           {pending ? "Guardando…" : "Guardar"}
         </button>
@@ -151,19 +151,19 @@ function VariantRow({ variant }: { variant: Variant }) {
             placeholder="+ cant."
             value={addAmount}
             onChange={(e) => setAddAmount(e.target.value)}
-            className="w-16 rounded-lg border border-line bg-cream px-2 py-1 text-sm outline-none focus:border-amber"
+            className="w-16 rounded-lg border border-line bg-bg px-2 py-1 text-sm outline-none focus:border-amber"
           />
           <button
             type="button"
             disabled={addAmount === "" || addPending}
             onClick={handleAddStock}
             title="Suma esta cantidad al stock actual (para reponer inventario)"
-            className="rounded-full border border-line px-3 py-1 text-xs font-semibold text-ink disabled:opacity-40"
+            className="rounded-lg border border-border-btn px-3 py-1 text-xs font-semibold text-navy disabled:opacity-40"
           >
             {addPending ? "Sumando…" : "Sumar stock"}
           </button>
         </div>
-        <label className="cursor-pointer text-xs font-semibold text-amber-dark hover:underline">
+        <label className="cursor-pointer text-xs font-semibold text-amber-ink hover:underline">
           {uploading ? "Subiendo…" : variant.imageUrl ? "Cambiar foto" : "+ Agregar foto"}
           <input
             ref={fileInputRef}
@@ -175,7 +175,7 @@ function VariantRow({ variant }: { variant: Variant }) {
           />
         </label>
       </div>
-      {error && <span className="text-xs text-coral">{error}</span>}
+      {error && <span className="text-xs text-err-ink">{error}</span>}
     </div>
   );
 }

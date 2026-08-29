@@ -59,13 +59,13 @@ export function ImageManager({
   return (
     <div className="mt-10 max-w-2xl">
       <p className="text-sm font-semibold text-ink">Fotos y videos del producto</p>
-      {error && <p className="mt-2 text-sm text-coral">{error}</p>}
+      {error && <p className="mt-2 text-sm text-err-ink">{error}</p>}
 
       {images.length > 0 && (
         <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4">
           {images.map((img) => (
             <div key={img.id} className="flex flex-col gap-1.5">
-              <div className="relative aspect-square overflow-hidden rounded-lg border border-line bg-cream-soft">
+              <div className="relative aspect-square overflow-hidden rounded-lg border border-line bg-surface">
                 {img.type === "video" ? (
                   <video
                     src={img.url}
@@ -83,12 +83,12 @@ export function ImageManager({
                   />
                 )}
                 {img.type === "video" && (
-                  <span className="absolute right-1 top-1 rounded-full bg-ink/80 px-1.5 py-0.5 text-[10px] font-semibold text-cream">
+                  <span className="absolute right-1 top-1 rounded-full bg-navy/85 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                     ▶ Video
                   </span>
                 )}
                 {img.isHero && (
-                  <span className="absolute left-1 top-1 rounded-full bg-ink/80 px-1.5 py-0.5 text-[10px] font-semibold text-cream">
+                  <span className="absolute left-1 top-1 rounded-full bg-navy/85 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                     Principal
                   </span>
                 )}
@@ -105,7 +105,7 @@ export function ImageManager({
                         router.refresh();
                       })
                     }
-                    className="text-amber-dark hover:underline disabled:opacity-50"
+                    className="text-amber-ink hover:underline disabled:opacity-50"
                   >
                     Usar como principal
                   </button>
@@ -119,7 +119,7 @@ export function ImageManager({
                       router.refresh();
                     })
                   }
-                  className="ml-auto text-coral hover:underline disabled:opacity-50"
+                  className="ml-auto text-err-ink hover:underline disabled:opacity-50"
                 >
                   Borrar
                 </button>
@@ -129,7 +129,7 @@ export function ImageManager({
         </div>
       )}
 
-      <label className="mt-4 flex w-fit cursor-pointer items-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-semibold text-ink hover:border-ink">
+      <label className="mt-4 flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-border-btn px-4 py-2 text-sm font-semibold text-navy hover:bg-surface">
         {uploading ? "Subiendo…" : "+ Subir foto o video"}
         <input
           ref={fileInputRef}

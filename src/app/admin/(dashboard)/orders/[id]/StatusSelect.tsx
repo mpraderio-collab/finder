@@ -19,8 +19,8 @@ export function StatusSelect({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-medium text-ink" htmlFor="status">
-        Estado del pedido
+      <label className="text-[13px] font-semibold text-ink" htmlFor="status">
+        Cambiar estado
       </label>
       <select
         id="status"
@@ -45,7 +45,7 @@ export function StatusSelect({
             router.refresh();
           });
         }}
-        className="w-fit rounded-lg border border-line bg-card px-3 py-2 text-sm outline-none focus:border-amber"
+        className="w-fit rounded-lg border border-border-input bg-bg px-3 py-2 text-sm outline-none focus:border-amber"
       >
         {orderStatuses.map((s) => (
           <option key={s} value={s}>
@@ -53,7 +53,7 @@ export function StatusSelect({
           </option>
         ))}
       </select>
-      {error && <p className="text-xs text-coral">{error}</p>}
+      {error && <p className="text-xs text-err-ink">{error}</p>}
     </div>
   );
 }

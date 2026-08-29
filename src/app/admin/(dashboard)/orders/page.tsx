@@ -20,15 +20,17 @@ export default async function AdminOrdersPage(
 
   return (
     <div>
-      <h1 className="font-heading text-2xl font-extrabold text-ink">
+      <h1 className="font-heading text-2xl font-extrabold text-navy">
         Pedidos
       </h1>
 
       <div className="mt-4 flex flex-wrap gap-2">
         <Link
           href="/admin/orders"
-          className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-            !statusFilter ? "bg-ink text-cream" : "bg-card text-ink-soft border border-line"
+          className={`rounded-full px-3 py-1.5 font-heading text-xs font-bold ${
+            !statusFilter
+              ? "bg-navy text-white"
+              : "border border-border-btn bg-bg text-ink-soft"
           }`}
         >
           Todos
@@ -37,8 +39,10 @@ export default async function AdminOrdersPage(
           <Link
             key={s}
             href={`/admin/orders?status=${s}`}
-            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-              statusFilter === s ? "bg-ink text-cream" : "bg-card text-ink-soft border border-line"
+            className={`rounded-full px-3 py-1.5 font-heading text-xs font-bold ${
+              statusFilter === s
+                ? "bg-navy text-white"
+                : "border border-border-btn bg-bg text-ink-soft"
             }`}
           >
             {orderStatusLabels[s]}
@@ -49,31 +53,47 @@ export default async function AdminOrdersPage(
       {orders.length === 0 ? (
         <p className="mt-10 text-ink-soft">No hay pedidos para mostrar.</p>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-xl border border-line bg-card">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="border-b border-line text-ink-soft">
+        <div className="mt-6 overflow-x-auto rounded-xl border border-line bg-bg">
+          <table className="w-full min-w-[720px] text-left text-sm">
+            <thead className="border-b border-line">
               <tr>
-                <th className="px-4 py-3 font-medium">Cliente</th>
-                <th className="px-4 py-3 font-medium">Ítems</th>
-                <th className="px-4 py-3 font-medium">Total</th>
-                <th className="px-4 py-3 font-medium">Estado</th>
-                <th className="px-4 py-3 font-medium">Fecha</th>
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                  Pedido
+                </th>
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                  Cliente
+                </th>
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                  Ítems
+                </th>
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                  Total
+                </th>
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                  Estado
+                </th>
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                  Fecha
+                </th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
               {orders.map((order) => (
-                <tr key={order.id} className="border-b border-line last:border-0">
+                <tr key={order.id} className="border-b border-line-soft last:border-0">
+                  <td className="px-4 py-3 font-heading font-bold text-navy">
+                    #{order.id.slice(-6).toUpperCase()}
+                  </td>
                   <td className="px-4 py-3">
                     <p className="font-medium text-ink">
                       {order.customerName}
                       {order.channel === "manual" && (
-                        <span className="ml-1.5 rounded-full bg-amber/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-dark">
+                        <span className="ml-1.5 rounded-full bg-amber-soft px-1.5 py-0.5 text-[10px] font-semibold text-amber-ink">
                           Manual
                         </span>
                       )}
                     </p>
-                    <p className="text-xs text-ink-soft">{order.customerEmail}</p>
+                    <p className="text-xs text-ink-faint">{order.customerEmail}</p>
                   </td>
                   <td className="px-4 py-3 text-ink-soft">
                     {order.items.reduce((n, i) => n + i.quantity, 0)}
@@ -83,7 +103,7 @@ export default async function AdminOrdersPage(
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${orderStatusColors[order.status]}`}
+                      className={`rounded-md px-2 py-0.5 text-xs font-semibold ${orderStatusColors[order.status]}`}
                     >
                       {orderStatusLabels[order.status]}
                     </span>
@@ -94,7 +114,7 @@ export default async function AdminOrdersPage(
                   <td className="px-4 py-3 text-right">
                     <Link
                       href={`/admin/orders/${order.id}`}
-                      className="text-sm font-semibold text-amber-dark hover:underline"
+                      className="font-heading text-sm font-bold text-blue hover:text-navy"
                     >
                       Ver
                     </Link>
