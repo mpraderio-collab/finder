@@ -140,6 +140,27 @@ export async function updateVariantStock(
   return {};
 }
 
+export async function addVariantStock(
+  variantId: string,
+  amount: number,
+): Promise<{ error?: string; newStock?: number }> {
+  await requireAdmin();
+
+  if (!Number.isInteger(amount) || amount <= 0) {
+    return { error: "Ingresá una cantidad entera mayor a 0." };
+  }
+
+  const variant = await db.productVariant.update({
+    where: { id: variantId },
+    data: { stock: { increment: amount } },
+    select: { productId: true, stock: true },
+  });
+
+  revalidatePath(`/admin/products/${variant.productId}`);
+  revalidatePath("/catalogo");
+  return { newStock: variant.stock };
+}
+
 export async function deleteProduct(id: string): Promise<{ error?: string }> {
   await requireAdmin();
 

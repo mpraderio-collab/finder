@@ -4,7 +4,7 @@ import Image from "next/image";
 import { upload } from "@vercel/blob/client";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { updateVariantStock } from "../actions";
+import { addVariantStock, updateVariantStock } from "../actions";
 import { attachVariantImage } from "./image-actions";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -38,12 +38,33 @@ export function VariantStockEditor({ variants }: { variants: Variant[] }) {
 
 function VariantRow({ variant }: { variant: Variant }) {
   const [value, setValue] = useState(variant.stock);
+  const [addAmount, setAddAmount] = useState("");
+  const [addPending, startAddTransition] = useTransition();
   const [pending, startTransition] = useTransition();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dirty = value !== variant.stock;
+
+  function handleAddStock() {
+    const amount = Number(addAmount);
+    if (!Number.isInteger(amount) || amount <= 0) {
+      setError("Ingresá una cantidad entera mayor a 0.");
+      return;
+    }
+    startAddTransition(async () => {
+      const res = await addVariantStock(variant.id, amount);
+      if (res.error) {
+        setError(res.error);
+        return;
+      }
+      setError(null);
+      setAddAmount("");
+      if (res.newStock != null) setValue(res.newStock);
+      router.refresh();
+    });
+  }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -122,6 +143,26 @@ function VariantRow({ variant }: { variant: Variant }) {
         >
           {pending ? "Guardando…" : "Guardar"}
         </button>
+        <div className="flex items-center gap-1">
+          <input
+            type="number"
+            min={1}
+            step={1}
+            placeholder="+ cant."
+            value={addAmount}
+            onChange={(e) => setAddAmount(e.target.value)}
+            className="w-16 rounded-lg border border-line bg-cream px-2 py-1 text-sm outline-none focus:border-amber"
+          />
+          <button
+            type="button"
+            disabled={addAmount === "" || addPending}
+            onClick={handleAddStock}
+            title="Suma esta cantidad al stock actual (para reponer inventario)"
+            className="rounded-full border border-line px-3 py-1 text-xs font-semibold text-ink disabled:opacity-40"
+          >
+            {addPending ? "Sumando…" : "Sumar stock"}
+          </button>
+        </div>
         <label className="cursor-pointer text-xs font-semibold text-amber-dark hover:underline">
           {uploading ? "Subiendo…" : variant.imageUrl ? "Cambiar foto" : "+ Agregar foto"}
           <input
