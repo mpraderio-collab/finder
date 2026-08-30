@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addCartItem } from "@/lib/cart-context";
 import { formatPrice } from "@/lib/products";
@@ -42,6 +42,7 @@ export function ProductPurchase({
   );
   const [quantity, setQuantity] = useState(1);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const addLabelRef = useRef<HTMLSpanElement>(null);
   const addLabelTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -64,6 +65,20 @@ export function ProductPurchase({
   const maxStock = variants.length === 0 ? stock : (activeVariant?.stock ?? 0);
   const outOfStock = maxStock <= 0;
   const installment = Math.round(price / 6);
+
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setLightboxOpen(false);
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKey);
+    };
+  }, [lightboxOpen]);
 
   function selectVariant(name: string) {
     setSelectedVariant(name);
@@ -131,14 +146,21 @@ export function ProductPurchase({
                 className="h-full w-full object-cover"
               />
             ) : (
-              <Image
-                src={gallery[carouselIndex].url}
-                alt={name}
-                fill
-                priority
-                className="object-cover"
-                sizes="(min-width: 768px) 50vw, 100vw"
-              />
+              <button
+                type="button"
+                onClick={() => setLightboxOpen(true)}
+                aria-label="Ver foto en pantalla completa"
+                className="absolute inset-0 h-full w-full cursor-zoom-in"
+              >
+                <Image
+                  src={gallery[carouselIndex].url}
+                  alt={name}
+                  fill
+                  priority
+                  className="object-cover"
+                  sizes="(min-width: 768px) 50vw, 100vw"
+                />
+              </button>
             ))}
         </div>
         {gallery.length > 1 && (
@@ -301,6 +323,34 @@ export function ProductPurchase({
 
         {belowActions}
       </div>
+
+      {lightboxOpen && gallery[carouselIndex] && gallery[carouselIndex].type !== "video" && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/90 p-4"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxOpen(false)}
+            aria-label="Cerrar"
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-2xl leading-none text-white hover:bg-white/20"
+          >
+            ×
+          </button>
+          <div
+            className="relative h-full max-h-[90vh] w-full max-w-5xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Image
+              src={gallery[carouselIndex].url}
+              alt={name}
+              fill
+              className="object-contain"
+              sizes="100vw"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
