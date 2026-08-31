@@ -12,8 +12,8 @@ export const metadata: Metadata = {
 const infoRows = [
   {
     label: "Email",
-    value: "hola@findertecno.com",
-    href: "mailto:hola@findertecno.com",
+    value: "ventas@findertecno.com",
+    href: "mailto:ventas@findertecno.com",
   },
   {
     label: "WhatsApp",
