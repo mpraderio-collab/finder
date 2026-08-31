@@ -23,8 +23,8 @@ const infoRows = [
   },
   {
     label: "Instagram",
-    value: "@findertecno",
-    href: "https://instagram.com/findertecno",
+    value: "@finder.tecno",
+    href: "https://instagram.com/finder.tecno",
     external: true,
   },
   {
