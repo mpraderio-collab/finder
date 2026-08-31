@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+export const contactSchema = z.object({
+  name: z.string().trim().min(2, "El nombre es muy corto").max(120),
+  email: z.string().trim().email("El email no es válido"),
+  phone: z.string().trim().max(30).optional().or(z.literal("")),
+  message: z.string().trim().min(5, "Contanos un poco más").max(2000),
+  // Campo señuelo: invisible para personas, si viene lleno es un bot.
+  website: z.string().max(0).optional().or(z.literal("")),
+});
+
 export const productSchema = z.object({
   name: z.string().trim().min(2, "El nombre es muy corto").max(120),
   slug: z

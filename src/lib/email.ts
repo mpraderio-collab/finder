@@ -53,6 +53,52 @@ function itemsRowsHtml(items: OrderItemSummary[]): string {
     .join("");
 }
 
+type ContactMessageData = {
+  name: string;
+  email: string;
+  phone: string;
+  message: string;
+};
+
+export async function sendContactMessage(
+  data: ContactMessageData,
+): Promise<{ error?: string }> {
+  const client = getClient();
+  if (!client) {
+    return { error: "El envío de mensajes no está disponible en este momento." };
+  }
+
+  const to = process.env.ORDER_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL;
+  if (!to) {
+    console.warn(
+      "Ni ORDER_NOTIFICATION_EMAIL ni ADMIN_EMAIL están configuradas — no se puede enviar el mensaje de contacto.",
+    );
+    return { error: "El envío de mensajes no está disponible en este momento." };
+  }
+
+  const { error } = await client.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    replyTo: data.email,
+    subject: `Nuevo mensaje de contacto — ${data.name}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+        <h2>Nuevo mensaje desde el formulario de contacto</h2>
+        <p><strong>Nombre:</strong> ${data.name}</p>
+        <p><strong>Email:</strong> ${data.email}</p>
+        ${data.phone ? `<p><strong>Teléfono:</strong> ${data.phone}</p>` : ""}
+        <p style="margin-top:16px;white-space:pre-wrap;">${data.message}</p>
+      </div>
+    `,
+  });
+
+  if (error) {
+    console.error("Error al enviar mensaje de contacto:", error);
+    return { error: "No pudimos enviar tu mensaje. Probá de nuevo." };
+  }
+  return {};
+}
+
 export async function sendOrderNotificationToAdmin(order: OrderEmailData) {
   const client = getClient();
   if (!client) return;
