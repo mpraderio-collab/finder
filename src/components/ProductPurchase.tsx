@@ -44,6 +44,7 @@ export function ProductPurchase({
   const [quantity, setQuantity] = useState(1);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   const addLabelRef = useRef<HTMLSpanElement>(null);
   const addLabelTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -70,6 +71,12 @@ export function ProductPurchase({
   // El carrito y el resumen del pedido necesitan una imagen real, nunca un video.
   const cartImage = gallery.find((g) => g.type !== "video")?.url;
 
+  // El lightbox navega solo entre fotos — un video no se agranda igual.
+  const imageGallery = useMemo(
+    () => gallery.filter((g) => g.type !== "video"),
+    [gallery],
+  );
+
   const maxStock = variants.length === 0 ? stock : (activeVariant?.stock ?? 0);
   const outOfStock = maxStock <= 0;
   const installment = Math.round(price / 6);
@@ -79,14 +86,57 @@ export function ProductPurchase({
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setLightboxOpen(false);
+      if (e.key === "Escape") closeLightbox();
+      else if (e.key === "ArrowLeft") showPrevLightbox();
+      else if (e.key === "ArrowRight") showNextLightbox();
     }
     window.addEventListener("keydown", handleKey);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKey);
     };
-  }, [lightboxOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lightboxOpen, lightboxIndex, imageGallery.length]);
+
+  function openLightbox() {
+    const idx = imageGallery.findIndex(
+      (img) => img.id === gallery[carouselIndex]?.id,
+    );
+    setLightboxIndex(idx === -1 ? 0 : idx);
+    setLightboxOpen(true);
+  }
+
+  function closeLightbox() {
+    setLightboxOpen(false);
+    // Al cerrar, la miniatura seleccionada abajo sigue a la última foto vista.
+    const shown = imageGallery[lightboxIndex];
+    if (!shown) return;
+    const galleryIdx = gallery.findIndex((img) => img.id === shown.id);
+    if (galleryIdx !== -1) setCarouselIndex(galleryIdx);
+  }
+
+  function showPrevLightbox() {
+    setLightboxIndex((i) => (i - 1 + imageGallery.length) % imageGallery.length);
+  }
+
+  function showNextLightbox() {
+    setLightboxIndex((i) => (i + 1) % imageGallery.length);
+  }
+
+  const touchStartX = useRef<number | null>(null);
+
+  function handleLightboxTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+
+  function handleLightboxTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null) return;
+    const delta = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(delta) < 40) return; // toque corto, no fue swipe
+    if (delta > 0) showPrevLightbox();
+    else showNextLightbox();
+  }
 
   function selectVariant(name: string) {
     setSelectedVariant(name);
@@ -157,7 +207,7 @@ export function ProductPurchase({
             ) : (
               <button
                 type="button"
-                onClick={() => setLightboxOpen(true)}
+                onClick={openLightbox}
                 aria-label="Ver foto en pantalla completa"
                 className="absolute inset-0 h-full w-full cursor-zoom-in"
               >
@@ -334,31 +384,94 @@ export function ProductPurchase({
         {belowActions}
       </div>
 
-      {lightboxOpen && gallery[carouselIndex] && gallery[carouselIndex].type !== "video" && (
+      {lightboxOpen && imageGallery[lightboxIndex] && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/90 p-4"
-          onClick={() => setLightboxOpen(false)}
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-ink/90 p-4"
+          onClick={closeLightbox}
         >
           <button
             type="button"
-            onClick={() => setLightboxOpen(false)}
+            onClick={closeLightbox}
             aria-label="Cerrar"
-            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-2xl leading-none text-white hover:bg-white/20"
+            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-2xl leading-none text-white hover:bg-white/20"
           >
             ×
           </button>
+
+          {imageGallery.length > 1 && (
+            <span className="absolute left-4 top-4 z-10 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">
+              {lightboxIndex + 1} / {imageGallery.length}
+            </span>
+          )}
+
+          {imageGallery.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                showPrevLightbox();
+              }}
+              aria-label="Foto anterior"
+              className="absolute left-4 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-2xl leading-none text-white hover:bg-white/20"
+            >
+              ‹
+            </button>
+          )}
+          {imageGallery.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                showNextLightbox();
+              }}
+              aria-label="Foto siguiente"
+              className="absolute right-4 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-2xl leading-none text-white hover:bg-white/20"
+            >
+              ›
+            </button>
+          )}
+
           <div
-            className="relative h-full max-h-[90vh] w-full max-w-5xl"
+            className="relative h-full max-h-[75vh] w-full max-w-5xl flex-1"
             onClick={(e) => e.stopPropagation()}
+            onTouchStart={handleLightboxTouchStart}
+            onTouchEnd={handleLightboxTouchEnd}
           >
             <Image
-              src={gallery[carouselIndex].url}
+              src={imageGallery[lightboxIndex].url}
               alt={name}
               fill
               className="object-contain"
               sizes="100vw"
             />
           </div>
+
+          {imageGallery.length > 1 && (
+            <div
+              className="flex w-full max-w-xl shrink-0 justify-center gap-2 overflow-x-auto pb-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {imageGallery.map((img, i) => (
+                <button
+                  key={img.id}
+                  type="button"
+                  onClick={() => setLightboxIndex(i)}
+                  aria-label={`Ver foto ${i + 1}`}
+                  className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 bg-surface transition-colors ${
+                    i === lightboxIndex ? "border-amber" : "border-white/20"
+                  }`}
+                >
+                  <Image
+                    src={img.url}
+                    alt=""
+                    fill
+                    className="object-cover"
+                    sizes="56px"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
