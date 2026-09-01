@@ -47,6 +47,13 @@ export function ProductPurchase({
   const addLabelRef = useRef<HTMLSpanElement>(null);
   const addLabelTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    trackEvent("view_content", { productId, productName: name, value: price });
+    // Solo al montar: no queremos re-disparar el evento si el usuario
+    // solo cambia de color o cantidad en la misma página de producto.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId]);
+
   const activeVariant = variants.find((v) => v.name === selectedVariant);
 
   // La galería muestra la foto propia de la variante primero (si tiene una

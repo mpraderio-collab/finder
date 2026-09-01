@@ -2,10 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer } from "@/components/Footer";
 import { useCart, cartItemKey } from "@/lib/cart-context";
+import { trackEvent } from "@/lib/analytics";
 import { formatPrice } from "@/lib/products";
 import { shippingMethods, type ShippingMethod } from "@/lib/shipping";
 
@@ -39,6 +40,16 @@ export default function CheckoutPage() {
 
   const shippingCost = shippingMethods[shippingMethod].cost;
   const total = subtotal + shippingCost;
+  const trackedInitiateCheckout = useRef(false);
+
+  useEffect(() => {
+    if (trackedInitiateCheckout.current) return;
+    if (items.length === 0) return;
+    trackedInitiateCheckout.current = true;
+    trackEvent("initiate_checkout", { value: subtotal });
+    // Solo se dispara una vez al entrar al checkout con ítems en el carrito.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.length]);
 
   useEffect(() => {
     // Se demora un tick para dar tiempo a que useSyncExternalStore adopte el

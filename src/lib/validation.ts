@@ -10,7 +10,7 @@ export const contactSchema = z.object({
 });
 
 export const trackEventSchema = z.object({
-  type: z.enum(["page_view", "add_to_cart"]),
+  type: z.enum(["page_view", "view_content", "add_to_cart", "initiate_checkout"]),
   sessionId: z.string().trim().min(1).max(100),
   path: z.string().trim().max(300).optional(),
   productId: z.string().trim().max(100).optional(),

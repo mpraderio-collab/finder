@@ -53,7 +53,9 @@ export default async function AdminDashboardPage() {
     lowStock,
     recentOrders,
     pageViewCount,
+    viewContentCount,
     addToCartCount,
+    initiateCheckoutCount,
     purchaseCount,
     uniqueVisitors,
     recentPageViews,
@@ -69,7 +71,9 @@ export default async function AdminDashboardPage() {
     }),
     db.order.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
     db.analyticsEvent.count({ where: { type: "page_view" } }),
+    db.analyticsEvent.count({ where: { type: "view_content" } }),
     db.analyticsEvent.count({ where: { type: "add_to_cart" } }),
+    db.analyticsEvent.count({ where: { type: "initiate_checkout" } }),
     db.analyticsEvent.count({ where: { type: "purchase" } }),
     db.analyticsEvent.findMany({
       where: { type: "page_view", sessionId: { not: null } },
@@ -94,7 +98,9 @@ export default async function AdminDashboardPage() {
   const analyticsStats = [
     { label: "Visitas totales", value: pageViewCount },
     { label: "Visitantes únicos", value: uniqueVisitors.length },
+    { label: "Vistas de producto", value: viewContentCount },
     { label: "Agregados al carrito", value: addToCartCount },
+    { label: "Checkouts iniciados", value: initiateCheckoutCount },
     { label: "Conversión", value: `${conversionRate.toFixed(1)}%` },
   ];
 
@@ -218,7 +224,7 @@ export default async function AdminDashboardPage() {
 
       <div className="mt-8">
         <p className="font-heading text-lg font-bold text-navy">Visitas</p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {analyticsStats.map((stat) => (
             <div
               key={stat.label}

@@ -25,7 +25,7 @@ type TrackEventData = {
 
 // Best-effort: nunca debe romper la interacción del usuario si falla.
 export function trackEvent(
-  type: "page_view" | "add_to_cart",
+  type: "page_view" | "view_content" | "add_to_cart" | "initiate_checkout",
   data: TrackEventData = {},
 ) {
   const sessionId = getSessionId();
