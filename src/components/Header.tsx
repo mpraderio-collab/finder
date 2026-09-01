@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { CartLink } from "@/components/CartLink";
+import { SearchTrigger } from "@/components/SearchTrigger";
 
 const links = [
   { href: "/catalogo", label: "Catálogo" },
@@ -34,9 +35,7 @@ export function Header() {
           ))}
         </nav>
         <div className="flex items-center gap-6">
-          <span className="hidden text-sm font-medium text-ink-soft sm:inline">
-            Buscar
-          </span>
+          <SearchTrigger />
           <CartLink />
         </div>
       </div>
