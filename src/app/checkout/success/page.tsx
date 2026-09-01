@@ -4,6 +4,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ClearCartOnMount } from "@/components/ClearCartOnMount";
 import { SuccessCheck } from "@/components/SuccessCheck";
+import { PurchasePixel } from "@/components/PurchasePixel";
 import { db } from "@/lib/db";
 import { formatPrice, getHeroImageUrl } from "@/lib/products";
 import { getWhatsAppUrl } from "@/lib/whatsapp";
@@ -25,6 +26,7 @@ export default async function CheckoutSuccessPage(
     <>
       <Header />
       <ClearCartOnMount />
+      {order && <PurchasePixel orderId={order.id} value={order.total} />}
       <main className="flex-1 px-6 py-16">
         <div className="mx-auto max-w-[820px] text-center">
           <span className="mx-auto flex h-[62px] w-[62px] items-center justify-center rounded-full border border-amber-line bg-amber-soft text-amber-ink">
