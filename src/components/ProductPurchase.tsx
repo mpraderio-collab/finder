@@ -7,14 +7,14 @@ import { addCartItem } from "@/lib/cart-context";
 import { trackEvent } from "@/lib/analytics";
 import { formatPrice } from "@/lib/products";
 
+type GalleryImage = { id: string; url: string; type: string };
+
 type Variant = {
   name: string;
   swatch: string;
   stock: number;
-  imageUrl: string | null;
+  images: GalleryImage[];
 };
-
-type GalleryImage = { id: string; url: string; type: string };
 
 export function ProductPurchase({
   productId,
@@ -57,15 +57,11 @@ export function ProductPurchase({
 
   const activeVariant = variants.find((v) => v.name === selectedVariant);
 
-  // La galería muestra la foto propia de la variante primero (si tiene una
-  // cargada); el resto de las fotos generales del producto siguen abajo.
+  // Si la variante elegida tiene sus propias fotos, la galería muestra
+  // solo esas; si no tiene ninguna, se ven las fotos generales del producto.
   const gallery = useMemo(() => {
-    if (!activeVariant?.imageUrl) return images;
-    const rest = images.filter((img) => img.url !== activeVariant.imageUrl);
-    return [
-      { id: `variant-${activeVariant.name}`, url: activeVariant.imageUrl, type: "image" },
-      ...rest,
-    ];
+    if (activeVariant && activeVariant.images.length > 0) return activeVariant.images;
+    return images;
   }, [activeVariant, images]);
 
   // El carrito y el resumen del pedido necesitan una imagen real, nunca un video.
@@ -300,15 +296,22 @@ export function ProductPurchase({
                     }`}
                     style={{ backgroundColor: variant.swatch }}
                   >
-                    {variant.imageUrl && (
-                      <Image
-                        src={variant.imageUrl}
-                        alt={variant.name}
-                        fill
-                        className="object-cover"
-                        sizes="56px"
-                      />
-                    )}
+                    {(() => {
+                      const avatarUrl = variant.images.find(
+                        (img) => img.type !== "video",
+                      )?.url;
+                      return (
+                        avatarUrl && (
+                          <Image
+                            src={avatarUrl}
+                            alt={variant.name}
+                            fill
+                            className="object-cover"
+                            sizes="56px"
+                          />
+                        )
+                      );
+                    })()}
                   </button>
                 ))}
               </div>

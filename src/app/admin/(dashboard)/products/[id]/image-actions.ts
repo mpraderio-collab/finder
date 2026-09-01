@@ -125,25 +125,86 @@ export async function reorderProductImages(
 export async function attachVariantImage(
   variantId: string,
   url: string,
+  contentType: string,
 ): Promise<{ error?: string }> {
   await requireAdmin();
 
   const variant = await db.productVariant.findUnique({
     where: { id: variantId },
-    include: { product: true },
+    include: { product: true, images: true },
   });
   if (!variant) return { error: "La variante ya no existe." };
 
-  if (variant.imageUrl) await safeDeleteBlob(variant.imageUrl);
+  const isVideo = contentType.startsWith("video/");
 
-  await db.productVariant.update({
-    where: { id: variantId },
-    data: { imageUrl: url },
+  await db.variantImage.create({
+    data: {
+      variantId,
+      url,
+      type: isVideo ? "video" : "image",
+      position: variant.images.length,
+    },
   });
 
   revalidatePath(`/admin/products/${variant.productId}`);
   revalidatePath("/catalogo");
   revalidatePath(`/catalogo/${variant.product.slug}`);
+  revalidatePath("/");
+  return {};
+}
+
+export async function deleteVariantImage(
+  variantId: string,
+  imageId: string,
+): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const image = await db.variantImage.findUnique({ where: { id: imageId } });
+  if (!image || image.variantId !== variantId) {
+    return { error: "La imagen ya no existe." };
+  }
+
+  await db.variantImage.delete({ where: { id: imageId } });
+  await safeDeleteBlob(image.url);
+
+  const variant = await db.productVariant.findUnique({
+    where: { id: variantId },
+    include: { product: true },
+  });
+  revalidatePath(`/admin/products/${variant?.productId}`);
+  revalidatePath("/catalogo");
+  if (variant) revalidatePath(`/catalogo/${variant.product.slug}`);
+  revalidatePath("/");
+  return {};
+}
+
+export async function reorderVariantImages(
+  variantId: string,
+  orderedIds: string[],
+): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const images = await db.variantImage.findMany({ where: { variantId } });
+  if (
+    images.length !== orderedIds.length ||
+    !images.every((img) => orderedIds.includes(img.id))
+  ) {
+    return { error: "El orden no coincide con las imágenes actuales." };
+  }
+
+  await db.$transaction(
+    orderedIds.map((id, index) =>
+      db.variantImage.update({ where: { id }, data: { position: index } }),
+    ),
+  );
+
+  const variant = await db.productVariant.findUnique({
+    where: { id: variantId },
+    include: { product: true },
+  });
+  revalidatePath(`/admin/products/${variant?.productId}`);
+  revalidatePath("/catalogo");
+  if (variant) revalidatePath(`/catalogo/${variant.product.slug}`);
   revalidatePath("/");
   return {};
 }

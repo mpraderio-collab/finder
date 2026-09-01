@@ -5,16 +5,22 @@ import { upload } from "@vercel/blob/client";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addVariantStock, updateVariantStock } from "../actions";
-import { attachVariantImage } from "./image-actions";
+import {
+  attachVariantImage,
+  deleteVariantImage,
+  reorderVariantImages,
+} from "./image-actions";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+
+type VariantImage = { id: string; url: string; type: string };
 
 type Variant = {
   id: string;
   name: string;
   swatch: string;
   stock: number;
-  imageUrl: string | null;
+  images: VariantImage[];
 };
 
 export function VariantStockEditor({ variants }: { variants: Variant[] }) {
@@ -24,10 +30,11 @@ export function VariantStockEditor({ variants }: { variants: Variant[] }) {
       <p className="text-sm font-semibold text-ink">Variantes de color</p>
       <p className="mt-1 text-xs text-ink-soft">
         El stock general del producto no aplica cuando hay variantes: la
-        disponibilidad se controla acá, por color. La foto es opcional — sin
-        ella, el selector muestra solo el color.
+        disponibilidad se controla acá, por color. Las fotos son opcionales
+        — sin ellas, el selector muestra solo el color, y al elegir la
+        variante en la tienda se ven las fotos generales del producto.
       </p>
-      <div className="mt-3 flex flex-col gap-2">
+      <div className="mt-3 flex flex-col gap-3">
         {variants.map((variant) => (
           <VariantRow key={variant.id} variant={variant} />
         ))}
@@ -46,6 +53,38 @@ function VariantRow({ variant }: { variant: Variant }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dirty = value !== variant.stock;
+
+  const [items, setItems] = useState(variant.images);
+  const [prevImages, setPrevImages] = useState(variant.images);
+  if (variant.images !== prevImages) {
+    setPrevImages(variant.images);
+    setItems(variant.images);
+  }
+  const dragIndexRef = useRef<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+
+  function handleDrop(dropIndex: number) {
+    const from = dragIndexRef.current;
+    dragIndexRef.current = null;
+    setDraggingIndex(null);
+    setDragOverIndex(null);
+    if (from === null || from === dropIndex) return;
+
+    const next = [...items];
+    const [moved] = next.splice(from, 1);
+    next.splice(dropIndex, 0, moved);
+    setItems(next);
+
+    startTransition(async () => {
+      const res = await reorderVariantImages(
+        variant.id,
+        next.map((img) => img.id),
+      );
+      if (res.error) setError(res.error);
+      router.refresh();
+    });
+  }
 
   function handleAddStock() {
     const amount = Number(addAmount);
@@ -82,7 +121,7 @@ function VariantRow({ variant }: { variant: Variant }) {
         access: "public",
         handleUploadUrl: "/api/upload-token",
       });
-      const res = await attachVariantImage(variant.id, blob.url);
+      const res = await attachVariantImage(variant.id, blob.url, file.type);
       if (res.error) {
         setError(res.error);
       } else {
@@ -98,22 +137,17 @@ function VariantRow({ variant }: { variant: Variant }) {
   }
 
   const busy = pending || uploading;
+  const coverUrl = items[0]?.url;
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-line bg-bg px-3 py-2">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-2.5 rounded-lg border border-line bg-bg px-3 py-2.5">
+      <div className="flex flex-wrap items-center gap-3">
         <div
           className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-line"
           style={{ backgroundColor: variant.swatch }}
         >
-          {variant.imageUrl && (
-            <Image
-              src={variant.imageUrl}
-              alt=""
-              fill
-              className="object-cover"
-              sizes="40px"
-            />
+          {coverUrl && (
+            <Image src={coverUrl} alt="" fill className="object-cover" sizes="40px" />
           )}
         </div>
         <span className="w-20 text-sm text-ink">{variant.name}</span>
@@ -163,19 +197,76 @@ function VariantRow({ variant }: { variant: Variant }) {
             {addPending ? "Sumando…" : "Sumar stock"}
           </button>
         </div>
-        <label className="cursor-pointer text-xs font-semibold text-amber-ink hover:underline">
-          {uploading ? "Subiendo…" : variant.imageUrl ? "Cambiar foto" : "+ Agregar foto"}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 pl-[52px]">
+        {items.map((img, index) => (
+          <div
+            key={img.id}
+            draggable={!busy}
+            onDragStart={() => {
+              dragIndexRef.current = index;
+              setDraggingIndex(index);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              if (dragOverIndex !== index) setDragOverIndex(index);
+            }}
+            onDragLeave={() => {
+              setDragOverIndex((current) => (current === index ? null : current));
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              handleDrop(index);
+            }}
+            onDragEnd={() => {
+              dragIndexRef.current = null;
+              setDraggingIndex(null);
+              setDragOverIndex(null);
+            }}
+            className={`group relative h-12 w-12 shrink-0 cursor-grab overflow-hidden rounded-md border-2 bg-surface transition-opacity active:cursor-grabbing ${
+              draggingIndex === index ? "opacity-40" : ""
+            } ${
+              dragOverIndex === index && draggingIndex !== index
+                ? "border-amber"
+                : "border-line"
+            }`}
+          >
+            {img.type === "video" ? (
+              <video src={img.url} muted playsInline className="h-full w-full object-cover" />
+            ) : (
+              <Image src={img.url} alt="" fill className="object-cover" sizes="48px" />
+            )}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                startTransition(async () => {
+                  await deleteVariantImage(variant.id, img.id);
+                  router.refresh();
+                })
+              }
+              aria-label="Borrar foto"
+              className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-ink/70 text-[10px] leading-none text-white opacity-0 group-hover:opacity-100"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        <label className="flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-md border border-dashed border-border-btn text-xs font-semibold text-amber-ink hover:bg-surface">
+          {uploading ? "…" : "+"}
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
             onChange={handleUpload}
             disabled={busy}
             className="hidden"
           />
         </label>
       </div>
-      {error && <span className="text-xs text-err-ink">{error}</span>}
+
+      {error && <span className="pl-[52px] text-xs text-err-ink">{error}</span>}
     </div>
   );
 }

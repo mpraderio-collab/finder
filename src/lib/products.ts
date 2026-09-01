@@ -10,7 +10,9 @@ export function formatPrice(price: number): string {
 
 const productInclude = {
   images: { orderBy: { position: "asc" as const } },
-  variants: true,
+  variants: {
+    include: { images: { orderBy: { position: "asc" as const } } },
+  },
   features: { orderBy: { position: "asc" as const } },
   reviews: { orderBy: { createdAt: "desc" as const } },
 };

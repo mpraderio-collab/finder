@@ -14,7 +14,9 @@ export default async function EditProductPage(
     where: { id },
     include: {
       images: { orderBy: { position: "asc" } },
-      variants: true,
+      variants: {
+        include: { images: { orderBy: { position: "asc" } } },
+      },
     },
   });
   if (!product) notFound();
