@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addCartItem } from "@/lib/cart-context";
+import { trackEvent } from "@/lib/analytics";
 import { formatPrice } from "@/lib/products";
 
 type Variant = {
@@ -112,6 +113,7 @@ export function ProductPurchase({
 
   function handleAddToCart() {
     addCartItem(buildCartItem(), quantity);
+    trackEvent("add_to_cart", { productId, productName: name, value: price });
     if (addLabelTimeoutRef.current) clearTimeout(addLabelTimeoutRef.current);
     swapAddLabel("¡Agregado! ✓");
     addLabelTimeoutRef.current = setTimeout(
@@ -307,6 +309,7 @@ export function ProductPurchase({
               disabled={outOfStock}
               onClick={() => {
                 addCartItem(buildCartItem(), quantity);
+                trackEvent("add_to_cart", { productId, productName: name, value: price });
                 router.push("/checkout");
               }}
               className="flex-1 rounded-lg bg-navy px-6 py-3.5 font-heading text-sm font-bold text-white transition-colors hover:bg-navy-deep disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-faint"

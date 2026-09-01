@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope, DM_Sans } from "next/font/google";
 import { CartProvider } from "@/lib/cart-context";
 import { WhatsAppButtonGate } from "@/components/WhatsAppButtonGate";
+import { PageViewTracker } from "@/components/PageViewTracker";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-bg text-ink">
         <CartProvider>{children}</CartProvider>
         <WhatsAppButtonGate />
+        <PageViewTracker />
       </body>
     </html>
   );

@@ -121,6 +121,20 @@ model OrderItem {
   @@index([orderId])
 }
 
+model AnalyticsEvent {
+  id          String   @id @default(cuid())
+  type        String // "page_view" | "add_to_cart" | "purchase"
+  path        String?
+  productId   String?
+  productName String?
+  value       Int? // precio (add_to_cart) o total del pedido (purchase), en pesos
+  sessionId   String? // id anónimo por visitante, guardado en localStorage
+  createdAt   DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([sessionId])
+}
+
 model AdminUser {
   id           String   @id @default(cuid())
   email        String   @unique

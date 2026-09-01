@@ -23,8 +23,41 @@ function weeklySales(orders: { createdAt: Date; total: number }[]) {
   return buckets;
 }
 
+function fiveWeeksAgo(): Date {
+  return new Date(Date.now() - 5 * 7 * 24 * 60 * 60 * 1000);
+}
+
+function weeklyVisits(createdAtList: Date[]) {
+  const now = new Date();
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  const buckets = Array.from({ length: 5 }, (_, i) => {
+    const end = new Date(now.getTime() - (4 - i) * weekMs);
+    const start = new Date(end.getTime() - weekMs);
+    return { start, end, count: 0 };
+  });
+
+  for (const createdAt of createdAtList) {
+    const bucket = buckets.find(
+      (b) => createdAt >= b.start && createdAt < b.end,
+    );
+    if (bucket) bucket.count += 1;
+  }
+
+  return buckets;
+}
+
 export default async function AdminDashboardPage() {
-  const [pendingCount, paidOrders, lowStock, recentOrders] = await Promise.all([
+  const [
+    pendingCount,
+    paidOrders,
+    lowStock,
+    recentOrders,
+    pageViewCount,
+    addToCartCount,
+    purchaseCount,
+    uniqueVisitors,
+    recentPageViews,
+  ] = await Promise.all([
     db.order.count({ where: { status: "pending" } }),
     db.order.findMany({
       where: { status: { in: ["paid", "shipped"] } },
@@ -35,11 +68,35 @@ export default async function AdminDashboardPage() {
       orderBy: { stock: "asc" },
     }),
     db.order.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
+    db.analyticsEvent.count({ where: { type: "page_view" } }),
+    db.analyticsEvent.count({ where: { type: "add_to_cart" } }),
+    db.analyticsEvent.count({ where: { type: "purchase" } }),
+    db.analyticsEvent.findMany({
+      where: { type: "page_view", sessionId: { not: null } },
+      distinct: ["sessionId"],
+      select: { sessionId: true },
+    }),
+    db.analyticsEvent.findMany({
+      where: { type: "page_view", createdAt: { gte: fiveWeeksAgo() } },
+      select: { createdAt: true },
+    }),
   ]);
 
   const revenue = paidOrders.reduce((sum, o) => sum + o.total, 0);
   const buckets = weeklySales(paidOrders);
   const maxBucket = Math.max(...buckets.map((b) => b.total), 1);
+
+  const conversionRate =
+    pageViewCount > 0 ? (purchaseCount / pageViewCount) * 100 : 0;
+  const visitBuckets = weeklyVisits(recentPageViews.map((v) => v.createdAt));
+  const maxVisitBucket = Math.max(...visitBuckets.map((b) => b.count), 1);
+
+  const analyticsStats = [
+    { label: "Visitas totales", value: pageViewCount },
+    { label: "Visitantes únicos", value: uniqueVisitors.length },
+    { label: "Agregados al carrito", value: addToCartCount },
+    { label: "Conversión", value: `${conversionRate.toFixed(1)}%` },
+  ];
 
   const stats = [
     { label: "Pedidos pendientes", value: pendingCount },
@@ -157,6 +214,64 @@ export default async function AdminDashboardPage() {
             </p>
           </div>
         )}
+      </div>
+
+      <div className="mt-8">
+        <p className="font-heading text-lg font-bold text-navy">Visitas</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {analyticsStats.map((stat) => (
+            <div
+              key={stat.label}
+              className="rounded-xl border border-line bg-bg p-[18px]"
+            >
+              <p className="text-[13px] text-ink-soft">{stat.label}</p>
+              <p className="mt-1 font-heading text-2xl font-extrabold text-navy">
+                {stat.value}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 rounded-xl border border-line bg-bg p-5">
+          <p className="font-heading text-[15px] font-bold text-navy">
+            Visitas por semana
+          </p>
+          <div className="mt-5 flex items-end gap-4" style={{ height: 120 }}>
+            {visitBuckets.map((bucket, i) => {
+              const isLast = i === visitBuckets.length - 1;
+              const heightPct = Math.max(
+                (bucket.count / maxVisitBucket) * 100,
+                3,
+              );
+              return (
+                <div
+                  key={i}
+                  className="flex flex-1 flex-col items-center justify-end gap-1.5"
+                >
+                  <span
+                    className={`text-xs font-semibold ${isLast ? "text-amber-ink" : "text-ink-faint"}`}
+                  >
+                    {bucket.count > 0 ? bucket.count : ""}
+                  </span>
+                  <div
+                    className={`w-full rounded-t-md ${isLast ? "bg-amber" : "bg-[#DCE6EE]"}`}
+                    style={{ height: `${heightPct}%` }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-2 flex gap-4 border-t border-line pt-2">
+            {visitBuckets.map((_, i) => (
+              <span
+                key={i}
+                className="flex-1 text-center text-xs text-ink-faint"
+              >
+                Sem {i + 1}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="mt-8">

@@ -130,9 +130,13 @@ export async function POST(request: Request) {
       });
     }
 
-    // Notificar por mail solo en la transición a pagado, nunca en reintentos
-    // del mismo webhook (evita mandar el mail duplicado varias veces).
+    // Notificar por mail y registrar la compra solo en la transición a
+    // pagado, nunca en reintentos del mismo webhook (evita duplicados).
     if (nextStatus === "paid" && order.status !== "paid") {
+      await db.analyticsEvent
+        .create({ data: { type: "purchase", value: order.total } })
+        .catch((err) => console.error("Error guardando evento de compra:", err));
+
       const items = await db.orderItem.findMany({
         where: { orderId },
         include: { product: { select: { name: true } } },
