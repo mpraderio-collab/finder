@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { CartLink } from "@/components/CartLink";
 import { SearchTrigger } from "@/components/SearchTrigger";
+import { MobileNav } from "@/components/MobileNav";
 
 const links = [
   { href: "/catalogo", label: "Catálogo" },
@@ -34,9 +35,10 @@ export function Header() {
             </Link>
           ))}
         </nav>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 sm:gap-6">
           <SearchTrigger />
           <CartLink />
+          <MobileNav />
         </div>
       </div>
     </header>

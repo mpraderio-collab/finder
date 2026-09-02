@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addCartItem } from "@/lib/cart-context";
 import { trackEvent } from "@/lib/analytics";
+import { NotifyStockForm } from "@/components/NotifyStockForm";
 import { formatPrice } from "@/lib/products";
 
 type GalleryImage = { id: string; url: string; type: string };
@@ -47,6 +48,8 @@ export function ProductPurchase({
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const addLabelRef = useRef<HTMLSpanElement>(null);
   const addLabelTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const buyPanelRef = useRef<HTMLDivElement>(null);
+  const [showStickyBar, setShowStickyBar] = useState(false);
 
   useEffect(() => {
     trackEvent("view_content", { productId, productName: name, value: price });
@@ -93,6 +96,19 @@ export function ProductPurchase({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lightboxOpen, lightboxIndex, imageGallery.length]);
+
+  // Barra flotante de compra: aparece cuando el panel principal ya salió
+  // de la vista por scroll, para no perder la conversión en páginas largas.
+  useEffect(() => {
+    const el = buyPanelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowStickyBar(!entry.isIntersecting),
+      { rootMargin: "-72px 0px 0px 0px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   function openLightbox() {
     const idx = imageGallery.findIndex(
@@ -262,7 +278,10 @@ export function ProductPurchase({
       <div className="flex flex-col gap-5">
         {aboveActions}
 
-        <div className="flex flex-col gap-4 rounded-[14px] border border-line bg-surface p-[22px]">
+        <div
+          ref={buyPanelRef}
+          className="flex flex-col gap-4 rounded-[14px] border border-line bg-surface p-[22px]"
+        >
           <div className="flex items-baseline gap-3.5">
             <span className="font-heading text-[34px] font-extrabold text-navy">
               {formatPrice(price)}
@@ -378,6 +397,10 @@ export function ProductPurchase({
             </button>
           </div>
 
+          {outOfStock && (
+            <NotifyStockForm productId={productId} productName={name} />
+          )}
+
           <p className="text-xs text-ink-faint">
             Envío a todo el país · Pagos con Mercado Pago · Cambios en 30
             días
@@ -386,6 +409,52 @@ export function ProductPurchase({
 
         {belowActions}
       </div>
+
+      {showStickyBar && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-bg/95 backdrop-blur">
+          <div className="mx-auto flex max-w-6xl items-center gap-3 px-6 py-3">
+            <div className="relative hidden h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-surface sm:block">
+              {cartImage && (
+                <Image
+                  src={cartImage}
+                  alt=""
+                  fill
+                  className="object-cover"
+                  sizes="44px"
+                />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-heading text-sm font-bold text-navy">
+                {name}
+              </p>
+              <p className="font-heading text-base font-extrabold text-navy">
+                {formatPrice(price)}
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={outOfStock}
+              onClick={handleAddToCart}
+              className="hidden shrink-0 rounded-lg border border-navy px-4 py-2.5 font-heading text-sm font-bold text-navy transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:border-line disabled:text-ink-faint sm:inline-block"
+            >
+              Agregar al carrito
+            </button>
+            <button
+              type="button"
+              disabled={outOfStock}
+              onClick={() => {
+                addCartItem(buildCartItem(), quantity);
+                trackEvent("add_to_cart", { productId, productName: name, value: price });
+                router.push("/checkout");
+              }}
+              className="shrink-0 rounded-lg bg-navy px-5 py-2.5 font-heading text-sm font-bold text-white transition-colors hover:bg-navy-deep disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-faint"
+            >
+              {outOfStock ? "Sin stock" : "Comprar ahora"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {lightboxOpen && imageGallery[lightboxIndex] && (
         <div

@@ -5,7 +5,8 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Stars } from "@/components/Stars";
 import { ProductPurchase } from "@/components/ProductPurchase";
-import { averageRating, getProductBySlug } from "@/lib/products";
+import { ProductCard } from "@/components/ProductCard";
+import { averageRating, getActiveProducts, getProductBySlug } from "@/lib/products";
 import { db } from "@/lib/db";
 
 export async function generateStaticParams() {
@@ -39,6 +40,9 @@ export default async function ProductPage(
     (a, b) => Number(b.isHero) - Number(a.isHero),
   );
   const avgRating = averageRating(product.reviews);
+
+  const allProducts = await getActiveProducts();
+  const otherProducts = allProducts.filter((p) => p.slug !== product.slug);
 
   return (
     <>
@@ -124,6 +128,19 @@ export default async function ProductPage(
                   </div>
                 ))}
               </div>
+            </div>
+          </section>
+        )}
+
+        {otherProducts.length > 0 && (
+          <section className="mx-auto max-w-6xl px-6 py-11">
+            <h2 className="font-heading text-[26px] font-extrabold text-navy">
+              También te puede interesar
+            </h2>
+            <div className="mt-6 grid gap-[22px] sm:grid-cols-2 lg:grid-cols-3">
+              {otherProducts.map((p) => (
+                <ProductCard key={p.slug} product={p} />
+              ))}
             </div>
           </section>
         )}

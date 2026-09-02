@@ -9,6 +9,15 @@ export const contactSchema = z.object({
   website: z.string().max(0).optional().or(z.literal("")),
 });
 
+export const stockNotifySchema = z.object({
+  productId: z.string().min(1),
+  email: z.string().trim().email("El email no es válido"),
+});
+
+export const newsletterSchema = z.object({
+  email: z.string().trim().email("El email no es válido"),
+});
+
 export const trackEventSchema = z.object({
   type: z.enum(["page_view", "view_content", "add_to_cart", "initiate_checkout"]),
   sessionId: z.string().trim().min(1).max(100),

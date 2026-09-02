@@ -99,6 +99,52 @@ export async function sendContactMessage(
   return {};
 }
 
+export async function sendStockNotificationSignup(data: {
+  email: string;
+  productName: string;
+}) {
+  const client = getClient();
+  if (!client) return;
+
+  const to = process.env.ORDER_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL;
+  if (!to) return;
+
+  const { error } = await client.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: `Aviso de stock pedido — ${data.productName}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+        <p><strong>${data.email}</strong> pidió que le avisen cuando vuelva a
+        haber stock de <strong>${data.productName}</strong>.</p>
+      </div>
+    `,
+  });
+
+  if (error) console.error("Error al enviar aviso de stock pedido:", error);
+}
+
+export async function sendNewsletterSignup(email: string) {
+  const client = getClient();
+  if (!client) return;
+
+  const to = process.env.ORDER_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL;
+  if (!to) return;
+
+  const { error } = await client.emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: `Nuevo suscriptor al newsletter — ${email}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+        <p><strong>${email}</strong> se suscribió al newsletter de Finder.</p>
+      </div>
+    `,
+  });
+
+  if (error) console.error("Error al enviar aviso de nuevo suscriptor:", error);
+}
+
 export async function sendOrderNotificationToAdmin(order: OrderEmailData) {
   const client = getClient();
   if (!client) return;

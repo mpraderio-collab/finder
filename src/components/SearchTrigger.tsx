@@ -13,7 +13,11 @@ type SearchProduct = {
   image: string | null;
 };
 
-export function SearchTrigger() {
+export function SearchTrigger({
+  triggerClassName = "hidden text-sm font-medium text-ink-soft transition-colors hover:text-navy sm:inline",
+}: {
+  triggerClassName?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [products, setProducts] = useState<SearchProduct[] | null>(null);
@@ -55,11 +59,7 @@ export function SearchTrigger() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="hidden text-sm font-medium text-ink-soft transition-colors hover:text-navy sm:inline"
-      >
+      <button type="button" onClick={() => setOpen(true)} className={triggerClassName}>
         Buscar
       </button>
 
