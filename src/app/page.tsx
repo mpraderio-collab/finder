@@ -6,6 +6,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { Stars } from "@/components/Stars";
 import { averageRating, getActiveProducts, getHeroImageUrl } from "@/lib/products";
 import type { ProductWithRelations } from "@/lib/products";
+import { getSiteSettings } from "@/lib/settings";
 
 const valueProps = [
   {
@@ -23,7 +24,7 @@ const valueProps = [
 ];
 
 export default async function Home() {
-  const products = await getActiveProducts();
+  const [products, settings] = await Promise.all([getActiveProducts(), getSiteSettings()]);
   const featured = products[0];
   const featuredHero = featured ? getHeroImageUrl(featured) : undefined;
   const heroProducts = products.slice(0, 3);
@@ -71,7 +72,7 @@ export default async function Home() {
                   {allReviews.length} reseñas
                 </span>
                 <span>Envío a todo el país</span>
-                <span>6 cuotas sin interés</span>
+                <span>{settings.installments} cuotas sin interés</span>
               </div>
             )}
           </div>

@@ -7,6 +7,7 @@ import { Stars } from "@/components/Stars";
 import { ProductPurchase } from "@/components/ProductPurchase";
 import { ProductCard } from "@/components/ProductCard";
 import { averageRating, getActiveProducts, getProductBySlug } from "@/lib/products";
+import { getSiteSettings } from "@/lib/settings";
 import { db } from "@/lib/db";
 
 export async function generateStaticParams() {
@@ -41,7 +42,7 @@ export default async function ProductPage(
   );
   const avgRating = averageRating(product.reviews);
 
-  const allProducts = await getActiveProducts();
+  const [allProducts, settings] = await Promise.all([getActiveProducts(), getSiteSettings()]);
   const otherProducts = allProducts.filter((p) => p.slug !== product.slug);
 
   return (
@@ -64,6 +65,7 @@ export default async function ProductPage(
             stock={product.stock}
             variants={product.variants}
             images={orderedImages}
+            installments={settings.installments}
             aboveActions={
               <>
                 <h1 className="font-heading text-[38px] font-extrabold leading-[1.1] tracking-[-0.025em] text-navy">

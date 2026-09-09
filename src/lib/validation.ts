@@ -61,6 +61,29 @@ export const productSchema = z.object({
 
 export type ProductFormValues = z.infer<typeof productSchema>;
 
+// Una característica por línea de texto; se descartan líneas vacías. El
+// textarea completo llega como un solo string desde el form.
+export const featuresTextSchema = z
+  .string()
+  .max(4000)
+  .optional()
+  .or(z.literal(""))
+  .transform((v) =>
+    (v ?? "")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .slice(0, 20),
+  );
+
+export const siteSettingsSchema = z.object({
+  installments: z.coerce
+    .number({ message: "Ingresá un número de cuotas" })
+    .int("Tiene que ser un número entero")
+    .min(1, "Tiene que ser al menos 1 cuota")
+    .max(24, "Máximo 24 cuotas"),
+});
+
 export const orderStatuses = [
   "pending",
   "paid",

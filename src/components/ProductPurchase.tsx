@@ -25,6 +25,7 @@ export function ProductPurchase({
   stock,
   variants,
   images,
+  installments,
   aboveActions,
   belowActions,
 }: {
@@ -35,6 +36,7 @@ export function ProductPurchase({
   stock: number;
   variants: Variant[];
   images: GalleryImage[];
+  installments: number;
   aboveActions?: React.ReactNode;
   belowActions?: React.ReactNode;
 }) {
@@ -78,7 +80,7 @@ export function ProductPurchase({
 
   const maxStock = variants.length === 0 ? stock : (activeVariant?.stock ?? 0);
   const outOfStock = maxStock <= 0;
-  const installment = Math.round(price / 6);
+  const installment = Math.round(price / installments);
 
   useEffect(() => {
     if (!lightboxOpen) return;
@@ -287,7 +289,7 @@ export function ProductPurchase({
               {formatPrice(price)}
             </span>
             <span className="text-[13px] text-ink-soft">
-              6 cuotas de {formatPrice(installment)}
+              {installments} cuotas de {formatPrice(installment)}
             </span>
           </div>
 

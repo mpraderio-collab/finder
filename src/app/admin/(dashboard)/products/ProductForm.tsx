@@ -17,6 +17,7 @@ type Props = {
     costPrice: number | null;
     stock: number;
     status: string;
+    features?: string;
   };
   submitLabel: string;
 };
@@ -119,6 +120,22 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
           defaultValue={defaultValues?.stock ?? 0}
           required
           className="input max-w-[calc(50%-0.5rem)]"
+        />
+      </Field>
+
+      <Field
+        label="Características"
+        name="features"
+        hint="Una por línea — se muestran con un ✓ en la ficha del producto"
+      >
+        <textarea
+          name="features"
+          defaultValue={defaultValues?.features ?? ""}
+          rows={5}
+          placeholder={
+            "Sensor de movimiento PIR: se activa a 0-3 m y se apaga a los ~25 segundos\n16 colores RGB con control remoto incluido"
+          }
+          className="input"
         />
       </Field>
 

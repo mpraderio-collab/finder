@@ -166,6 +166,13 @@ model NewsletterSubscriber {
   createdAt DateTime @default(now())
 }
 
+// Configuración global del sitio — una sola fila (id fijo "singleton").
+model SiteSettings {
+  id           String   @id @default("singleton")
+  installments Int      @default(6) // cantidad de cuotas que se muestra en el sitio (home y ficha de producto)
+  updatedAt    DateTime @updatedAt
+}
+
 model AdminUser {
   id           String   @id @default(cuid())
   email        String   @unique

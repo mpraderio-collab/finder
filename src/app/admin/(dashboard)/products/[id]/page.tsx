@@ -17,6 +17,7 @@ export default async function EditProductPage(
       variants: {
         include: { images: { orderBy: { position: "asc" } } },
       },
+      features: { orderBy: { position: "asc" } },
     },
   });
   if (!product) notFound();
@@ -41,6 +42,7 @@ export default async function EditProductPage(
             costPrice: product.costPrice,
             stock: product.stock,
             status: product.status,
+            features: product.features.map((f) => f.text).join("\n"),
           }}
         />
       </div>

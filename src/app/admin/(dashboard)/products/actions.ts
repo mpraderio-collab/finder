@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { productSchema } from "@/lib/validation";
+import { featuresTextSchema, productSchema } from "@/lib/validation";
 
 async function requireAdmin() {
   const session = await auth();
@@ -30,6 +30,10 @@ function parseForm(formData: FormData) {
   });
 }
 
+function parseFeatures(formData: FormData) {
+  return featuresTextSchema.parse(formData.get("features") ?? "");
+}
+
 function toFieldErrors(result: ReturnType<typeof parseForm>) {
   if (result.success) return {};
   const fieldErrors: Record<string, string> = {};
@@ -52,9 +56,17 @@ export async function createProduct(
   if (!result.success) {
     return { error: "Revisá los campos marcados.", fieldErrors: toFieldErrors(result) };
   }
+  const features = parseFeatures(formData);
 
   try {
-    const product = await db.product.create({ data: result.data });
+    const product = await db.product.create({
+      data: {
+        ...result.data,
+        features: {
+          create: features.map((text, position) => ({ text, position })),
+        },
+      },
+    });
     revalidatePath("/admin/products");
     revalidatePath("/catalogo");
     redirect(`/admin/products/${product.id}`);
@@ -80,9 +92,19 @@ export async function updateProduct(
   if (!result.success) {
     return { error: "Revisá los campos marcados.", fieldErrors: toFieldErrors(result) };
   }
+  const features = parseFeatures(formData);
 
   try {
-    await db.product.update({ where: { id }, data: result.data });
+    // Se borran y se recrean todas las características en vez de tratar de
+    // hacer un diff — es una lista corta que se edita entera desde un
+    // textarea, no una a la vez.
+    await db.$transaction([
+      db.product.update({ where: { id }, data: result.data }),
+      db.productFeature.deleteMany({ where: { productId: id } }),
+      db.productFeature.createMany({
+        data: features.map((text, position) => ({ productId: id, text, position })),
+      }),
+    ]);
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
       return {
