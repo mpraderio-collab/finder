@@ -155,7 +155,7 @@ export default async function AdminDashboardPage() {
               {formatPrice(buckets.reduce((sum, b) => sum + b.total, 0))}
             </p>
           </div>
-          <div className="mt-5 flex items-end gap-4" style={{ height: 160 }}>
+          <div className="mt-5 flex gap-4" style={{ height: 160 }}>
             {buckets.map((bucket, i) => {
               const isLast = i === buckets.length - 1;
               const heightPct = Math.max((bucket.total / maxBucket) * 100, 3);
@@ -250,7 +250,7 @@ export default async function AdminDashboardPage() {
           <p className="font-heading text-[15px] font-bold text-navy">
             Visitantes únicos (últimos 15 días)
           </p>
-          <div className="mt-5 flex items-end gap-1.5" style={{ height: 120 }}>
+          <div className="mt-5 flex gap-1.5" style={{ height: 120 }}>
             {visitBuckets.map((bucket, i) => {
               const isLast = i === visitBuckets.length - 1;
               const heightPct = Math.max(
