@@ -336,7 +336,12 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
           hint="Ej: 45000 — llevando esa cantidad"
           labelClassName="min-h-10"
         >
-          <MoneyInput value={promoPrice} onChange={handlePromoPriceChange} className="input" />
+          <MoneyInput
+            name="promoPrice"
+            value={promoPrice}
+            onChange={handlePromoPriceChange}
+            className="input"
+          />
         </Field>
       </div>
 
