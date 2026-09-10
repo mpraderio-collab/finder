@@ -19,17 +19,12 @@ export type ManualSaleState = {
   orderId?: string;
 };
 
-export async function createManualSale(
-  _prev: ManualSaleState,
-  formData: FormData,
-): Promise<ManualSaleState> {
-  await requireAdmin();
-
+function parseManualSaleForm(formData: FormData) {
   let itemsRaw: unknown;
   try {
     itemsRaw = JSON.parse(String(formData.get("items") ?? "[]"));
   } catch {
-    return { error: "Los ítems de la venta no son válidos." };
+    return { success: false as const, error: "Los ítems de la venta no son válidos." };
   }
 
   const parsed = manualSaleSchema.safeParse({
@@ -38,97 +33,180 @@ export async function createManualSale(
     items: itemsRaw,
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Revisá los datos." };
+    return { success: false as const, error: parsed.error.issues[0]?.message ?? "Revisá los datos." };
+  }
+  return { success: true as const, data: parsed.data };
+}
+
+function revalidateSalesPaths(orderId?: string) {
+  revalidatePath("/admin");
+  revalidatePath("/admin/orders");
+  revalidatePath("/admin/sales");
+  if (orderId) revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath("/admin/products");
+  revalidatePath("/catalogo");
+}
+
+// Nace como borrador: no toca stock ni se cuenta como venta real hasta que
+// se confirma con finalizeManualSale — así se puede seguir editando (items,
+// cantidades, cliente) sin tener que ir reservando y liberando stock en
+// cada cambio.
+export async function createManualSale(
+  _prev: ManualSaleState,
+  formData: FormData,
+): Promise<ManualSaleState> {
+  await requireAdmin();
+
+  const result = parseManualSaleForm(formData);
+  if (!result.success) return { error: result.error };
+  const data = result.data;
+
+  const subtotal = data.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+
+  const order = await db.order.create({
+    data: {
+      status: "draft",
+      channel: "manual",
+      customerName: data.customerName,
+      customerEmail: "",
+      customerPhone: "",
+      shippingAddress: "",
+      shippingCity: "",
+      shippingProvince: "",
+      shippingZip: "",
+      note: data.note,
+      subtotal,
+      total: subtotal,
+      idempotencyKey: randomUUID(),
+      items: {
+        create: data.items.map((line) => ({
+          productId: line.productId,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+          lineTotal: line.unitPrice * line.quantity,
+          variantName: line.variantName,
+        })),
+      },
+    },
+  });
+
+  revalidateSalesPaths();
+  return { orderId: order.id };
+}
+
+// Reemplaza cliente/nota/items enteros de un borrador — solo mientras
+// sigue siendo borrador, no toca stock.
+export async function updateManualSale(
+  orderId: string,
+  _prev: ManualSaleState,
+  formData: FormData,
+): Promise<ManualSaleState> {
+  await requireAdmin();
+
+  const order = await db.order.findUnique({ where: { id: orderId } });
+  if (!order || order.channel !== "manual") return { error: "Esta venta no existe." };
+  if (order.status !== "draft") {
+    return { error: "Esta venta ya está confirmada y no se puede editar." };
   }
 
-  const data = parsed.data;
+  const result = parseManualSaleForm(formData);
+  if (!result.success) return { error: result.error };
+  const data = result.data;
+
+  const subtotal = data.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+
+  await db.$transaction([
+    db.order.update({
+      where: { id: orderId },
+      data: {
+        customerName: data.customerName,
+        note: data.note,
+        subtotal,
+        total: subtotal,
+      },
+    }),
+    db.orderItem.deleteMany({ where: { orderId } }),
+    db.orderItem.createMany({
+      data: data.items.map((line) => ({
+        orderId,
+        productId: line.productId,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        lineTotal: line.unitPrice * line.quantity,
+        variantName: line.variantName,
+      })),
+    }),
+  ]);
+
+  revalidateSalesPaths(orderId);
+  return { orderId };
+}
+
+// El único momento en que una venta manual mueve stock: al confirmarla se
+// descuenta de verdad y pasa a contar como venta pagada. De ahí en más el
+// estado se maneja como cualquier otro pedido (ver StatusSelect).
+export async function finalizeManualSale(orderId: string): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const order = await db.order.findUnique({
+    where: { id: orderId },
+    include: { items: { include: { product: { select: { name: true } } } } },
+  });
+  if (!order || order.channel !== "manual") return { error: "Esta venta no existe." };
+  if (order.status !== "draft") return { error: "Esta venta ya está confirmada." };
+  if (order.items.length === 0) {
+    return { error: "Agregá al menos un producto antes de confirmar." };
+  }
 
   try {
-    const order = await db.$transaction(async (tx) => {
-      let subtotal = 0;
-      const orderItemsData: {
-        productId: string;
-        quantity: number;
-        unitPrice: number;
-        lineTotal: number;
-        variantName?: string;
-      }[] = [];
-
-      for (const line of data.items) {
-        const product = await tx.product.findUnique({
-          where: { id: line.productId },
-          include: { variants: true },
-        });
-        if (!product) {
-          throw new ManualSaleError("Uno de los productos ya no existe.");
-        }
-
-        if (line.variantName) {
-          const variant = product.variants.find((v) => v.name === line.variantName);
-          if (!variant) {
-            throw new ManualSaleError(
-              `La variante "${line.variantName}" de ${product.name} ya no existe.`,
-            );
-          }
+    await db.$transaction(async (tx) => {
+      for (const item of order.items) {
+        if (item.variantName) {
           const updated = await tx.productVariant.updateMany({
-            where: { id: variant.id, stock: { gte: line.quantity } },
-            data: { stock: { decrement: line.quantity } },
+            where: {
+              productId: item.productId,
+              name: item.variantName,
+              stock: { gte: item.quantity },
+            },
+            data: { stock: { decrement: item.quantity } },
           });
           if (updated.count === 0) {
             throw new ManualSaleError(
-              `Sin stock suficiente de ${product.name} (${line.variantName}).`,
+              `Sin stock suficiente de ${item.product.name} (${item.variantName}).`,
             );
           }
         } else {
           const updated = await tx.product.updateMany({
-            where: { id: product.id, stock: { gte: line.quantity } },
-            data: { stock: { decrement: line.quantity } },
+            where: { id: item.productId, stock: { gte: item.quantity } },
+            data: { stock: { decrement: item.quantity } },
           });
           if (updated.count === 0) {
-            throw new ManualSaleError(`Sin stock suficiente de ${product.name}.`);
+            throw new ManualSaleError(`Sin stock suficiente de ${item.product.name}.`);
           }
         }
-
-        const lineTotal = line.unitPrice * line.quantity;
-        subtotal += lineTotal;
-        orderItemsData.push({
-          productId: product.id,
-          quantity: line.quantity,
-          unitPrice: line.unitPrice,
-          lineTotal,
-          variantName: line.variantName,
-        });
       }
-
-      return tx.order.create({
-        data: {
-          status: "paid",
-          channel: "manual",
-          customerName: data.customerName,
-          customerEmail: "",
-          customerPhone: "",
-          shippingAddress: "",
-          shippingCity: "",
-          shippingProvince: "",
-          shippingZip: "",
-          note: data.note,
-          subtotal,
-          total: subtotal,
-          idempotencyKey: randomUUID(),
-          items: { create: orderItemsData },
-        },
-      });
+      await tx.order.update({ where: { id: orderId }, data: { status: "paid" } });
     });
-
-    revalidatePath("/admin");
-    revalidatePath("/admin/orders");
-    revalidatePath("/admin/sales");
-    revalidatePath("/admin/products");
-    revalidatePath("/catalogo");
-
-    return { orderId: order.id };
   } catch (err) {
     if (err instanceof ManualSaleError) return { error: err.message };
     throw err;
   }
+
+  revalidateSalesPaths(orderId);
+  return {};
+}
+
+// Borra el borrador entero — no hay stock que reponer porque un borrador
+// nunca llegó a descontarlo.
+export async function discardManualSale(orderId: string): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const order = await db.order.findUnique({ where: { id: orderId } });
+  if (!order || order.channel !== "manual") return { error: "Esta venta no existe." };
+  if (order.status !== "draft") return { error: "Solo se pueden descartar borradores." };
+
+  await db.order.delete({ where: { id: orderId } });
+
+  revalidateSalesPaths();
+  return {};
 }

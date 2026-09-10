@@ -1,9 +1,15 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatPrice } from "@/lib/products";
-import { createManualSale, type ManualSaleState } from "../actions";
+import {
+  createManualSale,
+  updateManualSale,
+  finalizeManualSale,
+  discardManualSale,
+  type ManualSaleState,
+} from "./actions";
 
 type Variant = { name: string; stock: number };
 type ProductOption = {
@@ -25,18 +31,35 @@ type LineItem = {
 
 const initialState: ManualSaleState = {};
 
-export function ManualSaleForm({ products }: { products: ProductOption[] }) {
+export function ManualSaleForm({
+  products,
+  orderId,
+  initialItems,
+  initialCustomerName,
+  initialNote,
+}: {
+  products: ProductOption[];
+  // Si viene orderId, el form edita ese borrador en vez de crear uno nuevo.
+  orderId?: string;
+  initialItems?: LineItem[];
+  initialCustomerName?: string;
+  initialNote?: string;
+}) {
   const router = useRouter();
-  const [state, formAction, pending] = useActionState(createManualSale, initialState);
+  const action = orderId ? updateManualSale.bind(null, orderId) : createManualSale;
+  const [state, formAction, pending] = useActionState(action, initialState);
+  const [confirmPending, startConfirmTransition] = useTransition();
+  const [discardPending, startDiscardTransition] = useTransition();
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const [items, setItems] = useState<LineItem[]>([]);
+  const [items, setItems] = useState<LineItem[]>(initialItems ?? []);
   const [selectedProductId, setSelectedProductId] = useState(products[0]?.id ?? "");
   const [selectedVariant, setSelectedVariant] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState(products[0]?.price ?? 0);
   const [addError, setAddError] = useState<string | null>(null);
-  const [customerName, setCustomerName] = useState("");
-  const [note, setNote] = useState("");
+  const [customerName, setCustomerName] = useState(initialCustomerName ?? "");
+  const [note, setNote] = useState(initialNote ?? "");
 
   const selectedProduct = products.find((p) => p.id === selectedProductId);
 
@@ -48,8 +71,10 @@ export function ManualSaleForm({ products }: { products: ProductOption[] }) {
   }
 
   useEffect(() => {
-    if (state.orderId) router.push(`/admin/orders/${state.orderId}`);
-  }, [state.orderId, router]);
+    // Al crear redirige a seguir editando el borrador recién creado; al
+    // editar, ya estamos en esa pantalla.
+    if (!orderId && state.orderId) router.push(`/admin/sales/${state.orderId}/edit`);
+  }, [orderId, state.orderId, router]);
 
   const maxStockForSelection = useMemo(() => {
     if (!selectedProduct) return 0;
@@ -72,10 +97,6 @@ export function ManualSaleForm({ products }: { products: ProductOption[] }) {
       setAddError("La cantidad tiene que ser al menos 1.");
       return;
     }
-    if (quantity > maxStockForSelection) {
-      setAddError(`Solo quedan ${maxStockForSelection} unidades disponibles.`);
-      return;
-    }
 
     setItems((prev) => [
       ...prev,
@@ -93,6 +114,36 @@ export function ManualSaleForm({ products }: { products: ProductOption[] }) {
 
   function removeItem(index: number) {
     setItems((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function handleConfirm() {
+    if (!orderId) return;
+    if (!confirm("¿Confirmar esta venta? Se descuenta el stock y ya no se va a poder editar.")) {
+      return;
+    }
+    setActionError(null);
+    startConfirmTransition(async () => {
+      const res = await finalizeManualSale(orderId);
+      if (res.error) {
+        setActionError(res.error);
+        return;
+      }
+      router.push(`/admin/orders/${orderId}`);
+    });
+  }
+
+  function handleDiscard() {
+    if (!orderId) return;
+    if (!confirm("¿Descartar este borrador? Esta acción no se puede deshacer.")) return;
+    setActionError(null);
+    startDiscardTransition(async () => {
+      const res = await discardManualSale(orderId);
+      if (res.error) {
+        setActionError(res.error);
+        return;
+      }
+      router.push("/admin/sales");
+    });
   }
 
   if (products.length === 0) {
@@ -146,7 +197,6 @@ export function ManualSaleForm({ products }: { products: ProductOption[] }) {
             <input
               type="number"
               min={1}
-              max={Math.max(maxStockForSelection, 1)}
               value={quantity}
               onChange={(e) => setQuantity(Number(e.target.value))}
               className="input w-20"
@@ -167,15 +217,16 @@ export function ManualSaleForm({ products }: { products: ProductOption[] }) {
           <button
             type="button"
             onClick={addItem}
-            disabled={maxStockForSelection <= 0}
             className="rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
           >
             + Agregar
           </button>
         </div>
-        {maxStockForSelection <= 0 && (
-          <p className="mt-2 text-xs text-err-ink">Sin stock disponible.</p>
-        )}
+        <p className="mt-2 text-xs text-ink-faint">
+          El stock recién se descuenta cuando confirmás la venta, así que
+          podés cargar más de lo que ves disponible ahora si sabés que va a
+          entrar.
+        </p>
         {addError && <p className="mt-2 text-xs text-err-ink">{addError}</p>}
       </div>
 
@@ -256,14 +307,42 @@ export function ManualSaleForm({ products }: { products: ProductOption[] }) {
             {state.error}
           </p>
         )}
+        {actionError && (
+          <p className="rounded-lg bg-err-bg px-3 py-2 text-sm text-err-ink">
+            {actionError}
+          </p>
+        )}
 
-        <button
-          type="submit"
-          disabled={items.length === 0 || pending}
-          className="w-fit rounded-lg bg-navy px-6 py-2.5 font-heading text-sm font-bold text-white disabled:opacity-40"
-        >
-          {pending ? "Guardando…" : `Registrar venta — ${formatPrice(total)}`}
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            disabled={items.length === 0 || pending}
+            className="w-fit rounded-lg bg-navy px-6 py-2.5 font-heading text-sm font-bold text-white disabled:opacity-40"
+          >
+            {pending ? "Guardando…" : `Guardar borrador — ${formatPrice(total)}`}
+          </button>
+
+          {orderId && (
+            <>
+              <button
+                type="button"
+                onClick={handleConfirm}
+                disabled={items.length === 0 || confirmPending || discardPending}
+                className="w-fit rounded-lg bg-ok-ink px-6 py-2.5 font-heading text-sm font-bold text-white disabled:opacity-40"
+              >
+                {confirmPending ? "Confirmando…" : "Confirmar venta (marcar como pagado)"}
+              </button>
+              <button
+                type="button"
+                onClick={handleDiscard}
+                disabled={confirmPending || discardPending}
+                className="w-fit text-sm font-semibold text-err-ink hover:underline disabled:opacity-40"
+              >
+                {discardPending ? "Descartando…" : "Descartar borrador"}
+              </button>
+            </>
+          )}
+        </div>
       </form>
 
       <style jsx global>{`

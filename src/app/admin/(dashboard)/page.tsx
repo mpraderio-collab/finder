@@ -359,10 +359,14 @@ function RecentOrdersList({
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Link
-                      href={`/admin/orders/${order.id}`}
+                      href={
+                        order.status === "draft"
+                          ? `/admin/sales/${order.id}/edit`
+                          : `/admin/orders/${order.id}`
+                      }
                       className="font-heading text-sm font-bold text-blue hover:text-navy"
                     >
-                      Ver
+                      {order.status === "draft" ? "Editar" : "Ver"}
                     </Link>
                   </td>
                 </tr>

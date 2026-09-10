@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { ManualSaleForm } from "./ManualSaleForm";
+import { ManualSaleForm } from "../ManualSaleForm";
 
 export default async function NewManualSalePage() {
   const products = await db.product.findMany({
@@ -23,8 +23,9 @@ export default async function NewManualSalePage() {
       </h1>
       <p className="mt-1 max-w-xl text-sm text-ink-soft">
         Registrá una venta que hiciste por fuera de la página (en persona,
-        por WhatsApp, en una feria, etc.). Se descuenta el stock igual que
-        una venta online.
+        por WhatsApp, en una feria, etc.). Arranca como borrador — podés
+        seguir editándola hasta que la confirmes, recién ahí se descuenta
+        el stock.
       </p>
 
       <div className="mt-8">

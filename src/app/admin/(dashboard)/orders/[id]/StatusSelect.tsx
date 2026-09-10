@@ -9,9 +9,11 @@ import { orderStatusLabels } from "@/lib/order-status";
 export function StatusSelect({
   orderId,
   currentStatus,
+  statuses = orderStatuses,
 }: {
   orderId: string;
   currentStatus: string;
+  statuses?: readonly string[];
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +49,7 @@ export function StatusSelect({
         }}
         className="w-fit rounded-lg border border-border-input bg-bg px-3 py-2 text-sm outline-none focus:border-amber"
       >
-        {orderStatuses.map((s) => (
+        {statuses.map((s) => (
           <option key={s} value={s}>
             {orderStatusLabels[s]}
           </option>

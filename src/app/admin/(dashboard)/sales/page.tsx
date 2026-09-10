@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/products";
+import { orderStatusColors, orderStatusLabels } from "@/lib/order-status";
 
 export default async function AdminSalesPage() {
   const sales = await db.order.findMany({
@@ -47,6 +48,9 @@ export default async function AdminSalesPage() {
                   Total
                 </th>
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                  Estado
+                </th>
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
                   Fecha
                 </th>
                 <th className="px-4 py-3" />
@@ -68,15 +72,26 @@ export default async function AdminSalesPage() {
                   <td className="px-4 py-3 font-medium text-ink">
                     {formatPrice(sale.total)}
                   </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`rounded-md px-2 py-0.5 text-xs font-semibold ${orderStatusColors[sale.status]}`}
+                    >
+                      {orderStatusLabels[sale.status]}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-ink-soft">
                     {sale.createdAt.toLocaleDateString("es-AR")}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Link
-                      href={`/admin/orders/${sale.id}`}
+                      href={
+                        sale.status === "draft"
+                          ? `/admin/sales/${sale.id}/edit`
+                          : `/admin/orders/${sale.id}`
+                      }
                       className="font-heading text-sm font-bold text-blue hover:text-navy"
                     >
-                      Ver
+                      {sale.status === "draft" ? "Editar" : "Ver"}
                     </Link>
                   </td>
                 </tr>

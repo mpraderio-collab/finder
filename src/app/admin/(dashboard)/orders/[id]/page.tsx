@@ -1,7 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/products";
-import { orderStatusColors, orderStatusLabels } from "@/lib/order-status";
+import { orderStatusColors, orderStatusLabels, manualSaleStatuses } from "@/lib/order-status";
 import { shippingMethods, type ShippingMethod } from "@/lib/shipping";
 import { StatusSelect } from "./StatusSelect";
 import { TrackingCode } from "./TrackingCode";
@@ -28,6 +28,10 @@ export default async function OrderDetailPage(
     include: { items: { include: { product: true } } },
   });
   if (!order) notFound();
+  // Un borrador de venta manual se edita en su propia pantalla, no acá.
+  if (order.channel === "manual" && order.status === "draft") {
+    redirect(`/admin/sales/${order.id}/edit`);
+  }
 
   const done = timelineProgress(order.status);
 
@@ -54,7 +58,11 @@ export default async function OrderDetailPage(
             </span>
           </div>
         </div>
-        <StatusSelect orderId={order.id} currentStatus={order.status} />
+        <StatusSelect
+          orderId={order.id}
+          currentStatus={order.status}
+          statuses={order.channel === "manual" ? manualSaleStatuses : undefined}
+        />
       </div>
 
       {order.channel === "online" && (
