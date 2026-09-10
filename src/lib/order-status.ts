@@ -20,4 +20,4 @@ export const orderStatusColors: Record<string, string> = {
 
 // Estados válidos para ventas manuales una vez confirmadas (nunca vuelven
 // a "draft" desde acá — ver finalizeManualSale).
-export const manualSaleStatuses = ["paid", "cancelled"] as const;
+export const manualSaleStatuses = ["paid", "shipped", "cancelled"] as const;
