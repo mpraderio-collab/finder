@@ -225,10 +225,11 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
           name="costPrice"
           error={state.fieldErrors?.costPrice}
           hint="Opcional. Nunca se muestra en la tienda."
+          labelClassName="min-h-10"
         >
           <MoneyInput name="costPrice" value={cost} onChange={handleCostChange} className="input" />
         </Field>
-        <Field label="% de margen" name="marginPercent" hint="Sobre costo + envío">
+        <Field label="% de margen" name="marginPercent" hint="Sobre costo + envío" labelClassName="min-h-10">
           <input
             type="number"
             step="any"
@@ -240,7 +241,7 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
             className="input disabled:opacity-50"
           />
         </Field>
-        <Field label="$ de margen" name="marginAmount" hint="Precio − costo − envío">
+        <Field label="$ de margen" name="marginAmount" hint="Precio − costo − envío" labelClassName="min-h-10">
           <MoneyInput
             value={marginAmount}
             onChange={handleMarginAmountChange}
@@ -248,10 +249,20 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
             className="input disabled:opacity-50"
           />
         </Field>
-        <Field label="Costo de envío (ARS)" name="shippingCost" hint="Solo para calcular el margen">
+        <Field
+          label="Costo de envío (ARS)"
+          name="shippingCost"
+          hint="Solo para calcular el margen"
+          labelClassName="min-h-10"
+        >
           <MoneyInput value={shippingCost} onChange={handleShippingCostChange} className="input" />
         </Field>
-        <Field label="Precio de venta (ARS)" name="price" error={state.fieldErrors?.price}>
+        <Field
+          label="Precio de venta (ARS)"
+          name="price"
+          error={state.fieldErrors?.price}
+          labelClassName="min-h-10"
+        >
           <MoneyInput
             name="price"
             value={price}
@@ -268,6 +279,7 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
           name="promoQuantity"
           error={state.fieldErrors?.promoQuantity}
           hint="Ej: 2 — vacío si no hay promo"
+          labelClassName="min-h-10"
         >
           <input
             name="promoQuantity"
@@ -281,7 +293,12 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
             className="input"
           />
         </Field>
-        <Field label="% de margen" name="promoMarginPercent" hint="Sobre costo + envío total">
+        <Field
+          label="% de margen"
+          name="promoMarginPercent"
+          hint="Sobre costo + envío total"
+          labelClassName="min-h-10"
+        >
           <input
             type="number"
             step="any"
@@ -293,7 +310,12 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
             className="input disabled:opacity-50"
           />
         </Field>
-        <Field label="$ de margen" name="promoMarginAmount" hint="Precio − costo − envío total">
+        <Field
+          label="$ de margen"
+          name="promoMarginAmount"
+          hint="Precio − costo − envío total"
+          labelClassName="min-h-10"
+        >
           <MoneyInput
             value={promoMarginAmount}
             onChange={handlePromoMarginAmountChange}
@@ -301,7 +323,12 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
             className="input disabled:opacity-50"
           />
         </Field>
-        <Field label="Costo de envío (ARS)" name="promoShippingCost" hint="Solo para calcular el margen">
+        <Field
+          label="Costo de envío (ARS)"
+          name="promoShippingCost"
+          hint="Solo para calcular el margen"
+          labelClassName="min-h-10"
+        >
           <MoneyInput value={shippingCost} onChange={handleShippingCostChange} className="input" />
         </Field>
         <Field
@@ -309,6 +336,7 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
           name="promoPrice"
           error={state.fieldErrors?.promoPrice}
           hint="Ej: 45000 — llevando esa cantidad"
+          labelClassName="min-h-10"
         >
           <MoneyInput value={promoPrice} onChange={handlePromoPriceChange} className="input" />
         </Field>
@@ -384,16 +412,18 @@ function Field({
   error,
   hint,
   children,
+  labelClassName,
 }: {
   label: string;
   name: string;
   error?: string;
   hint?: string;
   children: React.ReactNode;
+  labelClassName?: string;
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium text-ink">{label}</span>
+      <span className={`text-sm font-medium text-ink ${labelClassName ?? ""}`}>{label}</span>
       {children}
       {hint && !error && <span className="text-xs text-ink-soft">{hint}</span>}
       {error && <span className="text-xs text-err-ink">{error}</span>}
