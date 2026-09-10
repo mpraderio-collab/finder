@@ -8,7 +8,7 @@ declare global {
   }
 }
 
-function getSessionId(): string {
+export function getSessionId(): string {
   if (typeof window === "undefined") return "";
   try {
     let id = window.localStorage.getItem(SESSION_KEY);

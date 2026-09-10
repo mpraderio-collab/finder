@@ -92,22 +92,42 @@ export async function POST(request: Request) {
 
       const shippingCost = shippingMethods[data.shippingMethod].cost;
 
+      const orderData = {
+        status: "pending",
+        customerName: data.customerName,
+        customerEmail: data.customerEmail,
+        customerPhone: data.customerPhone,
+        shippingAddress: data.shippingAddress,
+        shippingCity: data.shippingCity,
+        shippingProvince: data.shippingProvince,
+        shippingZip: data.shippingZip,
+        shippingMethod: data.shippingMethod,
+        shippingCost,
+        subtotal,
+        total: subtotal + shippingCost,
+      };
+
+      // Si este carrito ya estaba siendo trackeado (ver cart-actions.ts), se
+      // reutiliza el mismo pedido en vez de crear uno duplicado — así el
+      // admin ve un solo registro por compra, del carrito al envío.
+      const cartOrder = data.sessionId
+        ? await tx.order.findFirst({
+            where: { sessionId: data.sessionId, status: "cart" },
+            select: { id: true },
+          })
+        : null;
+
+      if (cartOrder) {
+        await tx.orderItem.deleteMany({ where: { orderId: cartOrder.id } });
+        return tx.order.update({
+          where: { id: cartOrder.id },
+          data: { ...orderData, sessionId: null, items: { create: orderItemsData } },
+          include: { items: { include: { product: true } } },
+        });
+      }
+
       return tx.order.create({
-        data: {
-          customerName: data.customerName,
-          customerEmail: data.customerEmail,
-          customerPhone: data.customerPhone,
-          shippingAddress: data.shippingAddress,
-          shippingCity: data.shippingCity,
-          shippingProvince: data.shippingProvince,
-          shippingZip: data.shippingZip,
-          shippingMethod: data.shippingMethod,
-          shippingCost,
-          subtotal,
-          total: subtotal + shippingCost,
-          idempotencyKey: randomUUID(),
-          items: { create: orderItemsData },
-        },
+        data: { ...orderData, idempotencyKey: randomUUID(), items: { create: orderItemsData } },
         include: { items: { include: { product: true } } },
       });
     });

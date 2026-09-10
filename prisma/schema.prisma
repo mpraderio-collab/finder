@@ -99,16 +99,22 @@ model Review {
 
 model Order {
   id                String      @id @default(cuid())
-  status            String      @default("pending") // pending | paid | failed | cancelled | shipped
+  // cart (carrito online sin terminar) | draft (venta manual sin confirmar)
+  // | pending | paid | failed | cancelled | shipped
+  status            String      @default("pending")
   channel           String      @default("online") // online (checkout web) | manual (venta cargada a mano)
   note              String?     // solo para ventas manuales
-  customerName      String
-  customerEmail     String
-  customerPhone     String
-  shippingAddress   String
-  shippingCity      String
-  shippingProvince  String
-  shippingZip       String
+  // Id anónimo del visitante (ver getSessionId en lib/analytics.ts) — solo
+  // se usa mientras el pedido online sigue en estado "cart", para poder
+  // encontrar y actualizar el mismo carrito en vez de duplicarlo.
+  sessionId         String?
+  customerName      String      @default("")
+  customerEmail     String      @default("")
+  customerPhone     String      @default("")
+  shippingAddress   String      @default("")
+  shippingCity      String      @default("")
+  shippingProvince  String      @default("")
+  shippingZip       String      @default("")
   shippingMethod    String?     // "correo" | "oca" — solo pedidos online
   shippingCost      Int         @default(0)
   trackingCode      String?
@@ -125,6 +131,7 @@ model Order {
 
   @@index([status])
   @@index([customerEmail])
+  @@index([sessionId])
 }
 
 model OrderItem {

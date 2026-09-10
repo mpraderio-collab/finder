@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer } from "@/components/Footer";
 import { useCart, cartItemKey, cartLineTotal } from "@/lib/cart-context";
-import { trackEvent } from "@/lib/analytics";
+import { trackEvent, getSessionId } from "@/lib/analytics";
 import { formatPrice } from "@/lib/products";
 import { shippingMethods, type ShippingMethod } from "@/lib/shipping";
 
@@ -71,6 +71,7 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          sessionId: getSessionId(),
           shippingMethod,
           items: items.map((i) => ({
             productId: i.productId,

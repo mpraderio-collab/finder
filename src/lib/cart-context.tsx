@@ -2,6 +2,8 @@
 
 import { useMemo, useSyncExternalStore } from "react";
 import { calculateLineTotal } from "@/lib/promotions";
+import { getSessionId } from "@/lib/analytics";
+import { syncCartOrder } from "@/app/cart-actions";
 
 export type CartItem = {
   productId: string;
@@ -55,9 +57,31 @@ function persist(next: CartItem[]) {
   }
 }
 
+// Best-effort: refleja el carrito en un pedido "cart" en la base (para que
+// el admin pueda ver carritos activos/abandonados). Nunca debe bloquear ni
+// romper la experiencia de compra si falla o tarda.
+let syncTimeout: ReturnType<typeof setTimeout> | null = null;
+function scheduleCartSync(next: CartItem[]) {
+  if (typeof window === "undefined") return;
+  if (syncTimeout) clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(() => {
+    const sessionId = getSessionId();
+    if (!sessionId) return;
+    syncCartOrder(
+      sessionId,
+      next.map((i) => ({
+        productId: i.productId,
+        quantity: i.quantity,
+        variantName: i.variantName,
+      })),
+    ).catch(() => {});
+  }, 500);
+}
+
 function setCart(next: CartItem[]) {
   cartState = next;
   persist(next);
+  scheduleCartSync(next);
   listeners.forEach((listener) => listener());
 }
 

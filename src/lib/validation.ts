@@ -125,6 +125,7 @@ export const orderStatuses = [
 export const orderStatusSchema = z.enum(orderStatuses);
 
 export const checkoutSchema = z.object({
+  sessionId: z.string().trim().max(100).optional(),
   customerName: z.string().trim().min(2).max(120),
   customerEmail: z.string().trim().email(),
   customerPhone: z.string().trim().min(6).max(30),

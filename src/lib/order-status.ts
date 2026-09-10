@@ -1,4 +1,5 @@
 export const orderStatusLabels: Record<string, string> = {
+  cart: "En el carrito",
   draft: "Borrador",
   pending: "Pendiente de pago",
   paid: "Pagado, pendiente de envío",
@@ -8,6 +9,7 @@ export const orderStatusLabels: Record<string, string> = {
 };
 
 export const orderStatusColors: Record<string, string> = {
+  cart: "bg-surface text-ink-soft",
   draft: "bg-surface text-ink-soft",
   pending: "bg-warn-bg text-warn-ink",
   paid: "bg-ok-bg text-ok-ink",

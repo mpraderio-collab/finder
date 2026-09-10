@@ -34,6 +34,7 @@ export default async function OrderDetailPage(
   }
 
   const done = timelineProgress(order.status);
+  const isCart = order.status === "cart";
 
   return (
     <div>
@@ -58,14 +59,24 @@ export default async function OrderDetailPage(
             </span>
           </div>
         </div>
-        <StatusSelect
-          orderId={order.id}
-          currentStatus={order.status}
-          statuses={order.channel === "manual" ? manualSaleStatuses : undefined}
-        />
+        {order.status !== "cart" && (
+          <StatusSelect
+            orderId={order.id}
+            currentStatus={order.status}
+            statuses={order.channel === "manual" ? manualSaleStatuses : undefined}
+          />
+        )}
       </div>
 
-      {order.channel === "online" && (
+      {isCart && (
+        <p className="mt-6 rounded-xl border border-line bg-surface px-4 py-3 text-sm text-ink-soft">
+          Este visitante agregó productos al carrito pero todavía no completó
+          el checkout. Se actualiza solo mientras siga en el carrito, y
+          desaparece de acá si lo vacía o si termina comprando.
+        </p>
+      )}
+
+      {order.channel === "online" && !isCart && (
         <div className="mt-6 rounded-xl border border-line bg-bg p-5">
           <div className="grid grid-cols-4 gap-2">
             {timelineSteps.map((step, i) => (
@@ -148,38 +159,40 @@ export default async function OrderDetailPage(
         </div>
 
         <div className="flex flex-col gap-4">
-          <div className="rounded-xl border border-line bg-bg p-5">
-            <p className="text-sm font-semibold text-navy">
-              {order.channel === "manual" ? "Venta manual" : "Cliente"}
-            </p>
-            <dl className="mt-3 space-y-2 text-sm text-ink-soft">
-              <div>
-                <dt className="text-xs uppercase tracking-wide text-ink-faint">Nombre</dt>
-                <dd className="text-ink">{order.customerName}</dd>
-              </div>
-              {order.channel === "manual" ? (
-                order.note && (
-                  <div>
-                    <dt className="text-xs uppercase tracking-wide text-ink-faint">Nota</dt>
-                    <dd className="text-ink">{order.note}</dd>
-                  </div>
-                )
-              ) : (
-                <>
-                  <div>
-                    <dt className="text-xs uppercase tracking-wide text-ink-faint">Email</dt>
-                    <dd className="text-ink">{order.customerEmail}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs uppercase tracking-wide text-ink-faint">Teléfono</dt>
-                    <dd className="text-ink">{order.customerPhone}</dd>
-                  </div>
-                </>
-              )}
-            </dl>
-          </div>
+          {!isCart && (
+            <div className="rounded-xl border border-line bg-bg p-5">
+              <p className="text-sm font-semibold text-navy">
+                {order.channel === "manual" ? "Venta manual" : "Cliente"}
+              </p>
+              <dl className="mt-3 space-y-2 text-sm text-ink-soft">
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-ink-faint">Nombre</dt>
+                  <dd className="text-ink">{order.customerName}</dd>
+                </div>
+                {order.channel === "manual" ? (
+                  order.note && (
+                    <div>
+                      <dt className="text-xs uppercase tracking-wide text-ink-faint">Nota</dt>
+                      <dd className="text-ink">{order.note}</dd>
+                    </div>
+                  )
+                ) : (
+                  <>
+                    <div>
+                      <dt className="text-xs uppercase tracking-wide text-ink-faint">Email</dt>
+                      <dd className="text-ink">{order.customerEmail}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs uppercase tracking-wide text-ink-faint">Teléfono</dt>
+                      <dd className="text-ink">{order.customerPhone}</dd>
+                    </div>
+                  </>
+                )}
+              </dl>
+            </div>
+          )}
 
-          {order.channel === "online" && (
+          {order.channel === "online" && !isCart && (
             <div className="rounded-xl border border-line bg-bg p-5">
               <p className="text-sm font-semibold text-navy">Envío</p>
               <dl className="mt-3 space-y-2 text-sm text-ink-soft">
@@ -209,7 +222,7 @@ export default async function OrderDetailPage(
             </div>
           )}
 
-          {order.channel === "online" && (
+          {order.channel === "online" && !isCart && (
             <div className="rounded-xl border border-line bg-bg p-5">
               <p className="text-sm font-semibold text-navy">Pago</p>
               <dl className="mt-3 space-y-2 text-sm text-ink-soft">

@@ -11,12 +11,17 @@ export default async function AdminOrdersPage(
     typeof searchParams?.status === "string" ? searchParams.status : undefined;
 
   const orders = await db.order.findMany({
-    where: { channel: "online", ...(statusFilter ? { status: statusFilter } : {}) },
+    where: {
+      channel: "online",
+      // Sin filtro, "Todos" no incluye los carritos sin terminar — para
+      // eso está la pestaña "Carritos" aparte.
+      status: statusFilter ?? { not: "cart" },
+    },
     orderBy: { createdAt: "desc" },
     include: { items: true },
   });
 
-  const statuses = ["pending", "paid", "shipped", "cancelled", "failed"];
+  const statuses = ["pending", "paid", "shipped", "cancelled", "failed", "cart"];
 
   return (
     <div>
@@ -85,8 +90,12 @@ export default async function AdminOrdersPage(
                     #{order.id.slice(-6).toUpperCase()}
                   </td>
                   <td className="px-4 py-3">
-                    <p className="font-medium text-ink">{order.customerName}</p>
-                    <p className="text-xs text-ink-faint">{order.customerEmail}</p>
+                    <p className="font-medium text-ink">
+                      {order.customerName || "Visitante anónimo"}
+                    </p>
+                    {order.customerEmail && (
+                      <p className="text-xs text-ink-faint">{order.customerEmail}</p>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-ink-soft">
                     {order.items.reduce((n, i) => n + i.quantity, 0)}

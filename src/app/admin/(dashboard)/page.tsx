@@ -53,6 +53,7 @@ function dailyUniqueVisitors(pageViews: { createdAt: Date; sessionId: string | n
 export default async function AdminDashboardPage() {
   const [
     pendingCount,
+    activeCartCount,
     paidOrders,
     lowStock,
     recentOnlineOrders,
@@ -66,6 +67,7 @@ export default async function AdminDashboardPage() {
     recentPageViews,
   ] = await Promise.all([
     db.order.count({ where: { status: "pending" } }),
+    db.order.count({ where: { status: "cart" } }),
     db.order.findMany({
       where: { status: { in: ["paid", "shipped"] } },
       select: { createdAt: true, total: true },
@@ -75,7 +77,7 @@ export default async function AdminDashboardPage() {
       orderBy: { stock: "asc" },
     }),
     db.order.findMany({
-      where: { channel: "online" },
+      where: { channel: "online", status: { not: "cart" } },
       orderBy: { createdAt: "desc" },
       take: 5,
     }),
@@ -124,6 +126,7 @@ export default async function AdminDashboardPage() {
 
   const stats = [
     { label: "Pedidos pendientes", value: pendingCount },
+    { label: "Carritos activos", value: activeCartCount },
     { label: "Ventas confirmadas", value: paidOrders.length },
     { label: "Ingresos (pagados)", value: formatPrice(revenue) },
     {
