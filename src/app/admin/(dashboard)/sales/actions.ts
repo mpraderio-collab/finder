@@ -122,6 +122,7 @@ export async function createManualSale(
 
     revalidatePath("/admin");
     revalidatePath("/admin/orders");
+    revalidatePath("/admin/sales");
     revalidatePath("/admin/products");
     revalidatePath("/catalogo");
 

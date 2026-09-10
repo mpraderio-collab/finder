@@ -11,7 +11,7 @@ export default async function AdminOrdersPage(
     typeof searchParams?.status === "string" ? searchParams.status : undefined;
 
   const orders = await db.order.findMany({
-    where: statusFilter ? { status: statusFilter } : undefined,
+    where: { channel: "online", ...(statusFilter ? { status: statusFilter } : {}) },
     orderBy: { createdAt: "desc" },
     include: { items: true },
   });
@@ -85,14 +85,7 @@ export default async function AdminOrdersPage(
                     #{order.id.slice(-6).toUpperCase()}
                   </td>
                   <td className="px-4 py-3">
-                    <p className="font-medium text-ink">
-                      {order.customerName}
-                      {order.channel === "manual" && (
-                        <span className="ml-1.5 rounded-full bg-amber-soft px-1.5 py-0.5 text-[10px] font-semibold text-amber-ink">
-                          Manual
-                        </span>
-                      )}
-                    </p>
+                    <p className="font-medium text-ink">{order.customerName}</p>
                     <p className="text-xs text-ink-faint">{order.customerEmail}</p>
                   </td>
                   <td className="px-4 py-3 text-ink-soft">

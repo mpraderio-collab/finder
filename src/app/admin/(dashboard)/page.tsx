@@ -55,7 +55,8 @@ export default async function AdminDashboardPage() {
     pendingCount,
     paidOrders,
     lowStock,
-    recentOrders,
+    recentOnlineOrders,
+    recentManualSales,
     pageViewCount,
     viewContentCount,
     addToCartCount,
@@ -73,7 +74,16 @@ export default async function AdminDashboardPage() {
       where: { status: "active", stock: { lte: 3 } },
       orderBy: { stock: "asc" },
     }),
-    db.order.findMany({ orderBy: { createdAt: "desc" }, take: 5 }),
+    db.order.findMany({
+      where: { channel: "online" },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    }),
+    db.order.findMany({
+      where: { channel: "manual" },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    }),
     db.analyticsEvent.count({ where: { type: "page_view" } }),
     db.analyticsEvent.count({ where: { type: "view_content" } }),
     db.analyticsEvent.count({ where: { type: "add_to_cart" } }),
@@ -289,58 +299,78 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
-      <div className="mt-8">
-        <div className="flex items-center justify-between">
-          <p className="font-heading text-lg font-bold text-navy">
-            Últimos pedidos
-          </p>
-          <Link
-            href="/admin/orders"
-            className="font-heading text-sm font-bold text-blue hover:text-navy"
-          >
-            Ver todos →
-          </Link>
-        </div>
-
-        {recentOrders.length === 0 ? (
-          <p className="mt-4 text-ink-soft">Todavía no hay pedidos.</p>
-        ) : (
-          <div className="mt-4 overflow-x-auto rounded-xl border border-line bg-bg">
-            <table className="w-full min-w-[560px] text-left text-sm">
-              <tbody>
-                {recentOrders.map((order) => (
-                  <tr key={order.id} className="border-b border-line-soft last:border-0">
-                    <td className="px-4 py-3 font-medium text-ink">
-                      {order.customerName}
-                      {order.channel === "manual" && (
-                        <span className="ml-1.5 rounded-full bg-amber-soft px-1.5 py-0.5 text-[10px] font-semibold text-amber-ink">
-                          Manual
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">{formatPrice(order.total)}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-md px-2 py-0.5 text-xs font-semibold ${orderStatusColors[order.status]}`}
-                      >
-                        {orderStatusLabels[order.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/admin/orders/${order.id}`}
-                        className="font-heading text-sm font-bold text-blue hover:text-navy"
-                      >
-                        Ver
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <div className="mt-8 grid gap-8 lg:grid-cols-2">
+        <RecentOrdersList
+          title="Últimos pedidos (web)"
+          viewAllHref="/admin/orders"
+          emptyLabel="Todavía no hay pedidos por la web."
+          orders={recentOnlineOrders}
+        />
+        <RecentOrdersList
+          title="Últimas ventas manuales"
+          viewAllHref="/admin/sales"
+          emptyLabel="Todavía no cargaste ninguna venta manual."
+          orders={recentManualSales}
+        />
       </div>
+    </div>
+  );
+}
+
+function RecentOrdersList({
+  title,
+  viewAllHref,
+  emptyLabel,
+  orders,
+}: {
+  title: string;
+  viewAllHref: string;
+  emptyLabel: string;
+  orders: { id: string; customerName: string; total: number; status: string }[];
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <p className="font-heading text-lg font-bold text-navy">{title}</p>
+        <Link
+          href={viewAllHref}
+          className="font-heading text-sm font-bold text-blue hover:text-navy"
+        >
+          Ver todos →
+        </Link>
+      </div>
+
+      {orders.length === 0 ? (
+        <p className="mt-4 text-ink-soft">{emptyLabel}</p>
+      ) : (
+        <div className="mt-4 overflow-x-auto rounded-xl border border-line bg-bg">
+          <table className="w-full min-w-[420px] text-left text-sm">
+            <tbody>
+              {orders.map((order) => (
+                <tr key={order.id} className="border-b border-line-soft last:border-0">
+                  <td className="px-4 py-3 font-medium text-ink">{order.customerName}</td>
+                  <td className="px-4 py-3">{formatPrice(order.total)}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`rounded-md px-2 py-0.5 text-xs font-semibold ${orderStatusColors[order.status]}`}
+                    >
+                      {orderStatusLabels[order.status]}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Link
+                      href={`/admin/orders/${order.id}`}
+                      className="font-heading text-sm font-bold text-blue hover:text-navy"
+                    >
+                      Ver
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

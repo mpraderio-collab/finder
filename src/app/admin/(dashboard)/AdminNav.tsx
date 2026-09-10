@@ -7,7 +7,7 @@ const navLinks = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/products", label: "Productos" },
   { href: "/admin/orders", label: "Pedidos" },
-  { href: "/admin/sales/new", label: "+ Venta manual" },
+  { href: "/admin/sales", label: "Ventas manuales" },
   { href: "/admin/settings", label: "Configuración" },
   { href: "/admin/account", label: "Mi cuenta" },
 ];
