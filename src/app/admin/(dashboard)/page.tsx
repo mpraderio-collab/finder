@@ -23,16 +23,17 @@ function weeklySales(orders: { createdAt: Date; total: number }[]) {
   return buckets;
 }
 
-function fiveWeeksAgo(): Date {
-  return new Date(Date.now() - 5 * 7 * 24 * 60 * 60 * 1000);
+function oneMonthAgo(): Date {
+  return new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 }
 
-function weeklyVisits(createdAtList: Date[]) {
+function dailyVisits(createdAtList: Date[]) {
   const now = new Date();
-  const weekMs = 7 * 24 * 60 * 60 * 1000;
-  const buckets = Array.from({ length: 5 }, (_, i) => {
-    const end = new Date(now.getTime() - (4 - i) * weekMs);
-    const start = new Date(end.getTime() - weekMs);
+  const dayMs = 24 * 60 * 60 * 1000;
+  // 30 baldes de 1 día, el más reciente termina hoy.
+  const buckets = Array.from({ length: 30 }, (_, i) => {
+    const end = new Date(now.getTime() - (29 - i) * dayMs);
+    const start = new Date(end.getTime() - dayMs);
     return { start, end, count: 0 };
   });
 
@@ -81,7 +82,7 @@ export default async function AdminDashboardPage() {
       select: { sessionId: true },
     }),
     db.analyticsEvent.findMany({
-      where: { type: "page_view", createdAt: { gte: fiveWeeksAgo() } },
+      where: { type: "page_view", createdAt: { gte: oneMonthAgo() } },
       select: { createdAt: true },
     }),
   ]);
@@ -92,7 +93,7 @@ export default async function AdminDashboardPage() {
 
   const conversionRate =
     pageViewCount > 0 ? (purchaseCount / pageViewCount) * 100 : 0;
-  const visitBuckets = weeklyVisits(recentPageViews.map((v) => v.createdAt));
+  const visitBuckets = dailyVisits(recentPageViews.map((v) => v.createdAt));
   const maxVisitBucket = Math.max(...visitBuckets.map((b) => b.count), 1);
 
   const analyticsStats = [
@@ -240,9 +241,9 @@ export default async function AdminDashboardPage() {
 
         <div className="mt-4 rounded-xl border border-line bg-bg p-5">
           <p className="font-heading text-[15px] font-bold text-navy">
-            Visitas por semana
+            Visitas por día (último mes)
           </p>
-          <div className="mt-5 flex items-end gap-4" style={{ height: 120 }}>
+          <div className="mt-5 flex items-end gap-1" style={{ height: 120 }}>
             {visitBuckets.map((bucket, i) => {
               const isLast = i === visitBuckets.length - 1;
               const heightPct = Math.max(
@@ -252,10 +253,11 @@ export default async function AdminDashboardPage() {
               return (
                 <div
                   key={i}
-                  className="flex flex-1 flex-col items-center justify-end gap-1.5"
+                  className="flex flex-1 flex-col items-center justify-end gap-1"
+                  title={`${bucket.start.toLocaleDateString("es-AR")}: ${bucket.count} visitas`}
                 >
                   <span
-                    className={`text-xs font-semibold ${isLast ? "text-amber-ink" : "text-ink-faint"}`}
+                    className={`text-[9px] font-semibold ${isLast ? "text-amber-ink" : "text-ink-faint"}`}
                   >
                     {bucket.count > 0 ? bucket.count : ""}
                   </span>
@@ -267,13 +269,13 @@ export default async function AdminDashboardPage() {
               );
             })}
           </div>
-          <div className="mt-2 flex gap-4 border-t border-line pt-2">
-            {visitBuckets.map((_, i) => (
+          <div className="mt-2 flex gap-1 border-t border-line pt-2">
+            {visitBuckets.map((bucket, i) => (
               <span
                 key={i}
-                className="flex-1 text-center text-xs text-ink-faint"
+                className="flex-1 text-center text-[9px] text-ink-faint"
               >
-                Sem {i + 1}
+                {i % 3 === 0 ? bucket.start.getDate() : ""}
               </span>
             ))}
           </div>

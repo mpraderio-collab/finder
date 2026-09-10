@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import type { ProductActionState } from "./actions";
 
 type Props = {
@@ -26,8 +26,106 @@ type Props = {
 
 const initialState: ProductActionState = {};
 
+// % de margen sobre el costo, o "" si no se puede calcular (sin costo cargado).
+function marginPercentOf(cost: number | "", sellPrice: number | ""): number | "" {
+  if (cost === "" || cost <= 0 || sellPrice === "") return "";
+  return Math.round(((sellPrice - cost) / cost) * 1000) / 10;
+}
+
+function marginAmountOf(cost: number | "", sellPrice: number | ""): number | "" {
+  if (cost === "" || sellPrice === "") return "";
+  return sellPrice - cost;
+}
+
 export function ProductForm({ action, defaultValues, submitLabel }: Props) {
   const [state, formAction, pending] = useActionState(action, initialState);
+
+  const [cost, setCost] = useState<number | "">(defaultValues?.costPrice ?? "");
+  const [price, setPrice] = useState<number | "">(defaultValues?.price ?? "");
+  const [marginPercent, setMarginPercent] = useState<number | "">(() =>
+    marginPercentOf(defaultValues?.costPrice ?? "", defaultValues?.price ?? ""),
+  );
+  const [marginAmount, setMarginAmount] = useState<number | "">(() =>
+    marginAmountOf(defaultValues?.costPrice ?? "", defaultValues?.price ?? ""),
+  );
+
+  const [promoQuantity, setPromoQuantity] = useState<number | "">(
+    defaultValues?.promoQuantity ?? "",
+  );
+  const [promoPrice, setPromoPrice] = useState<number | "">(defaultValues?.promoPrice ?? "");
+  const totalCost = (q: number | "") => (cost === "" || q === "" ? ("" as const) : cost * q);
+  const [promoMarginPercent, setPromoMarginPercent] = useState<number | "">(() =>
+    marginPercentOf(totalCost(defaultValues?.promoQuantity ?? ""), defaultValues?.promoPrice ?? ""),
+  );
+  const [promoMarginAmount, setPromoMarginAmount] = useState<number | "">(() =>
+    marginAmountOf(totalCost(defaultValues?.promoQuantity ?? ""), defaultValues?.promoPrice ?? ""),
+  );
+
+  // Cambiar el costo no mueve el precio ya cargado — solo actualiza cuánto
+  // margen queda con ese precio, tanto para la unidad como para la promo.
+  function handleCostChange(value: number | "") {
+    setCost(value);
+    setMarginPercent(marginPercentOf(value, price));
+    setMarginAmount(marginAmountOf(value, price));
+    const newTotalCost = value === "" || promoQuantity === "" ? ("" as const) : value * promoQuantity;
+    setPromoMarginPercent(marginPercentOf(newTotalCost, promoPrice));
+    setPromoMarginAmount(marginAmountOf(newTotalCost, promoPrice));
+  }
+
+  function handlePriceChange(value: number | "") {
+    setPrice(value);
+    setMarginPercent(marginPercentOf(cost, value));
+    setMarginAmount(marginAmountOf(cost, value));
+  }
+
+  function handleMarginPercentChange(value: number | "") {
+    setMarginPercent(value);
+    if (cost === "" || cost <= 0 || value === "") return;
+    const newPrice = Math.round(cost * (1 + value / 100));
+    setPrice(newPrice);
+    setMarginAmount(newPrice - cost);
+  }
+
+  function handleMarginAmountChange(value: number | "") {
+    setMarginAmount(value);
+    if (cost === "" || value === "") return;
+    const newPrice = cost + value;
+    setPrice(newPrice);
+    setMarginPercent(cost > 0 ? Math.round((value / cost) * 1000) / 10 : "");
+  }
+
+  function handlePromoQuantityChange(value: number | "") {
+    setPromoQuantity(value);
+    const newTotalCost = cost === "" || value === "" ? ("" as const) : cost * value;
+    setPromoMarginPercent(marginPercentOf(newTotalCost, promoPrice));
+    setPromoMarginAmount(marginAmountOf(newTotalCost, promoPrice));
+  }
+
+  function handlePromoPriceChange(value: number | "") {
+    setPromoPrice(value);
+    setPromoMarginPercent(marginPercentOf(totalCost(promoQuantity), value));
+    setPromoMarginAmount(marginAmountOf(totalCost(promoQuantity), value));
+  }
+
+  function handlePromoMarginPercentChange(value: number | "") {
+    setPromoMarginPercent(value);
+    const tc = totalCost(promoQuantity);
+    if (tc === "" || tc <= 0 || value === "") return;
+    const newPromoPrice = Math.round(tc * (1 + value / 100));
+    setPromoPrice(newPromoPrice);
+    setPromoMarginAmount(newPromoPrice - tc);
+  }
+
+  function handlePromoMarginAmountChange(value: number | "") {
+    setPromoMarginAmount(value);
+    const tc = totalCost(promoQuantity);
+    if (tc === "" || value === "") return;
+    const newPromoPrice = tc + value;
+    setPromoPrice(newPromoPrice);
+    setPromoMarginPercent(tc > 0 ? Math.round((value / tc) * 1000) / 10 : "");
+  }
+
+  const promoTotalCost = totalCost(promoQuantity);
 
   return (
     <form action={formAction} className="flex max-w-2xl flex-col gap-5">
@@ -83,31 +181,123 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
         />
       </Field>
 
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Precio de venta (ARS)" name="price" error={state.fieldErrors?.price}>
-          <input
-            name="price"
-            type="number"
-            min={0}
-            step={1}
-            defaultValue={defaultValues?.price}
-            required
-            className="input"
-          />
-        </Field>
-
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Field
           label="Precio de costo (ARS)"
           name="costPrice"
           error={state.fieldErrors?.costPrice}
-          hint="Opcional. Solo lo ves vos, nunca se muestra en la tienda."
+          hint="Opcional. Nunca se muestra en la tienda."
         >
           <input
             name="costPrice"
             type="number"
             min={0}
             step={1}
-            defaultValue={defaultValues?.costPrice ?? undefined}
+            value={cost}
+            onChange={(e) =>
+              handleCostChange(e.target.value === "" ? "" : Number(e.target.value))
+            }
+            className="input"
+          />
+        </Field>
+        <Field label="% de margen" name="marginPercent" hint="Sobre el costo">
+          <input
+            type="number"
+            step="any"
+            value={marginPercent}
+            onChange={(e) =>
+              handleMarginPercentChange(e.target.value === "" ? "" : Number(e.target.value))
+            }
+            disabled={cost === "" || cost <= 0}
+            className="input disabled:opacity-50"
+          />
+        </Field>
+        <Field label="$ de margen" name="marginAmount" hint="Precio − costo">
+          <input
+            type="number"
+            step={1}
+            value={marginAmount}
+            onChange={(e) =>
+              handleMarginAmountChange(e.target.value === "" ? "" : Number(e.target.value))
+            }
+            disabled={cost === ""}
+            className="input disabled:opacity-50"
+          />
+        </Field>
+        <Field label="Precio de venta (ARS)" name="price" error={state.fieldErrors?.price}>
+          <input
+            name="price"
+            type="number"
+            min={0}
+            step={1}
+            value={price}
+            onChange={(e) =>
+              handlePriceChange(e.target.value === "" ? "" : Number(e.target.value))
+            }
+            required
+            className="input"
+          />
+        </Field>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 rounded-xl border border-line bg-surface p-4 sm:grid-cols-4">
+        <Field
+          label="Promo: cantidad"
+          name="promoQuantity"
+          error={state.fieldErrors?.promoQuantity}
+          hint="Ej: 2 — vacío si no hay promo"
+        >
+          <input
+            name="promoQuantity"
+            type="number"
+            min={2}
+            step={1}
+            value={promoQuantity}
+            onChange={(e) =>
+              handlePromoQuantityChange(e.target.value === "" ? "" : Number(e.target.value))
+            }
+            className="input"
+          />
+        </Field>
+        <Field label="% de margen" name="promoMarginPercent" hint="Sobre el costo total">
+          <input
+            type="number"
+            step="any"
+            value={promoMarginPercent}
+            onChange={(e) =>
+              handlePromoMarginPercentChange(e.target.value === "" ? "" : Number(e.target.value))
+            }
+            disabled={promoTotalCost === "" || promoTotalCost <= 0}
+            className="input disabled:opacity-50"
+          />
+        </Field>
+        <Field label="$ de margen" name="promoMarginAmount" hint="Precio − costo total">
+          <input
+            type="number"
+            step={1}
+            value={promoMarginAmount}
+            onChange={(e) =>
+              handlePromoMarginAmountChange(e.target.value === "" ? "" : Number(e.target.value))
+            }
+            disabled={promoTotalCost === ""}
+            className="input disabled:opacity-50"
+          />
+        </Field>
+        <Field
+          label="Promo: precio total"
+          name="promoPrice"
+          error={state.fieldErrors?.promoPrice}
+          hint="Ej: 45000 — llevando esa cantidad"
+        >
+          <input
+            name="promoPrice"
+            type="number"
+            min={0}
+            step={1}
+            value={promoPrice}
+            onChange={(e) =>
+              handlePromoPriceChange(e.target.value === "" ? "" : Number(e.target.value))
+            }
             className="input"
           />
         </Field>
@@ -124,39 +314,6 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
           className="input max-w-[calc(50%-0.5rem)]"
         />
       </Field>
-
-      <div className="grid grid-cols-2 gap-4 rounded-xl border border-line bg-surface p-4">
-        <Field
-          label="Promo: cantidad"
-          name="promoQuantity"
-          error={state.fieldErrors?.promoQuantity}
-          hint="Ej: 2 — dejar vacío si no hay promo"
-        >
-          <input
-            name="promoQuantity"
-            type="number"
-            min={2}
-            step={1}
-            defaultValue={defaultValues?.promoQuantity ?? undefined}
-            className="input"
-          />
-        </Field>
-        <Field
-          label="Promo: precio total"
-          name="promoPrice"
-          error={state.fieldErrors?.promoPrice}
-          hint="Ej: 45000 — precio llevando esa cantidad"
-        >
-          <input
-            name="promoPrice"
-            type="number"
-            min={0}
-            step={1}
-            defaultValue={defaultValues?.promoPrice ?? undefined}
-            className="input"
-          />
-        </Field>
-      </div>
 
       <Field
         label="Características"
