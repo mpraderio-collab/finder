@@ -48,10 +48,18 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
   // dato del producto y no se guarda (siempre arranca en el default).
   const [shippingCost, setShippingCost] = useState<number | "">(DEFAULT_SHIPPING_COST);
 
-  // Costo + envío: la base real contra la que se mide el margen.
+  // Costo + envío: la base real contra la que se mide el margen de una
+  // unidad sola.
   function unitCostBasis(c: number | "", s: number | ""): number | "" {
     if (c === "") return "";
     return c + (s === "" ? 0 : s);
+  }
+
+  // El envío es un costo fijo del envío completo, no por unidad — se suma
+  // una sola vez sin importar si la promo es de 2 o de 5.
+  function promoCostBasis(c: number | "", s: number | "", q: number | ""): number | "" {
+    if (c === "" || q === "") return "";
+    return c * q + (s === "" ? 0 : s);
   }
 
   const [marginPercent, setMarginPercent] = useState<number | "">(() =>
@@ -65,20 +73,13 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
     defaultValues?.promoQuantity ?? "",
   );
   const [promoPrice, setPromoPrice] = useState<number | "">(defaultValues?.promoPrice ?? "");
-  const totalCost = (q: number | "") => {
-    const basis = unitCostBasis(cost, shippingCost);
-    return basis === "" || q === "" ? ("" as const) : basis * q;
-  };
+  const totalCost = (q: number | "") => promoCostBasis(cost, shippingCost, q);
   const [promoMarginPercent, setPromoMarginPercent] = useState<number | "">(() => {
-    const basis = unitCostBasis(defaultValues?.costPrice ?? "", DEFAULT_SHIPPING_COST);
-    const q = defaultValues?.promoQuantity ?? "";
-    const tc = basis === "" || q === "" ? ("" as const) : basis * q;
+    const tc = promoCostBasis(defaultValues?.costPrice ?? "", DEFAULT_SHIPPING_COST, defaultValues?.promoQuantity ?? "");
     return marginPercentOf(tc, defaultValues?.promoPrice ?? "");
   });
   const [promoMarginAmount, setPromoMarginAmount] = useState<number | "">(() => {
-    const basis = unitCostBasis(defaultValues?.costPrice ?? "", DEFAULT_SHIPPING_COST);
-    const q = defaultValues?.promoQuantity ?? "";
-    const tc = basis === "" || q === "" ? ("" as const) : basis * q;
+    const tc = promoCostBasis(defaultValues?.costPrice ?? "", DEFAULT_SHIPPING_COST, defaultValues?.promoQuantity ?? "");
     return marginAmountOf(tc, defaultValues?.promoPrice ?? "");
   });
 
@@ -86,10 +87,9 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
   // margen queda con ese precio, tanto para la unidad como para la promo.
   function handleCostChange(value: number | "") {
     setCost(value);
-    const basis = unitCostBasis(value, shippingCost);
-    setMarginPercent(marginPercentOf(basis, price));
-    setMarginAmount(marginAmountOf(basis, price));
-    const newTotalCost = basis === "" || promoQuantity === "" ? ("" as const) : basis * promoQuantity;
+    setMarginPercent(marginPercentOf(unitCostBasis(value, shippingCost), price));
+    setMarginAmount(marginAmountOf(unitCostBasis(value, shippingCost), price));
+    const newTotalCost = promoCostBasis(value, shippingCost, promoQuantity);
     setPromoMarginPercent(marginPercentOf(newTotalCost, promoPrice));
     setPromoMarginAmount(marginAmountOf(newTotalCost, promoPrice));
   }
@@ -98,10 +98,9 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
   // no mueve el precio ya cargado.
   function handleShippingCostChange(value: number | "") {
     setShippingCost(value);
-    const basis = unitCostBasis(cost, value);
-    setMarginPercent(marginPercentOf(basis, price));
-    setMarginAmount(marginAmountOf(basis, price));
-    const newTotalCost = basis === "" || promoQuantity === "" ? ("" as const) : basis * promoQuantity;
+    setMarginPercent(marginPercentOf(unitCostBasis(cost, value), price));
+    setMarginAmount(marginAmountOf(unitCostBasis(cost, value), price));
+    const newTotalCost = promoCostBasis(cost, value, promoQuantity);
     setPromoMarginPercent(marginPercentOf(newTotalCost, promoPrice));
     setPromoMarginAmount(marginAmountOf(newTotalCost, promoPrice));
   }
@@ -133,8 +132,7 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
 
   function handlePromoQuantityChange(value: number | "") {
     setPromoQuantity(value);
-    const basis = unitCostBasis(cost, shippingCost);
-    const newTotalCost = basis === "" || value === "" ? ("" as const) : basis * value;
+    const newTotalCost = promoCostBasis(cost, shippingCost, value);
     setPromoMarginPercent(marginPercentOf(newTotalCost, promoPrice));
     setPromoMarginAmount(marginAmountOf(newTotalCost, promoPrice));
   }
