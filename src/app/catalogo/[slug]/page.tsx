@@ -8,6 +8,7 @@ import { ProductPurchase } from "@/components/ProductPurchase";
 import { ProductCard } from "@/components/ProductCard";
 import { averageRating, getActiveProducts, getProductBySlug } from "@/lib/products";
 import { getSiteSettings } from "@/lib/settings";
+import { normalizePromo } from "@/lib/promotions";
 import { db } from "@/lib/db";
 
 export async function generateStaticParams() {
@@ -66,6 +67,7 @@ export default async function ProductPage(
             variants={product.variants}
             images={orderedImages}
             installments={settings.installments}
+            promo={normalizePromo(product)}
             aboveActions={
               <>
                 <h1 className="font-heading text-[38px] font-extrabold leading-[1.1] tracking-[-0.025em] text-navy">

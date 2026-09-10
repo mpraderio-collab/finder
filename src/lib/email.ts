@@ -19,6 +19,7 @@ type OrderItemSummary = {
   variantName: string | null;
   quantity: number;
   unitPrice: number;
+  lineTotal: number | null;
 };
 
 type OrderEmailData = {
@@ -46,7 +47,7 @@ function itemsRowsHtml(items: OrderItemSummary[]): string {
             ${item.quantity}
           </td>
           <td style="padding:8px 0;border-bottom:1px solid #e7e0d0;text-align:right;">
-            ${formatPrice(item.unitPrice * item.quantity)}
+            ${formatPrice(item.lineTotal ?? item.unitPrice * item.quantity)}
           </td>
         </tr>`,
     )

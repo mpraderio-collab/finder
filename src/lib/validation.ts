@@ -57,7 +57,37 @@ export const productSchema = z.object({
     .min(0, "El stock no puede ser negativo")
     .max(1_000_000),
   status: z.enum(["active", "archived"]),
-});
+  promoQuantity: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.coerce
+      .number({ message: "Ingresá un número entero" })
+      .int("Tiene que ser un número entero")
+      .min(2, "La promo necesita al menos 2 unidades")
+      .optional(),
+  ),
+  promoPrice: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.coerce
+      .number({ message: "El precio de la promo tiene que ser un número" })
+      .int("El precio no puede tener centavos")
+      .positive("El precio de la promo tiene que ser mayor a cero")
+      .optional(),
+  ),
+})
+  .refine((data) => Boolean(data.promoQuantity) === Boolean(data.promoPrice), {
+    message: "Completá la cantidad y el precio de la promo, o dejá los dos vacíos",
+    path: ["promoPrice"],
+  })
+  .refine(
+    (data) =>
+      !data.promoQuantity ||
+      !data.promoPrice ||
+      data.promoPrice < data.price * data.promoQuantity,
+    {
+      message: "El precio de la promo tiene que ser menor al precio normal multiplicado por la cantidad",
+      path: ["promoPrice"],
+    },
+  );
 
 export type ProductFormValues = z.infer<typeof productSchema>;
 

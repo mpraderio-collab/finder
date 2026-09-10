@@ -43,6 +43,8 @@ export default async function EditProductPage(
             stock: product.stock,
             status: product.status,
             features: product.features.map((f) => f.text).join("\n"),
+            promoQuantity: product.promoQuantity,
+            promoPrice: product.promoPrice,
           }}
         />
       </div>

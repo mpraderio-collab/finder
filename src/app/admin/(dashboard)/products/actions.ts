@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { featuresTextSchema, productSchema } from "@/lib/validation";
+import { featuresTextSchema, productSchema, type ProductFormValues } from "@/lib/validation";
 
 async function requireAdmin() {
   const session = await auth();
@@ -27,11 +27,25 @@ function parseForm(formData: FormData) {
     costPrice: formData.get("costPrice"),
     stock: formData.get("stock"),
     status: formData.get("status") ?? "active",
+    promoQuantity: formData.get("promoQuantity"),
+    promoPrice: formData.get("promoPrice"),
   });
 }
 
 function parseFeatures(formData: FormData) {
   return featuresTextSchema.parse(formData.get("features") ?? "");
+}
+
+// `undefined` en promoQuantity/promoPrice significa "sin promo" para el
+// form, pero para Prisma un update con `undefined` deja el valor anterior
+// sin tocar — hay que mandar `null` explícito para poder borrar una promo
+// ya cargada.
+function toProductData(data: ProductFormValues) {
+  return {
+    ...data,
+    promoQuantity: data.promoQuantity ?? null,
+    promoPrice: data.promoPrice ?? null,
+  };
 }
 
 function toFieldErrors(result: ReturnType<typeof parseForm>) {
@@ -61,7 +75,7 @@ export async function createProduct(
   try {
     const product = await db.product.create({
       data: {
-        ...result.data,
+        ...toProductData(result.data),
         features: {
           create: features.map((text, position) => ({ text, position })),
         },
@@ -99,7 +113,7 @@ export async function updateProduct(
     // hacer un diff — es una lista corta que se edita entera desde un
     // textarea, no una a la vez.
     await db.$transaction([
-      db.product.update({ where: { id }, data: result.data }),
+      db.product.update({ where: { id }, data: toProductData(result.data) }),
       db.productFeature.deleteMany({ where: { productId: id } }),
       db.productFeature.createMany({
         data: features.map((text, position) => ({ productId: id, text, position })),

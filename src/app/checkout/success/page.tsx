@@ -77,7 +77,7 @@ export default async function CheckoutSuccessPage(
                         {item.variantName ? ` (${item.variantName})` : ""}
                       </span>
                       <span className="font-heading font-bold text-ink">
-                        {formatPrice(item.unitPrice * item.quantity)}
+                        {formatPrice(item.lineTotal ?? item.unitPrice * item.quantity)}
                       </span>
                     </div>
                   );

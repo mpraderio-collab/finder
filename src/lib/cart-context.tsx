@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
+import { calculateLineTotal } from "@/lib/promotions";
 
 export type CartItem = {
   productId: string;
@@ -11,7 +12,19 @@ export type CartItem = {
   variantName?: string;
   quantity: number;
   maxStock: number;
+  promoQuantity?: number;
+  promoPrice?: number;
 };
+
+export function cartLineTotal(item: CartItem): number {
+  return calculateLineTotal(
+    item.price,
+    item.quantity,
+    item.promoQuantity && item.promoPrice
+      ? { promoQuantity: item.promoQuantity, promoPrice: item.promoPrice }
+      : null,
+  );
+}
 
 const STORAGE_KEY = "finder-cart-v1";
 const EMPTY_CART: CartItem[] = [];
@@ -134,7 +147,7 @@ export function useCart() {
     [items],
   );
   const subtotal = useMemo(
-    () => items.reduce((sum, i) => sum + i.quantity * i.price, 0),
+    () => items.reduce((sum, i) => sum + cartLineTotal(i), 0),
     [items],
   );
 

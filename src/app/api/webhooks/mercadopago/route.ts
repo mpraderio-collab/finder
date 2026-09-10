@@ -156,6 +156,7 @@ export async function POST(request: Request) {
           variantName: item.variantName,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
+          lineTotal: item.lineTotal,
         })),
       };
       await Promise.all([

@@ -7,6 +7,7 @@ import { addCartItem } from "@/lib/cart-context";
 import { trackEvent } from "@/lib/analytics";
 import { NotifyStockForm } from "@/components/NotifyStockForm";
 import { formatPrice } from "@/lib/products";
+import { calculateLineTotal, promoSavings, type Promo } from "@/lib/promotions";
 
 type GalleryImage = { id: string; url: string; type: string };
 
@@ -26,6 +27,7 @@ export function ProductPurchase({
   variants,
   images,
   installments,
+  promo,
   aboveActions,
   belowActions,
 }: {
@@ -37,6 +39,7 @@ export function ProductPurchase({
   variants: Variant[];
   images: GalleryImage[];
   installments: number;
+  promo: Promo | null;
   aboveActions?: React.ReactNode;
   belowActions?: React.ReactNode;
 }) {
@@ -202,6 +205,8 @@ export function ProductPurchase({
       image: cartImage,
       variantName: selectedVariant,
       maxStock,
+      promoQuantity: promo?.promoQuantity,
+      promoPrice: promo?.promoPrice,
     };
   }
 
@@ -293,6 +298,16 @@ export function ProductPurchase({
             </span>
           </div>
 
+          {promo && (
+            <p className="w-fit rounded-lg bg-amber-soft px-3 py-2 text-[13px] font-semibold text-amber-ink">
+              Llevando {promo.promoQuantity}, pagás {formatPrice(promo.promoPrice)}
+              {" "}
+              <span className="font-normal">
+                (ahorrás {formatPrice(promoSavings(price, promo))})
+              </span>
+            </p>
+          )}
+
           {variants.length > 0 && (
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-ink">
@@ -369,6 +384,12 @@ export function ProductPurchase({
               </span>
             )}
           </div>
+
+          {promo && quantity >= promo.promoQuantity && (
+            <p className="text-[13px] font-semibold text-navy">
+              Total: {formatPrice(calculateLineTotal(price, quantity, promo))}
+            </p>
+          )}
 
           <div className="flex flex-col gap-2 sm:flex-row">
             <button

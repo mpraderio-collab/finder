@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { cartItemKey, useCart } from "@/lib/cart-context";
+import { cartItemKey, cartLineTotal, useCart } from "@/lib/cart-context";
 import { formatPrice } from "@/lib/products";
 
 export default function CarritoPage() {
@@ -99,9 +99,14 @@ export default function CarritoPage() {
                             </button>
                           </div>
                           <span className="font-heading text-[17px] font-extrabold text-navy">
-                            {formatPrice(item.price * item.quantity)}
+                            {formatPrice(cartLineTotal(item))}
                           </span>
                         </div>
+                        {item.promoQuantity && item.promoPrice && item.quantity >= item.promoQuantity && (
+                          <p className="text-right text-[12px] font-semibold text-amber-ink">
+                            Promo {item.promoQuantity}x aplicada
+                          </p>
+                        )}
                       </div>
                       <button
                         type="button"

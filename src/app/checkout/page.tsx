@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer } from "@/components/Footer";
-import { useCart, cartItemKey } from "@/lib/cart-context";
+import { useCart, cartItemKey, cartLineTotal } from "@/lib/cart-context";
 import { trackEvent } from "@/lib/analytics";
 import { formatPrice } from "@/lib/products";
 import { shippingMethods, type ShippingMethod } from "@/lib/shipping";
@@ -295,7 +295,7 @@ export default function CheckoutPage() {
                     {item.variantName ? ` (${item.variantName})` : ""}
                   </span>
                   <span className="font-heading text-[13px] font-bold text-ink">
-                    {formatPrice(item.price * item.quantity)}
+                    {formatPrice(cartLineTotal(item))}
                   </span>
                 </div>
               ))}

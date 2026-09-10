@@ -112,7 +112,7 @@ export default async function OrderDetailPage(
                     <td className="px-4 py-3">{item.quantity}</td>
                     <td className="px-4 py-3">{formatPrice(item.unitPrice)}</td>
                     <td className="px-4 py-3 font-medium">
-                      {formatPrice(item.unitPrice * item.quantity)}
+                      {formatPrice(item.lineTotal ?? item.unitPrice * item.quantity)}
                     </td>
                   </tr>
                 ))}

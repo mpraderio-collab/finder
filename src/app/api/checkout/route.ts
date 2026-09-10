@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { checkoutSchema } from "@/lib/validation";
 import { createPreference, isMercadoPagoConfigured } from "@/lib/mercadopago";
 import { shippingMethods } from "@/lib/shipping";
+import { calculateLineTotal, normalizePromo } from "@/lib/promotions";
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
         productId: string;
         quantity: number;
         unitPrice: number;
+        lineTotal: number;
         variantName?: string;
       }[] = [];
 
@@ -73,11 +75,17 @@ export async function POST(request: Request) {
           }
         }
 
-        subtotal += product.price * line.quantity;
+        const lineTotal = calculateLineTotal(
+          product.price,
+          line.quantity,
+          normalizePromo(product),
+        );
+        subtotal += lineTotal;
         orderItemsData.push({
           productId: product.id,
           quantity: line.quantity,
           unitPrice: product.price,
+          lineTotal,
           variantName: line.variantName,
         });
       }
@@ -116,9 +124,12 @@ export async function POST(request: Request) {
       payerEmail: order.customerEmail,
       items: [
         ...order.items.map((item) => ({
-          title: `${item.product.name}${item.variantName ? ` (${item.variantName})` : ""}`,
-          quantity: item.quantity,
-          unit_price: item.unitPrice,
+          // quantity 1 con unit_price = total de la línea: evita tener que
+          // partir el precio promocional en un unit_price fraccionario
+          // cuando la cantidad no es múltiplo exacto de la promo.
+          title: `${item.product.name}${item.variantName ? ` (${item.variantName})` : ""} x${item.quantity}`,
+          quantity: 1,
+          unit_price: item.lineTotal ?? item.unitPrice * item.quantity,
           currency_id: "ARS" as const,
         })),
         ...(order.shippingCost > 0

@@ -50,6 +50,7 @@ export async function createManualSale(
         productId: string;
         quantity: number;
         unitPrice: number;
+        lineTotal: number;
         variantName?: string;
       }[] = [];
 
@@ -88,11 +89,13 @@ export async function createManualSale(
           }
         }
 
-        subtotal += line.unitPrice * line.quantity;
+        const lineTotal = line.unitPrice * line.quantity;
+        subtotal += lineTotal;
         orderItemsData.push({
           productId: product.id,
           quantity: line.quantity,
           unitPrice: line.unitPrice,
+          lineTotal,
           variantName: line.variantName,
         });
       }

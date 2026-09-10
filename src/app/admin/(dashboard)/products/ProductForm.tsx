@@ -18,6 +18,8 @@ type Props = {
     stock: number;
     status: string;
     features?: string;
+    promoQuantity?: number | null;
+    promoPrice?: number | null;
   };
   submitLabel: string;
 };
@@ -122,6 +124,39 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
           className="input max-w-[calc(50%-0.5rem)]"
         />
       </Field>
+
+      <div className="grid grid-cols-2 gap-4 rounded-xl border border-line bg-surface p-4">
+        <Field
+          label="Promo: cantidad"
+          name="promoQuantity"
+          error={state.fieldErrors?.promoQuantity}
+          hint="Ej: 2 — dejar vacío si no hay promo"
+        >
+          <input
+            name="promoQuantity"
+            type="number"
+            min={2}
+            step={1}
+            defaultValue={defaultValues?.promoQuantity ?? undefined}
+            className="input"
+          />
+        </Field>
+        <Field
+          label="Promo: precio total"
+          name="promoPrice"
+          error={state.fieldErrors?.promoPrice}
+          hint="Ej: 45000 — precio llevando esa cantidad"
+        >
+          <input
+            name="promoPrice"
+            type="number"
+            min={0}
+            step={1}
+            defaultValue={defaultValues?.promoPrice ?? undefined}
+            className="input"
+          />
+        </Field>
+      </div>
 
       <Field
         label="Características"
