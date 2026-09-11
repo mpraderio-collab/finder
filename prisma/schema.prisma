@@ -33,15 +33,11 @@ model Product {
   reviews  Review[]
   orderItems OrderItem[]
   stockNotifications StockNotification[]
-  purchases Purchase[]
+  purchaseItems PurchaseItem[]
 
   @@index([status])
 }
 
-// Una fila por compra a proveedor (normalmente importada desde un Excel).
-// Todos los campos en USD/pesos son los que ya trae la planilla del
-// proveedor — no se recalculan acá, se guardan tal cual para mantener el
-// mismo desglose que ve el usuario en su Excel.
 model Supplier {
   id        String   @id @default(cuid())
   name      String
@@ -55,20 +51,44 @@ model Supplier {
   @@index([name])
 }
 
+// Una compra a proveedor — puede tener varias líneas de producto (ver
+// PurchaseItem). El desglose de costos vive en cada línea porque la
+// cotización/impuestos/envío pueden variar por lote dentro de la misma
+// compra.
 model Purchase {
-  id          String    @id @default(cuid())
-  product     Product?  @relation(fields: [productId], references: [id])
-  productId   String?
-  // Nombre tal cual figura en la compra — se conserva aunque no haya
-  // producto vinculado (producto todavía no dado de alta en el catálogo).
-  productName String
-  supplier    Supplier? @relation(fields: [supplierId], references: [id])
-  supplierId  String?
+  id           String    @id @default(cuid())
+  supplier     Supplier? @relation(fields: [supplierId], references: [id])
+  supplierId   String?
   purchaseDate DateTime
 
-  quantity      Int
-  unitPriceUsd  Float // "P Unitario"
-  exchangeRate  Float // "Cotización" del dólar ese día
+  // draft (borrador/presupuesto) | confirmed (pedido al proveedor) |
+  // received (llegó — acá se suma el stock y se actualiza el costo de cada
+  // línea) | cancelled. Solo se puede editar libremente mientras es draft.
+  status String @default("draft")
+
+  createdAt DateTime @default(now())
+
+  items PurchaseItem[]
+
+  @@index([supplierId])
+  @@index([purchaseDate])
+  @@index([status])
+}
+
+// Una línea de producto dentro de una compra — una compra puede tener
+// varios productos (ver PurchaseForm), cada uno con su propio desglose de
+// costos porque la cotización/impuestos/envío pueden variar por lote.
+model PurchaseItem {
+  id          String    @id @default(cuid())
+  purchase    Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  purchaseId  String
+  product     Product?  @relation(fields: [productId], references: [id])
+  productId   String?
+  productName String
+
+  quantity     Int
+  unitPriceUsd Float // "P Unitario"
+  exchangeRate Float // "Cotización" del dólar ese día
 
   taxesPesos Float? // "Impuestos en Pesos" — total del lote
   taxesUsd   Float? // "Impuestos USD" — total del lote
@@ -83,16 +103,8 @@ model Purchase {
   unitCostPesos  Int  // "Costo en Pesos" — lo que se usa como costPrice del producto
   suggestedPrice Int? // "Precio de Venta" sugerido por la planilla
 
-  // Si esta compra ya estaba reflejada en el stock/costo del producto antes
-  // de cargarse acá (por ejemplo, una compra vieja cargada a mano), queda en
-  // true para no volver a sumarla si se reprocesa el Excel.
-  appliedToStock Boolean @default(false)
-
-  createdAt DateTime @default(now())
-
+  @@index([purchaseId])
   @@index([productId])
-  @@index([supplierId])
-  @@index([purchaseDate])
 }
 
 model ProductImage {

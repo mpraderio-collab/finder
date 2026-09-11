@@ -1,33 +1,51 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatPrice } from "@/lib/products";
 import { calcPurchaseCosts } from "@/lib/purchases";
-import { createPurchase, updatePurchase, type PurchaseActionState } from "./actions";
+import { purchaseStatusLabels } from "@/lib/purchase-status";
+import {
+  createPurchase,
+  updatePurchase,
+  confirmPurchase,
+  receivePurchase,
+  cancelPurchase,
+  deletePurchase,
+  type PurchaseActionState,
+} from "./actions";
 
 const NEW_PRODUCT = "__new__";
 
 type ProductOption = { id: string; name: string };
 
-type InitialValues = {
-  productId: string | null;
+type ItemLine = {
+  productId?: string;
   productName: string;
-  supplierName: string;
-  purchaseDate: string; // yyyy-mm-dd
   quantity: number;
   unitPriceUsd: number;
   exchangeRate: number;
-  taxesPesos: number | null;
-  shippingCostUsd: number | null;
-  suggestedPrice: number | null;
-  appliedToStock: boolean;
+  taxesPesos?: number;
+  shippingCostUsd?: number;
+  suggestedPrice?: number;
+};
+
+type InitialValues = {
+  supplierName: string;
+  purchaseDate: string; // yyyy-mm-dd
+  status: string;
+  items: ItemLine[];
 };
 
 const initialState: PurchaseActionState = {};
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function usd(value: number | undefined): string {
+  if (value === undefined) return "—";
+  return `US$ ${value.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function PurchaseForm({
@@ -44,31 +62,28 @@ export function PurchaseForm({
   const router = useRouter();
   const action = purchaseId ? updatePurchase.bind(null, purchaseId) : createPurchase;
   const [state, formAction, pending] = useActionState(action, initialState);
+  const [statusPending, startStatusTransition] = useTransition();
+  const [statusError, setStatusError] = useState<string | null>(null);
 
-  const [productChoice, setProductChoice] = useState(
-    initial ? (initial.productId ?? NEW_PRODUCT) : (products[0]?.id ?? NEW_PRODUCT),
-  );
-  const [productName, setProductName] = useState(
-    initial?.productName ?? products[0]?.name ?? "",
-  );
+  const status = initial?.status ?? "draft";
+  const readOnly = Boolean(initial) && status !== "draft";
+
   const [supplierName, setSupplierName] = useState(initial?.supplierName ?? "");
   const [purchaseDate, setPurchaseDate] = useState(initial?.purchaseDate ?? todayIso());
-  const [quantity, setQuantity] = useState(initial?.quantity ?? 1);
-  const [unitPriceUsd, setUnitPriceUsd] = useState(initial?.unitPriceUsd ?? 0);
-  const [exchangeRate, setExchangeRate] = useState(initial?.exchangeRate ?? 0);
-  const [taxesPesos, setTaxesPesos] = useState<number | "">(initial?.taxesPesos ?? "");
-  const [shippingCostUsd, setShippingCostUsd] = useState<number | "">(
-    initial?.shippingCostUsd ?? "",
-  );
-  const [suggestedPrice, setSuggestedPrice] = useState<number | "">(
-    initial?.suggestedPrice ?? "",
-  );
-  const [applyToStock, setApplyToStock] = useState(
-    initial ? initial.appliedToStock : true,
-  );
+  const [items, setItems] = useState<ItemLine[]>(initial?.items ?? []);
+
+  // Formulario de la línea que se está armando, todavía no agregada.
+  const [productChoice, setProductChoice] = useState(products[0]?.id ?? NEW_PRODUCT);
+  const [productName, setProductName] = useState(products[0]?.name ?? "");
+  const [quantity, setQuantity] = useState(1);
+  const [unitPriceUsd, setUnitPriceUsd] = useState(0);
+  const [exchangeRate, setExchangeRate] = useState(0);
+  const [taxesPesos, setTaxesPesos] = useState<number | "">("");
+  const [shippingCostUsd, setShippingCostUsd] = useState<number | "">("");
+  const [suggestedPrice, setSuggestedPrice] = useState<number | "">("");
+  const [addError, setAddError] = useState<string | null>(null);
 
   const isNewProduct = productChoice === NEW_PRODUCT;
-  const alreadyApplied = initial?.appliedToStock ?? false;
 
   function selectProduct(id: string) {
     setProductChoice(id);
@@ -80,7 +95,7 @@ export function PurchaseForm({
     }
   }
 
-  const costs = useMemo(
+  const draftCosts = useMemo(
     () =>
       calcPurchaseCosts({
         quantity: quantity || 0,
@@ -92,224 +107,405 @@ export function PurchaseForm({
     [quantity, unitPriceUsd, exchangeRate, taxesPesos, shippingCostUsd],
   );
 
+  function addItem() {
+    setAddError(null);
+    if (!productName.trim()) {
+      setAddError("Ingresá el nombre del producto.");
+      return;
+    }
+    if (quantity < 1) {
+      setAddError("La cantidad tiene que ser al menos 1.");
+      return;
+    }
+    if (unitPriceUsd <= 0 || exchangeRate <= 0) {
+      setAddError("Completá precio unitario y cotización.");
+      return;
+    }
+
+    setItems((prev) => [
+      ...prev,
+      {
+        productId: isNewProduct ? undefined : productChoice,
+        productName: productName.trim(),
+        quantity,
+        unitPriceUsd,
+        exchangeRate,
+        taxesPesos: taxesPesos === "" ? undefined : taxesPesos,
+        shippingCostUsd: shippingCostUsd === "" ? undefined : shippingCostUsd,
+        suggestedPrice: suggestedPrice === "" ? undefined : suggestedPrice,
+      },
+    ]);
+    // La cotización suele repetirse entre líneas de la misma compra —se deja
+    // cargada para la próxima; el resto se resetea.
+    setQuantity(1);
+    setUnitPriceUsd(0);
+    setTaxesPesos("");
+    setShippingCostUsd("");
+    setSuggestedPrice("");
+  }
+
+  function removeItem(index: number) {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  const totals = useMemo(() => {
+    return items.reduce(
+      (acc, item) => {
+        const costs = calcPurchaseCosts(item);
+        acc.totalUsdRaw += item.quantity * item.unitPriceUsd;
+        acc.totalPesos += costs.unitCostPesos * item.quantity;
+        acc.units += item.quantity;
+        return acc;
+      },
+      { totalUsdRaw: 0, totalPesos: 0, units: 0 },
+    );
+  }, [items]);
+
   useEffect(() => {
-    if (state.purchaseId) router.push("/admin/purchases");
-  }, [state.purchaseId, router]);
+    if (state.purchaseId && !purchaseId) router.push("/admin/purchases");
+  }, [state.purchaseId, purchaseId, router]);
+
+  function runStatusAction(fn: () => Promise<{ error?: string }>, redirectAfter?: string) {
+    setStatusError(null);
+    startStatusTransition(async () => {
+      const res = await fn();
+      if (res.error) {
+        setStatusError(res.error);
+        return;
+      }
+      router.refresh();
+      if (redirectAfter) router.push(redirectAfter);
+    });
+  }
 
   return (
-    <form
-      action={formAction}
-      className="flex max-w-3xl flex-col gap-6 rounded-xl border border-line bg-bg p-5"
-    >
-      <input type="hidden" name="productId" value={isNewProduct ? "" : productChoice} />
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-ink">Producto</span>
-          <select
-            value={productChoice}
-            onChange={(e) => selectProduct(e.target.value)}
-            className="input"
-          >
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-            <option value={NEW_PRODUCT}>— Producto nuevo (sin vincular) —</option>
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-ink">
-            Nombre del producto {isNewProduct ? "" : "(en la compra)"}
+    <div className="flex max-w-3xl flex-col gap-6">
+      {initial && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-ink-soft">Estado:</span>
+          <span className="rounded-md bg-surface px-2 py-0.5 text-xs font-semibold text-ink">
+            {purchaseStatusLabels[status] ?? status}
           </span>
-          <input
-            name="productName"
-            value={productName}
-            onChange={(e) => setProductName(e.target.value)}
-            placeholder="Ej: Luz iman pasillo"
-            className="input"
-            required
-          />
-        </label>
-
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-ink">Proveedor (opcional)</span>
-          <input
-            name="supplierName"
-            value={supplierName}
-            onChange={(e) => setSupplierName(e.target.value)}
-            placeholder="Ej: Woker Import"
-            list="purchase-suppliers"
-            autoComplete="off"
-            className="input"
-          />
-          <datalist id="purchase-suppliers">
-            {suppliers.map((s) => (
-              <option key={s.name} value={s.name} />
-            ))}
-          </datalist>
-        </label>
-
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-ink">Fecha de compra</span>
-          <input
-            type="date"
-            name="purchaseDate"
-            value={purchaseDate}
-            onChange={(e) => setPurchaseDate(e.target.value)}
-            className="input"
-            required
-          />
-        </label>
-
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-ink">Cantidad</span>
-          <input
-            type="number"
-            name="quantity"
-            min={1}
-            value={quantity}
-            onChange={(e) => setQuantity(Number(e.target.value))}
-            className="input"
-            required
-          />
-        </label>
-
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-ink">Precio unitario (USD)</span>
-          <input
-            type="number"
-            step="0.01"
-            name="unitPriceUsd"
-            min={0}
-            value={unitPriceUsd}
-            onChange={(e) => setUnitPriceUsd(Number(e.target.value))}
-            className="input"
-            required
-          />
-        </label>
-
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-ink">Cotización del dólar</span>
-          <input
-            type="number"
-            step="0.01"
-            name="exchangeRate"
-            min={0}
-            value={exchangeRate}
-            onChange={(e) => setExchangeRate(Number(e.target.value))}
-            className="input"
-            required
-          />
-        </label>
-
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-ink">
-            Impuestos del lote (pesos, opcional)
-          </span>
-          <input
-            type="number"
-            step="0.01"
-            name="taxesPesos"
-            min={0}
-            value={taxesPesos}
-            onChange={(e) => setTaxesPesos(e.target.value === "" ? "" : Number(e.target.value))}
-            className="input"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-ink">
-            Costo de envío del lote (USD, opcional)
-          </span>
-          <input
-            type="number"
-            step="0.01"
-            name="shippingCostUsd"
-            min={0}
-            value={shippingCostUsd}
-            onChange={(e) =>
-              setShippingCostUsd(e.target.value === "" ? "" : Number(e.target.value))
-            }
-            className="input"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-ink">
-            Precio de venta sugerido (opcional)
-          </span>
-          <input
-            type="number"
-            name="suggestedPrice"
-            min={0}
-            value={suggestedPrice}
-            onChange={(e) =>
-              setSuggestedPrice(e.target.value === "" ? "" : Number(e.target.value))
-            }
-            className="input"
-          />
-        </label>
-      </div>
-
-      <div className="rounded-lg bg-surface p-4 text-sm">
-        <p className="font-semibold text-ink">Cálculo automático</p>
-        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3">
-          <Calc label="Impuestos (USD)" value={costs.taxesUsd} usd />
-          <Calc label="Neto (USD)" value={costs.netUsd} usd />
-          <Calc label="Total (USD)" value={costs.totalUsd} usd />
-          <Calc label="Costo unit. (USD)" value={costs.unitCostUsd} usd />
-          <Calc label="Envío unit. (USD)" value={costs.unitShippingCostUsd} usd />
-          <Calc label="Costo neto unit. (USD)" value={costs.unitCostUsdFinal} usd />
         </div>
-        <div className="mt-3 border-t border-line pt-2">
-          <span className="text-xs text-ink-soft">Costo unitario en pesos</span>
-          <p className="font-heading text-xl font-extrabold text-navy">
-            {formatPrice(costs.unitCostPesos)}
-          </p>
-        </div>
-      </div>
-
-      {isNewProduct ? (
-        <p className="text-xs text-ink-faint">
-          Como no está vinculada a un producto todavía, esta compra queda
-          solo como registro histórico — no hay stock ni costo que
-          actualizar hasta que vincules un producto.
-        </p>
-      ) : alreadyApplied ? (
-        <p className="text-xs text-ink-faint">
-          Esta compra ya se aplicó al stock y costo del producto — editar
-          estos datos actualiza el registro pero no vuelve a tocar el stock.
-        </p>
-      ) : (
-        <label className="flex items-center gap-2 text-sm text-ink">
-          <input
-            type="checkbox"
-            name="applyToStock"
-            checked={applyToStock}
-            onChange={(e) => setApplyToStock(e.target.checked)}
-            className="h-4 w-4"
-          />
-          Sumar {quantity || 0} unidades al stock y actualizar el costo del
-          producto ahora
-        </label>
       )}
 
-      {state.error && (
-        <p className="rounded-lg bg-err-bg px-3 py-2 text-sm text-err-ink">{state.error}</p>
+      {!readOnly && (
+        <div className="rounded-xl border border-line bg-bg p-5">
+          <p className="text-sm font-semibold text-ink">Agregar producto</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Producto</span>
+              <select
+                value={productChoice}
+                onChange={(e) => selectProduct(e.target.value)}
+                className="input"
+              >
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+                <option value={NEW_PRODUCT}>— Producto nuevo (sin vincular) —</option>
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">
+                Nombre {isNewProduct ? "" : "(en la compra)"}
+              </span>
+              <input
+                value={productName}
+                onChange={(e) => setProductName(e.target.value)}
+                placeholder="Ej: Luz iman pasillo"
+                className="input"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Cantidad</span>
+              <input
+                type="number"
+                min={1}
+                value={quantity}
+                onChange={(e) => setQuantity(Number(e.target.value))}
+                className="input"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Precio unitario (USD)</span>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={unitPriceUsd}
+                onChange={(e) => setUnitPriceUsd(Number(e.target.value))}
+                className="input"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Cotización del dólar</span>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={exchangeRate}
+                onChange={(e) => setExchangeRate(Number(e.target.value))}
+                className="input"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Impuestos del lote (pesos)</span>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={taxesPesos}
+                onChange={(e) =>
+                  setTaxesPesos(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                className="input"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Costo de envío del lote (USD)</span>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={shippingCostUsd}
+                onChange={(e) =>
+                  setShippingCostUsd(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                className="input"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Precio de venta sugerido</span>
+              <input
+                type="number"
+                min={0}
+                value={suggestedPrice}
+                onChange={(e) =>
+                  setSuggestedPrice(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                className="input"
+              />
+            </label>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-ink-soft">
+            <span>Costo unitario en pesos: <strong className="text-ink">{formatPrice(draftCosts.unitCostPesos)}</strong></span>
+            <button
+              type="button"
+              onClick={addItem}
+              className="rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white"
+            >
+              + Agregar línea
+            </button>
+          </div>
+          {addError && <p className="mt-2 text-xs text-err-ink">{addError}</p>}
+        </div>
       )}
 
-      <div>
-        <button
-          type="submit"
-          disabled={pending}
-          className="w-fit rounded-lg bg-navy px-6 py-2.5 font-heading text-sm font-bold text-white disabled:opacity-40"
-        >
-          {pending ? "Guardando…" : purchaseId ? "Guardar cambios" : "Registrar compra"}
-        </button>
-      </div>
+      {items.length > 0 && (
+        <div className="overflow-x-auto rounded-xl border border-line bg-bg">
+          <table className="w-full min-w-[720px] text-left text-sm">
+            <thead className="border-b border-line text-ink-soft">
+              <tr>
+                <th className="px-4 py-2 font-medium">Producto</th>
+                <th className="px-4 py-2 font-medium">Cant.</th>
+                <th className="px-4 py-2 font-medium">P. unitario</th>
+                <th className="px-4 py-2 font-medium">Costo unit. (pesos)</th>
+                <th className="px-4 py-2 font-medium">Subtotal</th>
+                {!readOnly && <th className="px-4 py-2" />}
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item, i) => {
+                const costs = calcPurchaseCosts(item);
+                return (
+                  <tr key={i} className="border-b border-line last:border-0">
+                    <td className="px-4 py-2 text-ink">
+                      {item.productName}
+                      {!item.productId && (
+                        <span className="ml-1 text-xs text-ink-faint">(sin vincular)</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-ink-soft">{item.quantity}</td>
+                    <td className="px-4 py-2 text-ink-soft">{usd(item.unitPriceUsd)}</td>
+                    <td className="px-4 py-2 text-ink-soft">
+                      {formatPrice(costs.unitCostPesos)}
+                    </td>
+                    <td className="px-4 py-2 font-medium text-ink">
+                      {formatPrice(costs.unitCostPesos * item.quantity)}
+                    </td>
+                    {!readOnly && (
+                      <td className="px-4 py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => removeItem(i)}
+                          className="text-xs font-semibold text-err-ink hover:underline"
+                        >
+                          Quitar
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-3 text-sm">
+            <span className="text-ink-soft">{totals.units} unidades</span>
+            <span className="text-ink-soft">
+              Total (cant. × precio unitario):{" "}
+              <strong className="text-ink">{usd(totals.totalUsdRaw)}</strong>
+            </span>
+            <span className="font-heading font-bold text-navy">
+              Costo total: {formatPrice(totals.totalPesos)}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <form
+        action={formAction}
+        className="flex flex-col gap-4 rounded-xl border border-line bg-bg p-5"
+      >
+        <input type="hidden" name="items" value={JSON.stringify(items)} />
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-ink">Proveedor (opcional)</span>
+            <input
+              name="supplierName"
+              value={supplierName}
+              onChange={(e) => setSupplierName(e.target.value)}
+              placeholder="Ej: Woker Import"
+              list="purchase-suppliers"
+              autoComplete="off"
+              disabled={readOnly}
+              className="input"
+            />
+            <datalist id="purchase-suppliers">
+              {suppliers.map((s) => (
+                <option key={s.name} value={s.name} />
+              ))}
+            </datalist>
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-ink">Fecha de compra</span>
+            <input
+              type="date"
+              name="purchaseDate"
+              value={purchaseDate}
+              onChange={(e) => setPurchaseDate(e.target.value)}
+              disabled={readOnly}
+              className="input"
+              required
+            />
+          </label>
+        </div>
+
+        {state.error && (
+          <p className="rounded-lg bg-err-bg px-3 py-2 text-sm text-err-ink">{state.error}</p>
+        )}
+
+        {!readOnly && (
+          <div>
+            <button
+              type="submit"
+              disabled={pending || items.length === 0}
+              className="w-fit rounded-lg bg-navy px-6 py-2.5 font-heading text-sm font-bold text-white disabled:opacity-40"
+            >
+              {pending ? "Guardando…" : purchaseId ? "Guardar cambios" : "Registrar borrador"}
+            </button>
+          </div>
+        )}
+      </form>
+
+      {statusError && (
+        <p className="rounded-lg bg-err-bg px-3 py-2 text-sm text-err-ink">{statusError}</p>
+      )}
+
+      {purchaseId && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-bg p-5">
+          {status === "draft" && (
+            <>
+              <button
+                type="button"
+                disabled={statusPending}
+                onClick={() => runStatusAction(() => confirmPurchase(purchaseId))}
+                className="w-fit rounded-lg bg-navy px-5 py-2.5 font-heading text-sm font-bold text-white disabled:opacity-40"
+              >
+                {statusPending ? "Confirmando…" : "Confirmar pedido"}
+              </button>
+              <button
+                type="button"
+                disabled={statusPending}
+                onClick={() => {
+                  if (!confirm("¿Cancelar esta compra?")) return;
+                  runStatusAction(() => cancelPurchase(purchaseId));
+                }}
+                className="w-fit rounded-lg border border-border-btn bg-bg px-5 py-2.5 text-sm font-semibold text-ink-soft hover:bg-surface disabled:opacity-40"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={statusPending}
+                onClick={() => {
+                  if (!confirm("¿Borrar este borrador? Esta acción no se puede deshacer.")) return;
+                  runStatusAction(() => deletePurchase(purchaseId), "/admin/purchases");
+                }}
+                className="w-fit text-sm font-semibold text-err-ink hover:underline disabled:opacity-40"
+              >
+                Borrar borrador
+              </button>
+            </>
+          )}
+
+          {status === "confirmed" && (
+            <>
+              <button
+                type="button"
+                disabled={statusPending}
+                onClick={() => runStatusAction(() => receivePurchase(purchaseId))}
+                className="w-fit rounded-lg bg-ok-ink px-5 py-2.5 font-heading text-sm font-bold text-white disabled:opacity-40"
+              >
+                {statusPending ? "Recibiendo…" : "Marcar como recibido"}
+              </button>
+              <button
+                type="button"
+                disabled={statusPending}
+                onClick={() => {
+                  if (!confirm("¿Cancelar esta compra?")) return;
+                  runStatusAction(() => cancelPurchase(purchaseId));
+                }}
+                className="w-fit rounded-lg border border-border-btn bg-bg px-5 py-2.5 text-sm font-semibold text-ink-soft hover:bg-surface disabled:opacity-40"
+              >
+                Cancelar
+              </button>
+            </>
+          )}
+
+          {status === "received" && (
+            <p className="text-sm text-ink-soft">
+              Ya se recibió — el stock y el costo de los productos vinculados se actualizaron.
+            </p>
+          )}
+
+          {status === "cancelled" && (
+            <p className="text-sm text-ink-soft">Esta compra está cancelada.</p>
+          )}
+        </div>
+      )}
 
       <style jsx global>{`
         .input {
@@ -323,22 +519,10 @@ export function PurchaseForm({
         .input:focus {
           border-color: var(--color-amber);
         }
+        .input:disabled {
+          opacity: 0.6;
+        }
       `}</style>
-    </form>
-  );
-}
-
-function Calc({ label, value, usd }: { label: string; value: number | undefined; usd?: boolean }) {
-  return (
-    <div>
-      <span className="block text-xs text-ink-faint">{label}</span>
-      <span className="font-medium text-ink">
-        {value === undefined
-          ? "—"
-          : usd
-            ? `US$ ${value.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-            : value}
-      </span>
     </div>
   );
 }

@@ -13,49 +13,66 @@ async function requireAdmin() {
   if (!session?.user) redirect("/admin/login");
 }
 
-function toFieldErrors(result: ReturnType<typeof parsePurchaseForm>) {
-  if (result.success) return {};
-  const fieldErrors: Record<string, string> = {};
-  for (const issue of result.error.issues) {
-    const key = issue.path[0];
-    if (typeof key === "string" && !fieldErrors[key]) {
-      fieldErrors[key] = issue.message;
-    }
-  }
-  return fieldErrors;
-}
-
 export type PurchaseActionState = {
   error?: string;
-  fieldErrors?: Record<string, string>;
   purchaseId?: string;
 };
 
 function parsePurchaseForm(formData: FormData) {
-  const result = purchaseSchema.safeParse({
-    productId: formData.get("productId"),
-    productName: formData.get("productName"),
+  let itemsRaw: unknown;
+  try {
+    itemsRaw = JSON.parse(String(formData.get("items") ?? "[]"));
+  } catch {
+    return { success: false as const, error: "Los ítems de la compra no son válidos." };
+  }
+
+  const parsed = purchaseSchema.safeParse({
     supplierName: formData.get("supplierName"),
     purchaseDate: formData.get("purchaseDate"),
-    quantity: formData.get("quantity"),
-    unitPriceUsd: formData.get("unitPriceUsd"),
-    exchangeRate: formData.get("exchangeRate"),
-    taxesPesos: formData.get("taxesPesos"),
-    shippingCostUsd: formData.get("shippingCostUsd"),
-    suggestedPrice: formData.get("suggestedPrice"),
-    applyToStock: formData.get("applyToStock"),
+    items: itemsRaw,
   });
-  return result;
+  if (!parsed.success) {
+    return { success: false as const, error: parsed.error.issues[0]?.message ?? "Revisá los datos." };
+  }
+  return { success: true as const, data: parsed.data };
 }
 
-function revalidatePurchasePaths(productId?: string | null) {
+function revalidatePurchasePaths(productIds: (string | null | undefined)[] = []) {
   revalidatePath("/admin/purchases");
   revalidatePath("/admin/products");
-  if (productId) revalidatePath(`/admin/products/${productId}`);
+  for (const id of productIds) {
+    if (id) revalidatePath(`/admin/products/${id}`);
+  }
   revalidatePath("/catalogo");
   revalidatePath("/");
 }
 
+function buildItemsData(items: ReturnType<typeof purchaseSchema.parse>["items"]) {
+  return items.map((line) => {
+    const costs = calcPurchaseCosts(line);
+    return {
+      productId: line.productId || null,
+      productName: line.productName,
+      quantity: line.quantity,
+      unitPriceUsd: line.unitPriceUsd,
+      exchangeRate: line.exchangeRate,
+      taxesPesos: line.taxesPesos ?? null,
+      taxesUsd: costs.taxesUsd ?? null,
+      netUsd: costs.netUsd,
+      totalUsd: costs.totalUsd,
+      unitCostUsd: costs.unitCostUsd,
+      shippingCostUsd: line.shippingCostUsd ?? null,
+      unitShippingCostUsd: costs.unitShippingCostUsd ?? null,
+      unitCostUsdFinal: costs.unitCostUsdFinal,
+      unitCostPesos: costs.unitCostPesos,
+      suggestedPrice: line.suggestedPrice ?? null,
+    };
+  });
+}
+
+// Toda compra nace como borrador — se puede seguir editando (agregar,
+// sacar o cambiar líneas) hasta que se confirma. No toca stock ni costo de
+// ningún producto todavía.
 export async function createPurchase(
   _prev: PurchaseActionState,
   formData: FormData,
@@ -63,66 +80,30 @@ export async function createPurchase(
   await requireAdmin();
 
   const result = parsePurchaseForm(formData);
-  if (!result.success) {
-    return {
-      error: "Revisá los campos marcados.",
-      fieldErrors: toFieldErrors(result),
-    };
-  }
+  if (!result.success) return { error: result.error };
   const data = result.data;
-  const costs = calcPurchaseCosts(data);
 
   const purchase = await db.$transaction(async (tx) => {
     const supplierId = data.supplierName
       ? await upsertSupplierByName(tx, data.supplierName)
       : null;
 
-    const applyNow = data.applyToStock && Boolean(data.productId);
-
-    const created = await tx.purchase.create({
+    return tx.purchase.create({
       data: {
-        productId: data.productId ?? null,
-        productName: data.productName,
         supplierId,
         purchaseDate: data.purchaseDate,
-        quantity: data.quantity,
-        unitPriceUsd: data.unitPriceUsd,
-        exchangeRate: data.exchangeRate,
-        taxesPesos: data.taxesPesos ?? null,
-        taxesUsd: costs.taxesUsd ?? null,
-        netUsd: costs.netUsd,
-        totalUsd: costs.totalUsd,
-        unitCostUsd: costs.unitCostUsd,
-        shippingCostUsd: data.shippingCostUsd ?? null,
-        unitShippingCostUsd: costs.unitShippingCostUsd ?? null,
-        unitCostUsdFinal: costs.unitCostUsdFinal,
-        unitCostPesos: costs.unitCostPesos,
-        suggestedPrice: data.suggestedPrice ?? null,
-        appliedToStock: applyNow,
+        status: "draft",
+        items: { create: buildItemsData(data.items) },
       },
     });
-
-    if (applyNow && data.productId) {
-      await tx.product.update({
-        where: { id: data.productId },
-        data: {
-          stock: { increment: data.quantity },
-          costPrice: costs.unitCostPesos,
-        },
-      });
-    }
-
-    return created;
   });
 
-  revalidatePurchasePaths(data.productId);
+  revalidatePurchasePaths(data.items.map((i) => i.productId));
   return { purchaseId: purchase.id };
 }
 
-// Edita los datos de la compra. No vuelve a tocar stock/costo del producto
-// si ya se habían aplicado antes — para eso existe applyPurchaseNow, que se
-// usa cuando una compra se carga sin producto vinculado y después se quiere
-// aplicar (por ejemplo, al dar de alta el producto nuevo).
+// Reemplaza proveedor/fecha/líneas enteras de un borrador — solo mientras
+// sigue siendo borrador, no toca stock.
 export async function updatePurchase(
   purchaseId: string,
   _prev: PurchaseActionState,
@@ -132,72 +113,110 @@ export async function updatePurchase(
 
   const existing = await db.purchase.findUnique({ where: { id: purchaseId } });
   if (!existing) return { error: "Esta compra no existe." };
+  if (existing.status !== "draft") {
+    return { error: "Esta compra ya no es un borrador y no se puede editar." };
+  }
 
   const result = parsePurchaseForm(formData);
-  if (!result.success) {
-    return {
-      error: "Revisá los campos marcados.",
-      fieldErrors: toFieldErrors(result),
-    };
-  }
+  if (!result.success) return { error: result.error };
   const data = result.data;
-  const costs = calcPurchaseCosts(data);
 
   await db.$transaction(async (tx) => {
     const supplierId = data.supplierName
       ? await upsertSupplierByName(tx, data.supplierName)
       : null;
 
-    // Recién se puede aplicar acá si todavía no se había aplicado antes —
-    // evita sumar el stock dos veces.
-    const applyNow = !existing.appliedToStock && data.applyToStock && Boolean(data.productId);
-
     await tx.purchase.update({
       where: { id: purchaseId },
-      data: {
-        productId: data.productId ?? null,
-        productName: data.productName,
-        supplierId,
-        purchaseDate: data.purchaseDate,
-        quantity: data.quantity,
-        unitPriceUsd: data.unitPriceUsd,
-        exchangeRate: data.exchangeRate,
-        taxesPesos: data.taxesPesos ?? null,
-        taxesUsd: costs.taxesUsd ?? null,
-        netUsd: costs.netUsd,
-        totalUsd: costs.totalUsd,
-        unitCostUsd: costs.unitCostUsd,
-        shippingCostUsd: data.shippingCostUsd ?? null,
-        unitShippingCostUsd: costs.unitShippingCostUsd ?? null,
-        unitCostUsdFinal: costs.unitCostUsdFinal,
-        unitCostPesos: costs.unitCostPesos,
-        suggestedPrice: data.suggestedPrice ?? null,
-        ...(applyNow ? { appliedToStock: true } : {}),
-      },
+      data: { supplierId, purchaseDate: data.purchaseDate },
     });
-
-    if (applyNow && data.productId) {
-      await tx.product.update({
-        where: { id: data.productId },
-        data: {
-          stock: { increment: data.quantity },
-          costPrice: costs.unitCostPesos,
-        },
-      });
-    }
+    await tx.purchaseItem.deleteMany({ where: { purchaseId } });
+    await tx.purchaseItem.createMany({
+      data: buildItemsData(data.items).map((item) => ({ ...item, purchaseId })),
+    });
   });
 
-  revalidatePurchasePaths(data.productId ?? existing.productId);
+  revalidatePurchasePaths(data.items.map((i) => i.productId));
   return { purchaseId };
 }
 
+// draft -> confirmed: el pedido ya se hizo al proveedor, todavía no llegó.
+export async function confirmPurchase(purchaseId: string): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const purchase = await db.purchase.findUnique({ where: { id: purchaseId } });
+  if (!purchase) return { error: "Esta compra no existe." };
+  if (purchase.status !== "draft") return { error: "Esta compra ya no es un borrador." };
+
+  await db.purchase.update({ where: { id: purchaseId }, data: { status: "confirmed" } });
+  revalidatePurchasePaths();
+  return {};
+}
+
+// confirmed -> received: acá es cuando se suma stock y se actualiza el
+// costo de cada línea con producto vinculado — el único momento en que una
+// compra toca el catálogo.
+export async function receivePurchase(purchaseId: string): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const purchase = await db.purchase.findUnique({
+    where: { id: purchaseId },
+    include: { items: true },
+  });
+  if (!purchase) return { error: "Esta compra no existe." };
+  if (purchase.status !== "confirmed") {
+    return { error: "Solo se puede recibir una compra confirmada." };
+  }
+  const linkedItems = purchase.items.filter((i) => i.productId);
+  if (linkedItems.length === 0) {
+    return { error: "Vinculá al menos un producto antes de recibir esta compra." };
+  }
+
+  await db.$transaction([
+    db.purchase.update({ where: { id: purchaseId }, data: { status: "received" } }),
+    ...linkedItems.map((item) =>
+      db.product.update({
+        where: { id: item.productId! },
+        data: {
+          stock: { increment: item.quantity },
+          costPrice: item.unitCostPesos,
+        },
+      }),
+    ),
+  ]);
+
+  revalidatePurchasePaths(purchase.items.map((i) => i.productId));
+  return {};
+}
+
+// draft o confirmed -> cancelled. No toca stock (nunca se llegó a recibir).
+export async function cancelPurchase(purchaseId: string): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const purchase = await db.purchase.findUnique({ where: { id: purchaseId } });
+  if (!purchase) return { error: "Esta compra no existe." };
+  if (purchase.status !== "draft" && purchase.status !== "confirmed") {
+    return { error: "Esta compra ya está recibida o cancelada." };
+  }
+
+  await db.purchase.update({ where: { id: purchaseId }, data: { status: "cancelled" } });
+  revalidatePurchasePaths();
+  return {};
+}
+
+// Solo se puede borrar un borrador — una vez confirmada, la compra queda
+// como historial (se cancela, no se borra). Las líneas se borran en
+// cascada.
 export async function deletePurchase(purchaseId: string): Promise<{ error?: string }> {
   await requireAdmin();
 
   const purchase = await db.purchase.findUnique({ where: { id: purchaseId } });
   if (!purchase) return { error: "Esta compra no existe." };
+  if (purchase.status !== "draft") {
+    return { error: "Solo se pueden borrar borradores — cancelá esta compra en vez de borrarla." };
+  }
 
   await db.purchase.delete({ where: { id: purchaseId } });
-  revalidatePurchasePaths(purchase.productId);
+  revalidatePurchasePaths();
   return {};
 }

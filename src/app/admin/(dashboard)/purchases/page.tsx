@@ -1,27 +1,45 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/products";
-import { DeletePurchaseButton } from "./DeletePurchaseButton";
+import { purchaseStatusLabels, purchaseStatusColors } from "@/lib/purchase-status";
+import { PurchaseRow } from "./PurchaseRow";
 
-function formatUsd(value: number | null): string {
-  if (value === null) return "—";
+function usd(value: number): string {
   return `US$ ${value.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default async function AdminPurchasesPage() {
   const purchases = await db.purchase.findMany({
     orderBy: { purchaseDate: "desc" },
-    include: {
-      product: { select: { id: true, name: true } },
-      supplier: { select: { name: true } },
-    },
+    include: { supplier: { select: { name: true } }, items: true },
   });
 
-  const totalUnits = purchases.reduce((sum, p) => sum + p.quantity, 0);
-  const totalCostPesos = purchases.reduce(
-    (sum, p) => sum + p.unitCostPesos * p.quantity,
-    0,
-  );
+  const rows = purchases.map((p) => {
+    const units = p.items.reduce((sum, i) => sum + i.quantity, 0);
+    const costPesos = p.items.reduce((sum, i) => sum + i.unitCostPesos * i.quantity, 0);
+    const usdRaw = p.items.reduce((sum, i) => sum + i.quantity * i.unitPriceUsd, 0);
+    const productsLabel =
+      p.items.length === 1
+        ? p.items[0].productName
+        : `${p.items.length} productos`;
+    return {
+      id: p.id,
+      purchaseDate: p.purchaseDate,
+      supplierName: p.supplier?.name ?? null,
+      status: p.status,
+      productsLabel,
+      units,
+      costPesos,
+      usdRaw,
+    };
+  });
+
+  // Los borradores todavía pueden cambiar y los cancelados no pasaron —
+  // los totales reflejan compras reales (confirmadas o ya recibidas).
+  const committed = rows.filter((r) => r.status === "confirmed" || r.status === "received");
+  const totalUnits = committed.reduce((sum, r) => sum + r.units, 0);
+  const totalUsdRaw = committed.reduce((sum, r) => sum + r.usdRaw, 0);
+  const totalCostPesos = committed.reduce((sum, r) => sum + r.costPesos, 0);
 
   return (
     <div>
@@ -31,8 +49,8 @@ export default async function AdminPurchasesPage() {
             Compras
           </h1>
           <p className="mt-1 max-w-xl text-sm text-ink-soft">
-            Historial de compras a proveedor, con el mismo desglose de
-            costos (dólares, impuestos, envío) que la planilla de origen.
+            Borrador → confirmado → recibido (ahí se actualiza el stock), o
+            cancelado. Tocá una fila para editarla o gestionarla.
           </p>
         </div>
         <Link
@@ -43,15 +61,23 @@ export default async function AdminPurchasesPage() {
         </Link>
       </div>
 
-      {purchases.length === 0 ? (
+      {rows.length === 0 ? (
         <p className="mt-10 text-ink-soft">Todavía no hay compras cargadas.</p>
       ) : (
         <>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
             <div className="rounded-xl border border-line bg-bg p-[18px]">
               <p className="text-[13px] text-ink-soft">Unidades compradas</p>
               <p className="mt-1 font-heading text-2xl font-extrabold text-navy">
                 {totalUnits}
+              </p>
+            </div>
+            <div className="rounded-xl border border-line bg-bg p-[18px]">
+              <p className="text-[13px] text-ink-soft">
+                Total (cant. × precio unitario)
+              </p>
+              <p className="mt-1 font-heading text-2xl font-extrabold text-navy">
+                {usd(totalUsdRaw)}
               </p>
             </div>
             <div className="rounded-xl border border-line bg-bg p-[18px]">
@@ -61,98 +87,55 @@ export default async function AdminPurchasesPage() {
               </p>
             </div>
           </div>
+          <p className="mt-2 text-xs text-ink-faint">
+            Solo cuenta compras confirmadas o recibidas — los borradores y
+            cancelados no suman acá.
+          </p>
 
           <div className="mt-6 overflow-x-auto rounded-xl border border-line bg-bg">
-            <table className="w-full min-w-[1180px] text-left text-sm">
+            <table className="w-full min-w-[860px] text-left text-sm">
               <thead className="border-b border-line">
                 <tr>
                   <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
                     Fecha
                   </th>
                   <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                    Producto
+                    Productos
                   </th>
                   <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
                     Proveedor
                   </th>
                   <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                    Cant.
+                    Unidades
                   </th>
                   <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                    P. unitario
+                    Costo (pesos)
                   </th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                    Cotización
+                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                    Estado
                   </th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                    Costo unit. (USD)
-                  </th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                    Costo unit. (pesos)
-                  </th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                    Reflejado
-                  </th>
-                  <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody>
-                {purchases.map((p) => (
-                  <tr key={p.id} className="border-b border-line-soft last:border-0">
+                {rows.map((row) => (
+                  <PurchaseRow key={row.id} href={`/admin/purchases/${row.id}/edit`}>
                     <td className="px-4 py-3 text-ink-soft">
-                      {p.purchaseDate.toLocaleDateString("es-AR")}
+                      {row.purchaseDate.toLocaleDateString("es-AR")}
                     </td>
-                    <td className="px-4 py-3 font-medium text-ink">
-                      {p.product ? (
-                        <Link
-                          href={`/admin/products/${p.product.id}`}
-                          className="hover:text-blue"
-                        >
-                          {p.product.name}
-                        </Link>
-                      ) : (
-                        <span title="Todavía no está dado de alta en el catálogo">
-                          {p.productName} <span className="text-ink-faint">(sin vincular)</span>
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-ink-soft">{p.supplier?.name ?? "—"}</td>
-                    <td className="px-4 py-3 text-right text-ink-soft">{p.quantity}</td>
-                    <td className="px-4 py-3 text-right text-ink-soft">
-                      {formatUsd(p.unitPriceUsd)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-ink-soft">
-                      {p.exchangeRate.toLocaleString("es-AR")}
-                    </td>
-                    <td className="px-4 py-3 text-right text-ink-soft">
-                      {formatUsd(p.unitCostUsdFinal)}
-                    </td>
+                    <td className="px-4 py-3 font-medium text-ink">{row.productsLabel}</td>
+                    <td className="px-4 py-3 text-ink-soft">{row.supplierName ?? "—"}</td>
+                    <td className="px-4 py-3 text-right text-ink-soft">{row.units}</td>
                     <td className="px-4 py-3 text-right font-heading font-bold text-navy">
-                      {formatPrice(p.unitCostPesos)}
+                      {formatPrice(row.costPesos)}
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      {p.appliedToStock ? (
-                        <span className="rounded-md bg-ok-bg px-2 py-0.5 text-xs font-semibold text-ok-ink">
-                          Sí
-                        </span>
-                      ) : (
-                        <span className="rounded-md bg-amber-soft px-2 py-0.5 text-xs font-semibold text-amber-ink">
-                          No
-                        </span>
-                      )}
+                    <td className="px-4 py-3">
+                      <span
+                        className={`rounded-md px-2 py-0.5 text-xs font-semibold ${purchaseStatusColors[row.status]}`}
+                      >
+                        {purchaseStatusLabels[row.status] ?? row.status}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        <Link
-                          href={`/admin/purchases/${p.id}/edit`}
-                          className="text-xs font-semibold text-blue hover:text-navy"
-                        >
-                          Editar
-                        </Link>
-                        <DeletePurchaseButton id={p.id} appliedToStock={p.appliedToStock} />
-                      </div>
-                    </td>
-                  </tr>
+                  </PurchaseRow>
                 ))}
               </tbody>
             </table>
