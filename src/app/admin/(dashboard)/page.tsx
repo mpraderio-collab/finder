@@ -84,13 +84,14 @@ export default async function AdminDashboardPage(
     lowStock,
     recentOnlineOrders,
     recentManualSales,
-    pageViewCount,
     viewContentCount,
     addToCartCount,
     initiateCheckoutCount,
     purchaseCount,
     uniqueVisitors,
     recentPageViews,
+    topViewedProducts,
+    addToCartByProduct,
   ] = await Promise.all([
     db.order.count({ where: { status: "pending" } }),
     db.order.count({ where: { status: "cart" } }),
@@ -111,9 +112,6 @@ export default async function AdminDashboardPage(
       where: { channel: "manual" },
       orderBy: { createdAt: "desc" },
       take: 5,
-    }),
-    db.analyticsEvent.count({
-      where: { type: "page_view", ...(since && { createdAt: { gte: since } }) },
     }),
     db.analyticsEvent.count({
       where: { type: "view_content", ...(since && { createdAt: { gte: since } }) },
@@ -144,19 +142,50 @@ export default async function AdminDashboardPage(
       },
       select: { createdAt: true, sessionId: true },
     }),
+    db.analyticsEvent.groupBy({
+      by: ["productId", "productName"],
+      where: {
+        type: "view_content",
+        productId: { not: null },
+        ...(since && { createdAt: { gte: since } }),
+      },
+      _count: { _all: true },
+      orderBy: { _count: { productId: "desc" } },
+      take: 10,
+    }),
+    db.analyticsEvent.groupBy({
+      by: ["productId"],
+      where: {
+        type: "add_to_cart",
+        productId: { not: null },
+        ...(since && { createdAt: { gte: since } }),
+      },
+      _count: { _all: true },
+    }),
   ]);
+
+  const addToCartCountByProduct = new Map(
+    addToCartByProduct.map((row) => [row.productId, row._count._all]),
+  );
+  const productViewRanking = topViewedProducts.map((row) => ({
+    productId: row.productId!,
+    productName: row.productName ?? "(sin nombre)",
+    views: row._count._all,
+    addToCart: addToCartCountByProduct.get(row.productId) ?? 0,
+  }));
 
   const revenue = paidOrders.reduce((sum, o) => sum + o.total, 0);
   const buckets = weeklySales(paidOrders);
   const maxBucket = Math.max(...buckets.map((b) => b.total), 1);
 
   const conversionRate =
-    pageViewCount > 0 ? (purchaseCount / pageViewCount) * 100 : 0;
+    uniqueVisitors.length > 0
+      ? (purchaseCount / uniqueVisitors.length) * 100
+      : 0;
   const visitBuckets = dailyUniqueVisitors(recentPageViews);
   const maxVisitBucket = Math.max(...visitBuckets.map((b) => b.count), 1);
 
   const analyticsStats = [
-    { label: "Visitas totales", value: pageViewCount },
     { label: "Visitantes únicos", value: uniqueVisitors.length },
     { label: "Vistas de producto", value: viewContentCount },
     { label: "Agregados al carrito", value: addToCartCount },
@@ -356,6 +385,58 @@ export default async function AdminDashboardPage(
               </span>
             ))}
           </div>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-line bg-bg p-5">
+          <p className="font-heading text-[15px] font-bold text-navy">
+            Productos más vistos
+          </p>
+          {productViewRanking.length === 0 ? (
+            <p className="mt-3 text-sm text-ink-soft">
+              Todavía no hay vistas de producto en este período.
+            </p>
+          ) : (
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full min-w-[420px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-line">
+                    <th className="py-2 pr-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                      Producto
+                    </th>
+                    <th className="py-2 pr-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                      Vistas
+                    </th>
+                    <th className="py-2 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                      Agregados al carrito
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {productViewRanking.map((row) => (
+                    <tr
+                      key={row.productId}
+                      className="border-b border-line-soft last:border-0"
+                    >
+                      <td className="py-2.5 pr-3">
+                        <Link
+                          href={`/admin/products/${row.productId}`}
+                          className="font-medium text-ink hover:text-blue"
+                        >
+                          {row.productName}
+                        </Link>
+                      </td>
+                      <td className="py-2.5 pr-3 text-right font-heading font-bold text-navy">
+                        {row.views}
+                      </td>
+                      <td className="py-2.5 text-right text-ink-soft">
+                        {row.addToCart}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
