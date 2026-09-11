@@ -27,16 +27,65 @@ type Props = {
 
 const initialState: ProductActionState = {};
 const DEFAULT_SHIPPING_COST = 10500;
+// Valores reales observados en la cuenta de Mercado Pago del negocio — se
+// usan como default para no tener que recordarlos cada vez, pero se pueden
+// editar si cambian.
+const DEFAULT_MP_COMMISSION_PERCENT = 4.3;
+const DEFAULT_IIBB_PERCENT = 5;
 
-// % de margen sobre el costo, o "" si no se puede calcular (sin costo cargado).
-function marginPercentOf(cost: number | "", sellPrice: number | ""): number | "" {
-  if (cost === "" || cost <= 0 || sellPrice === "") return "";
-  return Math.round(((sellPrice - cost) / cost) * 1000) / 10;
+// La comisión de MP y el IIBB se cobran como % del precio de venta (no del
+// costo), así que el costo "real" contra el que se mide el margen depende
+// del precio: costoReal = base fija (costo + envío) + precio × %fees.
+function feeFraction(mpPercent: number | "", iibbPercent: number | ""): number {
+  return ((mpPercent === "" ? 0 : mpPercent) + (iibbPercent === "" ? 0 : iibbPercent)) / 100;
 }
 
-function marginAmountOf(cost: number | "", sellPrice: number | ""): number | "" {
-  if (cost === "" || sellPrice === "") return "";
-  return sellPrice - cost;
+// % de margen sobre el costo real (base fija + comisiones sobre el precio),
+// o "" si no se puede calcular.
+function marginPercentOf(
+  fixedBasis: number | "",
+  feeFrac: number,
+  sellPrice: number | "",
+): number | "" {
+  if (fixedBasis === "" || sellPrice === "") return "";
+  const realCost = fixedBasis + sellPrice * feeFrac;
+  if (realCost <= 0) return "";
+  return Math.round(((sellPrice - realCost) / realCost) * 1000) / 10;
+}
+
+function marginAmountOf(
+  fixedBasis: number | "",
+  feeFrac: number,
+  sellPrice: number | "",
+): number | "" {
+  if (fixedBasis === "" || sellPrice === "") return "";
+  return sellPrice - (fixedBasis + sellPrice * feeFrac);
+}
+
+// Despeja el precio necesario para lograr un $ de margen dado, sabiendo que
+// una parte del costo real (las comisiones) escala con el propio precio.
+function priceFromMarginAmount(
+  fixedBasis: number | "",
+  feeFrac: number,
+  marginAmount: number | "",
+): number | "" {
+  if (fixedBasis === "" || marginAmount === "") return "";
+  const denom = 1 - feeFrac;
+  if (denom <= 0) return "";
+  return Math.round((marginAmount + fixedBasis) / denom);
+}
+
+// Ídem para un % de margen dado.
+function priceFromMarginPercent(
+  fixedBasis: number | "",
+  feeFrac: number,
+  marginPercent: number | "",
+): number | "" {
+  if (fixedBasis === "" || marginPercent === "") return "";
+  const m = marginPercent / 100;
+  const denom = 1 - feeFrac * (1 + m);
+  if (denom <= 0) return "";
+  return Math.round((fixedBasis * (1 + m)) / denom);
 }
 
 export function ProductForm({ action, defaultValues, submitLabel }: Props) {
@@ -44,124 +93,168 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
 
   const [cost, setCost] = useState<number | "">(defaultValues?.costPrice ?? "");
   const [price, setPrice] = useState<number | "">(defaultValues?.price ?? "");
-  // Costo de envío — solo se usa acá para calcular el margen real, no es un
-  // dato del producto y no se guarda (siempre arranca en el default).
+  // Costo de envío y comisiones — solo se usan acá para calcular el margen
+  // real, no son datos del producto y no se guardan (siempre arrancan en
+  // el default).
   const [shippingCost, setShippingCost] = useState<number | "">(DEFAULT_SHIPPING_COST);
+  const [mpCommissionPercent, setMpCommissionPercent] = useState<number | "">(
+    DEFAULT_MP_COMMISSION_PERCENT,
+  );
+  const [iibbPercent, setIibbPercent] = useState<number | "">(DEFAULT_IIBB_PERCENT);
+  const fees = feeFraction(mpCommissionPercent, iibbPercent);
 
-  // Costo + envío: la base real contra la que se mide el margen de una
-  // unidad sola.
-  function unitCostBasis(c: number | "", s: number | ""): number | "" {
+  // Costo + envío: la parte fija del costo real de una unidad sola (las
+  // comisiones son la parte variable, se calculan sobre el precio).
+  function unitFixedBasis(c: number | "", s: number | ""): number | "" {
     if (c === "") return "";
     return c + (s === "" ? 0 : s);
   }
 
   // El envío es un costo fijo del envío completo, no por unidad — se suma
   // una sola vez sin importar si la promo es de 2 o de 5.
-  function promoCostBasis(c: number | "", s: number | "", q: number | ""): number | "" {
+  function promoFixedBasis(c: number | "", s: number | "", q: number | ""): number | "" {
     if (c === "" || q === "") return "";
     return c * q + (s === "" ? 0 : s);
   }
 
   const [marginPercent, setMarginPercent] = useState<number | "">(() =>
-    marginPercentOf(unitCostBasis(defaultValues?.costPrice ?? "", DEFAULT_SHIPPING_COST), defaultValues?.price ?? ""),
+    marginPercentOf(
+      unitFixedBasis(defaultValues?.costPrice ?? "", DEFAULT_SHIPPING_COST),
+      feeFraction(DEFAULT_MP_COMMISSION_PERCENT, DEFAULT_IIBB_PERCENT),
+      defaultValues?.price ?? "",
+    ),
   );
   const [marginAmount, setMarginAmount] = useState<number | "">(() =>
-    marginAmountOf(unitCostBasis(defaultValues?.costPrice ?? "", DEFAULT_SHIPPING_COST), defaultValues?.price ?? ""),
+    marginAmountOf(
+      unitFixedBasis(defaultValues?.costPrice ?? "", DEFAULT_SHIPPING_COST),
+      feeFraction(DEFAULT_MP_COMMISSION_PERCENT, DEFAULT_IIBB_PERCENT),
+      defaultValues?.price ?? "",
+    ),
   );
 
   const [promoQuantity, setPromoQuantity] = useState<number | "">(
     defaultValues?.promoQuantity ?? "",
   );
   const [promoPrice, setPromoPrice] = useState<number | "">(defaultValues?.promoPrice ?? "");
-  const totalCost = (q: number | "") => promoCostBasis(cost, shippingCost, q);
+  const promoBasis = (q: number | "") => promoFixedBasis(cost, shippingCost, q);
   const [promoMarginPercent, setPromoMarginPercent] = useState<number | "">(() => {
-    const tc = promoCostBasis(defaultValues?.costPrice ?? "", DEFAULT_SHIPPING_COST, defaultValues?.promoQuantity ?? "");
-    return marginPercentOf(tc, defaultValues?.promoPrice ?? "");
+    const pb = promoFixedBasis(
+      defaultValues?.costPrice ?? "",
+      DEFAULT_SHIPPING_COST,
+      defaultValues?.promoQuantity ?? "",
+    );
+    return marginPercentOf(
+      pb,
+      feeFraction(DEFAULT_MP_COMMISSION_PERCENT, DEFAULT_IIBB_PERCENT),
+      defaultValues?.promoPrice ?? "",
+    );
   });
   const [promoMarginAmount, setPromoMarginAmount] = useState<number | "">(() => {
-    const tc = promoCostBasis(defaultValues?.costPrice ?? "", DEFAULT_SHIPPING_COST, defaultValues?.promoQuantity ?? "");
-    return marginAmountOf(tc, defaultValues?.promoPrice ?? "");
+    const pb = promoFixedBasis(
+      defaultValues?.costPrice ?? "",
+      DEFAULT_SHIPPING_COST,
+      defaultValues?.promoQuantity ?? "",
+    );
+    return marginAmountOf(
+      pb,
+      feeFraction(DEFAULT_MP_COMMISSION_PERCENT, DEFAULT_IIBB_PERCENT),
+      defaultValues?.promoPrice ?? "",
+    );
   });
+
+  // Recalcula el margen mostrado (unidad y promo) para la base fija y las
+  // comisiones actuales, sin tocar los precios ya cargados.
+  function recalcMargins(unitBasis: number | "", promoBasisValue: number | "", ff: number) {
+    setMarginPercent(marginPercentOf(unitBasis, ff, price));
+    setMarginAmount(marginAmountOf(unitBasis, ff, price));
+    setPromoMarginPercent(marginPercentOf(promoBasisValue, ff, promoPrice));
+    setPromoMarginAmount(marginAmountOf(promoBasisValue, ff, promoPrice));
+  }
 
   // Cambiar el costo no mueve el precio ya cargado — solo actualiza cuánto
   // margen queda con ese precio, tanto para la unidad como para la promo.
   function handleCostChange(value: number | "") {
     setCost(value);
-    setMarginPercent(marginPercentOf(unitCostBasis(value, shippingCost), price));
-    setMarginAmount(marginAmountOf(unitCostBasis(value, shippingCost), price));
-    const newTotalCost = promoCostBasis(value, shippingCost, promoQuantity);
-    setPromoMarginPercent(marginPercentOf(newTotalCost, promoPrice));
-    setPromoMarginAmount(marginAmountOf(newTotalCost, promoPrice));
+    recalcMargins(unitFixedBasis(value, shippingCost), promoFixedBasis(value, shippingCost, promoQuantity), fees);
   }
 
-  // Igual que el costo: cambiar el envío solo recalcula el margen mostrado,
-  // no mueve el precio ya cargado.
+  // Igual que el costo: cambiar el envío o las comisiones solo recalcula el
+  // margen mostrado, no mueve los precios ya cargados.
   function handleShippingCostChange(value: number | "") {
     setShippingCost(value);
-    setMarginPercent(marginPercentOf(unitCostBasis(cost, value), price));
-    setMarginAmount(marginAmountOf(unitCostBasis(cost, value), price));
-    const newTotalCost = promoCostBasis(cost, value, promoQuantity);
-    setPromoMarginPercent(marginPercentOf(newTotalCost, promoPrice));
-    setPromoMarginAmount(marginAmountOf(newTotalCost, promoPrice));
+    recalcMargins(unitFixedBasis(cost, value), promoFixedBasis(cost, value, promoQuantity), fees);
+  }
+
+  function handleMpCommissionChange(value: number | "") {
+    setMpCommissionPercent(value);
+    const ff = feeFraction(value, iibbPercent);
+    recalcMargins(unitFixedBasis(cost, shippingCost), promoBasis(promoQuantity), ff);
+  }
+
+  function handleIibbChange(value: number | "") {
+    setIibbPercent(value);
+    const ff = feeFraction(mpCommissionPercent, value);
+    recalcMargins(unitFixedBasis(cost, shippingCost), promoBasis(promoQuantity), ff);
   }
 
   function handlePriceChange(value: number | "") {
     setPrice(value);
-    const basis = unitCostBasis(cost, shippingCost);
-    setMarginPercent(marginPercentOf(basis, value));
-    setMarginAmount(marginAmountOf(basis, value));
+    const basis = unitFixedBasis(cost, shippingCost);
+    setMarginPercent(marginPercentOf(basis, fees, value));
+    setMarginAmount(marginAmountOf(basis, fees, value));
   }
 
   function handleMarginPercentChange(value: number | "") {
     setMarginPercent(value);
-    const basis = unitCostBasis(cost, shippingCost);
-    if (basis === "" || basis <= 0 || value === "") return;
-    const newPrice = Math.round(basis * (1 + value / 100));
+    const basis = unitFixedBasis(cost, shippingCost);
+    const newPrice = priceFromMarginPercent(basis, fees, value);
+    if (newPrice === "") return;
     setPrice(newPrice);
-    setMarginAmount(newPrice - basis);
+    setMarginAmount(marginAmountOf(basis, fees, newPrice));
   }
 
   function handleMarginAmountChange(value: number | "") {
     setMarginAmount(value);
-    const basis = unitCostBasis(cost, shippingCost);
-    if (basis === "" || value === "") return;
-    const newPrice = basis + value;
+    const basis = unitFixedBasis(cost, shippingCost);
+    const newPrice = priceFromMarginAmount(basis, fees, value);
+    if (newPrice === "") return;
     setPrice(newPrice);
-    setMarginPercent(basis > 0 ? Math.round((value / basis) * 1000) / 10 : "");
+    setMarginPercent(marginPercentOf(basis, fees, newPrice));
   }
 
   function handlePromoQuantityChange(value: number | "") {
     setPromoQuantity(value);
-    const newTotalCost = promoCostBasis(cost, shippingCost, value);
-    setPromoMarginPercent(marginPercentOf(newTotalCost, promoPrice));
-    setPromoMarginAmount(marginAmountOf(newTotalCost, promoPrice));
+    const pb = promoFixedBasis(cost, shippingCost, value);
+    setPromoMarginPercent(marginPercentOf(pb, fees, promoPrice));
+    setPromoMarginAmount(marginAmountOf(pb, fees, promoPrice));
   }
 
   function handlePromoPriceChange(value: number | "") {
     setPromoPrice(value);
-    setPromoMarginPercent(marginPercentOf(totalCost(promoQuantity), value));
-    setPromoMarginAmount(marginAmountOf(totalCost(promoQuantity), value));
+    const pb = promoBasis(promoQuantity);
+    setPromoMarginPercent(marginPercentOf(pb, fees, value));
+    setPromoMarginAmount(marginAmountOf(pb, fees, value));
   }
 
   function handlePromoMarginPercentChange(value: number | "") {
     setPromoMarginPercent(value);
-    const tc = totalCost(promoQuantity);
-    if (tc === "" || tc <= 0 || value === "") return;
-    const newPromoPrice = Math.round(tc * (1 + value / 100));
+    const pb = promoBasis(promoQuantity);
+    const newPromoPrice = priceFromMarginPercent(pb, fees, value);
+    if (newPromoPrice === "") return;
     setPromoPrice(newPromoPrice);
-    setPromoMarginAmount(newPromoPrice - tc);
+    setPromoMarginAmount(marginAmountOf(pb, fees, newPromoPrice));
   }
 
   function handlePromoMarginAmountChange(value: number | "") {
     setPromoMarginAmount(value);
-    const tc = totalCost(promoQuantity);
-    if (tc === "" || value === "") return;
-    const newPromoPrice = tc + value;
+    const pb = promoBasis(promoQuantity);
+    const newPromoPrice = priceFromMarginAmount(pb, fees, value);
+    if (newPromoPrice === "") return;
     setPromoPrice(newPromoPrice);
-    setPromoMarginPercent(tc > 0 ? Math.round((value / tc) * 1000) / 10 : "");
+    setPromoMarginPercent(marginPercentOf(pb, fees, newPromoPrice));
   }
 
-  const promoTotalCost = totalCost(promoQuantity);
+  const promoTotalCost = promoBasis(promoQuantity);
 
   return (
     <form action={formAction} className="flex max-w-2xl flex-col gap-5">
@@ -227,7 +320,7 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
         >
           <MoneyInput name="costPrice" value={cost} onChange={handleCostChange} className="input" />
         </Field>
-        <Field label="% de margen" name="marginPercent" hint="Sobre costo + envío" labelClassName="min-h-10">
+        <Field label="% de margen" name="marginPercent" hint="Sobre costo + envío + comisiones" labelClassName="min-h-10">
           <input
             type="number"
             step="any"
@@ -239,7 +332,7 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
             className="input disabled:opacity-50"
           />
         </Field>
-        <Field label="$ de margen" name="marginAmount" hint="Precio − costo − envío" labelClassName="min-h-10">
+        <Field label="$ de margen" name="marginAmount" hint="Precio − costo − envío − comisiones" labelClassName="min-h-10">
           <MoneyInput
             value={marginAmount}
             onChange={handleMarginAmountChange}
@@ -254,6 +347,36 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
           labelClassName="min-h-10"
         >
           <MoneyInput value={shippingCost} onChange={handleShippingCostChange} className="input" />
+        </Field>
+        <Field
+          label="% comisión Mercado Pago"
+          name="mpCommissionPercent"
+          hint="Se suma al costo, sobre el precio"
+          labelClassName="min-h-10"
+        >
+          <input
+            type="number"
+            step="any"
+            value={mpCommissionPercent}
+            onChange={(e) =>
+              handleMpCommissionChange(e.target.value === "" ? "" : Number(e.target.value))
+            }
+            className="input"
+          />
+        </Field>
+        <Field
+          label="% IIBB"
+          name="iibbPercent"
+          hint="Se suma al costo, sobre el precio"
+          labelClassName="min-h-10"
+        >
+          <input
+            type="number"
+            step="any"
+            value={iibbPercent}
+            onChange={(e) => handleIibbChange(e.target.value === "" ? "" : Number(e.target.value))}
+            className="input"
+          />
         </Field>
         <Field
           label="Precio de venta (ARS)"
@@ -294,7 +417,7 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
         <Field
           label="% de margen"
           name="promoMarginPercent"
-          hint="Sobre costo + envío total"
+          hint="Sobre costo + envío + comisiones"
           labelClassName="min-h-10"
         >
           <input
@@ -311,7 +434,7 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
         <Field
           label="$ de margen"
           name="promoMarginAmount"
-          hint="Precio − costo − envío total"
+          hint="Precio − costo − envío − comisiones"
           labelClassName="min-h-10"
         >
           <MoneyInput
@@ -328,6 +451,36 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
           labelClassName="min-h-10"
         >
           <MoneyInput value={shippingCost} onChange={handleShippingCostChange} className="input" />
+        </Field>
+        <Field
+          label="% comisión Mercado Pago"
+          name="promoMpCommissionPercent"
+          hint="Se suma al costo, sobre el precio"
+          labelClassName="min-h-10"
+        >
+          <input
+            type="number"
+            step="any"
+            value={mpCommissionPercent}
+            onChange={(e) =>
+              handleMpCommissionChange(e.target.value === "" ? "" : Number(e.target.value))
+            }
+            className="input"
+          />
+        </Field>
+        <Field
+          label="% IIBB"
+          name="promoIibbPercent"
+          hint="Se suma al costo, sobre el precio"
+          labelClassName="min-h-10"
+        >
+          <input
+            type="number"
+            step="any"
+            value={iibbPercent}
+            onChange={(e) => handleIibbChange(e.target.value === "" ? "" : Number(e.target.value))}
+            className="input"
+          />
         </Field>
         <Field
           label="Promo: precio total"
