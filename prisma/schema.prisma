@@ -33,8 +33,50 @@ model Product {
   reviews  Review[]
   orderItems OrderItem[]
   stockNotifications StockNotification[]
+  purchases Purchase[]
 
   @@index([status])
+}
+
+// Una fila por compra a proveedor (normalmente importada desde un Excel).
+// Todos los campos en USD/pesos son los que ya trae la planilla del
+// proveedor — no se recalculan acá, se guardan tal cual para mantener el
+// mismo desglose que ve el usuario en su Excel.
+model Purchase {
+  id          String    @id @default(cuid())
+  product     Product?  @relation(fields: [productId], references: [id])
+  productId   String?
+  // Nombre tal cual figura en la compra — se conserva aunque no haya
+  // producto vinculado (producto todavía no dado de alta en el catálogo).
+  productName String
+  purchaseDate DateTime
+
+  quantity      Int
+  unitPriceUsd  Float // "P Unitario"
+  exchangeRate  Float // "Cotización" del dólar ese día
+
+  taxesPesos Float? // "Impuestos en Pesos" — total del lote
+  taxesUsd   Float? // "Impuestos USD" — total del lote
+  netUsd     Float? // "Neto" = P Unitario × Cantidad
+  totalUsd   Float? // "Total" = Impuestos USD + Neto
+
+  unitCostUsd         Float? // "Costo Unitario" (USD, sin envío)
+  shippingCostUsd      Float? // "Costo Envío" — total del lote
+  unitShippingCostUsd Float? // "Costo Unitario Envío"
+  unitCostUsdFinal    Float? // "Costo Neto Unitario" (USD, con envío)
+
+  unitCostPesos  Int  // "Costo en Pesos" — lo que se usa como costPrice del producto
+  suggestedPrice Int? // "Precio de Venta" sugerido por la planilla
+
+  // Si esta compra ya estaba reflejada en el stock/costo del producto antes
+  // de cargarse acá (por ejemplo, una compra vieja cargada a mano), queda en
+  // true para no volver a sumarla si se reprocesa el Excel.
+  appliedToStock Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([purchaseDate])
 }
 
 model ProductImage {
