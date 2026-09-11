@@ -8,6 +8,7 @@ import { PurchasePixel } from "@/components/PurchasePixel";
 import { db } from "@/lib/db";
 import { formatPrice, getHeroImageUrl } from "@/lib/products";
 import { getWhatsAppUrl } from "@/lib/whatsapp";
+import { applyPaymentToOrder } from "@/lib/order-fulfillment";
 
 export default async function CheckoutSuccessPage(
   props: PageProps<"/checkout/success">,
@@ -15,12 +16,32 @@ export default async function CheckoutSuccessPage(
   const searchParams = await props.searchParams;
   const orderId =
     typeof searchParams?.order === "string" ? searchParams.order : undefined;
-  const order = orderId
+  const paymentId =
+    typeof searchParams?.payment_id === "string" ? searchParams.payment_id : undefined;
+
+  let order = orderId
     ? await db.order.findUnique({
         where: { id: orderId },
         include: { items: { include: { product: { include: { images: true } } } } },
       })
     : null;
+
+  // Red de contención: Mercado Pago ya redirigió acá porque el pago se
+  // aprobó, pero el webhook que debería confirmarlo puede tardar, fallar o
+  // no llegar nunca — ya pasó. Si el pedido todavía figura sin pagar y MP
+  // nos dio el payment_id en la propia redirección, se reconcilia acá
+  // mismo antes de mostrar la página (misma lógica que usa el webhook).
+  if (order && order.status !== "paid" && paymentId) {
+    try {
+      await applyPaymentToOrder(paymentId);
+      order = await db.order.findUnique({
+        where: { id: orderId! },
+        include: { items: { include: { product: { include: { images: true } } } } },
+      });
+    } catch (err) {
+      console.error("Error reconciliando pago en success page:", err);
+    }
+  }
 
   return (
     <>

@@ -1,11 +1,6 @@
 import { NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { db } from "@/lib/db";
-import { getPayment } from "@/lib/mercadopago";
-import {
-  sendOrderConfirmationToCustomer,
-  sendOrderNotificationToAdmin,
-} from "@/lib/email";
+import { applyPaymentToOrder } from "@/lib/order-fulfillment";
 
 // Ver referencia de firma de webhooks de Mercado Pago:
 // x-signature: "ts=...,v1=..."  x-request-id: "..."
@@ -37,21 +32,6 @@ function isValidSignature(request: Request, dataId: string): boolean {
   }
 }
 
-function mapStatus(mpStatus: string): string {
-  switch (mpStatus) {
-    case "approved":
-      return "paid";
-    case "rejected":
-      return "failed";
-    case "cancelled":
-    case "refunded":
-    case "charged_back":
-      return "cancelled";
-    default:
-      return "pending"; // in_process, pending, authorized, ...
-  }
-}
-
 export async function POST(request: Request) {
   const url = new URL(request.url);
   let dataId =
@@ -78,101 +58,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const payment = await getPayment(dataId);
-    const orderId = payment.external_reference;
-    if (!orderId) return NextResponse.json({ received: true });
-
-    const order = await db.order.findUnique({ where: { id: orderId } });
-    if (!order) return NextResponse.json({ received: true });
-
-    // Notificación duplicada para el mismo pago: no reprocesar.
-    if (order.mpPaymentId === String(payment.id) && order.status !== "pending") {
-      return NextResponse.json({ received: true });
-    }
-
-    const nextStatus = mapStatus(payment.status);
-
-    if (
-      (nextStatus === "cancelled" || nextStatus === "failed") &&
-      order.status !== "cancelled" &&
-      order.status !== "failed"
-    ) {
-      const items = await db.orderItem.findMany({ where: { orderId } });
-      await db.$transaction([
-        ...items.map((item) =>
-          item.variantName
-            ? db.productVariant.updateMany({
-                where: { productId: item.productId, name: item.variantName },
-                data: { stock: { increment: item.quantity } },
-              })
-            : db.product.update({
-                where: { id: item.productId },
-                data: { stock: { increment: item.quantity } },
-              }),
-        ),
-        db.order.update({
-          where: { id: orderId },
-          data: {
-            status: nextStatus,
-            mpPaymentId: String(payment.id),
-            mpStatusDetail: payment.status_detail,
-          },
-        }),
-      ]);
-    } else {
-      await db.order.update({
-        where: { id: orderId },
-        data: {
-          status: nextStatus,
-          mpPaymentId: String(payment.id),
-          mpStatusDetail: payment.status_detail,
-        },
-      });
-    }
-
-    // Notificar por mail y registrar la compra solo en la transición a
-    // pagado, nunca en reintentos del mismo webhook (evita duplicados).
-    if (nextStatus === "paid" && order.status !== "paid") {
-      await db.analyticsEvent
-        .create({ data: { type: "purchase", value: order.total } })
-        .catch((err) => console.error("Error guardando evento de compra:", err));
-
-      const items = await db.orderItem.findMany({
-        where: { orderId },
-        include: { product: { select: { name: true } } },
-      });
-      const emailData = {
-        id: order.id,
-        customerName: order.customerName,
-        customerEmail: order.customerEmail,
-        customerPhone: order.customerPhone,
-        shippingAddress: order.shippingAddress,
-        shippingCity: order.shippingCity,
-        shippingProvince: order.shippingProvince,
-        shippingZip: order.shippingZip,
-        total: order.total,
-        items: items.map((item) => ({
-          productName: item.product.name,
-          variantName: item.variantName,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          lineTotal: item.lineTotal,
-        })),
-      };
-      await Promise.all([
-        sendOrderNotificationToAdmin(emailData).catch((err) =>
-          console.error("Error notificando pedido al admin:", err),
-        ),
-        sendOrderConfirmationToCustomer(emailData).catch((err) =>
-          console.error("Error confirmando pedido al cliente:", err),
-        ),
-      ]);
-    }
-
+    await applyPaymentToOrder(dataId);
     return NextResponse.json({ received: true });
   } catch (err) {
     console.error("Webhook Mercado Pago error:", err);
-    // 200 igual: evita reintentos infinitos de MP por un error nuestro transitorio ya logueado.
-    return NextResponse.json({ received: true });
+    // 500, no 200: si devolvemos "recibido" con un error real (DB caída,
+    // MP_ACCESS_TOKEN vencido, etc.) Mercado Pago nunca reintenta y el pago
+    // queda acreditado en MP pero invisible acá para siempre — ya pasó una
+    // vez. Con 500, MP reintenta la notificación varias veces.
+    return NextResponse.json({ error: "Error interno" }, { status: 500 });
   }
 }
