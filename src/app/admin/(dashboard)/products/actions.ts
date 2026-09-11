@@ -83,6 +83,7 @@ export async function createProduct(
     });
     revalidatePath("/admin/products");
     revalidatePath("/catalogo");
+    revalidatePath("/");
     redirect(`/admin/products/${product.id}`);
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -136,6 +137,7 @@ export async function updateProduct(
   revalidatePath(`/admin/products/${id}`);
   revalidatePath("/catalogo");
   revalidatePath(`/catalogo/${result.data.slug}`);
+  revalidatePath("/");
   return {};
 }
 
@@ -146,6 +148,7 @@ export async function archiveProduct(id: string) {
   await db.product.update({ where: { id }, data: { status: "archived" } });
   revalidatePath("/admin/products");
   revalidatePath("/catalogo");
+  revalidatePath("/");
 }
 
 export async function restoreProduct(id: string) {
@@ -153,6 +156,7 @@ export async function restoreProduct(id: string) {
   await db.product.update({ where: { id }, data: { status: "active" } });
   revalidatePath("/admin/products");
   revalidatePath("/catalogo");
+  revalidatePath("/");
 }
 
 export async function updateVariantStock(
@@ -173,6 +177,7 @@ export async function updateVariantStock(
 
   revalidatePath(`/admin/products/${variant.productId}`);
   revalidatePath("/catalogo");
+  revalidatePath("/");
   return {};
 }
 
@@ -194,6 +199,7 @@ export async function addVariantStock(
 
   revalidatePath(`/admin/products/${variant.productId}`);
   revalidatePath("/catalogo");
+  revalidatePath("/");
   return { newStock: variant.stock };
 }
 
@@ -210,5 +216,6 @@ export async function deleteProduct(id: string): Promise<{ error?: string }> {
   await db.product.delete({ where: { id } });
   revalidatePath("/admin/products");
   revalidatePath("/catalogo");
+  revalidatePath("/");
   return {};
 }

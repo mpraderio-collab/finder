@@ -45,6 +45,7 @@ function revalidateSalesPaths(orderId?: string) {
   if (orderId) revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin/products");
   revalidatePath("/catalogo");
+  revalidatePath("/");
 }
 
 // Nace como borrador: no toca stock ni se cuenta como venta real hasta que
