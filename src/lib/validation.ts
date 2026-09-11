@@ -172,3 +172,48 @@ export const manualSaleSchema = z.object({
     )
     .min(1, "Agregá al menos un producto"),
 });
+
+export const purchaseSchema = z.object({
+  productId: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().min(1).optional(),
+  ),
+  productName: z.string().trim().min(2, "El nombre es muy corto").max(160),
+  supplierName: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().trim().min(1).max(160).optional(),
+  ),
+  // El <input type="date"> manda "yyyy-mm-dd" sin hora — parsearlo tal
+  // cual con z.coerce.date() lo toma como medianoche UTC, que en Argentina
+  // (GMT-3) cae el día anterior. Se ancla al mediodía UTC para que el día
+  // calendario coincida sin importar la zona horaria de quien lo mira.
+  purchaseDate: z.preprocess((val) => {
+    if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      return `${val}T12:00:00Z`;
+    }
+    return val;
+  }, z.coerce.date({ message: "Ingresá una fecha válida" })),
+  quantity: z.coerce
+    .number({ message: "La cantidad tiene que ser un número" })
+    .int("La cantidad tiene que ser un entero")
+    .positive("La cantidad tiene que ser mayor a cero"),
+  unitPriceUsd: z.coerce
+    .number({ message: "El precio unitario tiene que ser un número" })
+    .positive("El precio unitario tiene que ser mayor a cero"),
+  exchangeRate: z.coerce
+    .number({ message: "La cotización tiene que ser un número" })
+    .positive("La cotización tiene que ser mayor a cero"),
+  taxesPesos: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.coerce.number().min(0).optional(),
+  ),
+  shippingCostUsd: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.coerce.number().min(0).optional(),
+  ),
+  suggestedPrice: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.coerce.number().int().positive().optional(),
+  ),
+  applyToStock: z.preprocess((val) => val === "on" || val === "true", z.boolean()),
+});

@@ -42,6 +42,19 @@ model Product {
 // Todos los campos en USD/pesos son los que ya trae la planilla del
 // proveedor — no se recalculan acá, se guardan tal cual para mantener el
 // mismo desglose que ve el usuario en su Excel.
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  note      String?
+  createdAt DateTime @default(now())
+
+  purchases Purchase[]
+
+  @@index([name])
+}
+
 model Purchase {
   id          String    @id @default(cuid())
   product     Product?  @relation(fields: [productId], references: [id])
@@ -49,6 +62,8 @@ model Purchase {
   // Nombre tal cual figura en la compra — se conserva aunque no haya
   // producto vinculado (producto todavía no dado de alta en el catálogo).
   productName String
+  supplier    Supplier? @relation(fields: [supplierId], references: [id])
+  supplierId  String?
   purchaseDate DateTime
 
   quantity      Int
@@ -76,6 +91,7 @@ model Purchase {
   createdAt DateTime @default(now())
 
   @@index([productId])
+  @@index([supplierId])
   @@index([purchaseDate])
 }
 
