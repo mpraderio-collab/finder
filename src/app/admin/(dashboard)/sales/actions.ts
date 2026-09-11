@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { manualSaleSchema } from "@/lib/validation";
+import { upsertCustomerFromOrder } from "@/lib/customers";
 
 async function requireAdmin() {
   const session = await auth();
@@ -29,6 +30,7 @@ function parseManualSaleForm(formData: FormData) {
 
   const parsed = manualSaleSchema.safeParse({
     customerName: formData.get("customerName"),
+    customerPhone: formData.get("customerPhone"),
     note: formData.get("note"),
     items: itemsRaw,
   });
@@ -61,34 +63,47 @@ export async function createManualSale(
   const result = parseManualSaleForm(formData);
   if (!result.success) return { error: result.error };
   const data = result.data;
+  // El nombre por defecto ("Venta manual") no identifica a nadie real, así
+  // que no genera un registro en la tabla de clientes.
+  const hasRealCustomer = String(formData.get("customerName") ?? "").trim().length > 0;
 
   const subtotal = data.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
 
-  const order = await db.order.create({
-    data: {
-      status: "draft",
-      channel: "manual",
-      customerName: data.customerName,
-      customerEmail: "",
-      customerPhone: "",
-      shippingAddress: "",
-      shippingCity: "",
-      shippingProvince: "",
-      shippingZip: "",
-      note: data.note,
-      subtotal,
-      total: subtotal,
-      idempotencyKey: randomUUID(),
-      items: {
-        create: data.items.map((line) => ({
-          productId: line.productId,
-          quantity: line.quantity,
-          unitPrice: line.unitPrice,
-          lineTotal: line.unitPrice * line.quantity,
-          variantName: line.variantName,
-        })),
+  const order = await db.$transaction(async (tx) => {
+    const customerId = hasRealCustomer
+      ? await upsertCustomerFromOrder(tx, {
+          name: data.customerName,
+          phone: data.customerPhone,
+        })
+      : null;
+
+    return tx.order.create({
+      data: {
+        status: "draft",
+        channel: "manual",
+        customerId,
+        customerName: data.customerName,
+        customerEmail: "",
+        customerPhone: data.customerPhone ?? "",
+        shippingAddress: "",
+        shippingCity: "",
+        shippingProvince: "",
+        shippingZip: "",
+        note: data.note,
+        subtotal,
+        total: subtotal,
+        idempotencyKey: randomUUID(),
+        items: {
+          create: data.items.map((line) => ({
+            productId: line.productId,
+            quantity: line.quantity,
+            unitPrice: line.unitPrice,
+            lineTotal: line.unitPrice * line.quantity,
+            variantName: line.variantName,
+          })),
+        },
       },
-    },
+    });
   });
 
   revalidateSalesPaths();
@@ -113,21 +128,31 @@ export async function updateManualSale(
   const result = parseManualSaleForm(formData);
   if (!result.success) return { error: result.error };
   const data = result.data;
+  const hasRealCustomer = String(formData.get("customerName") ?? "").trim().length > 0;
 
   const subtotal = data.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
 
-  await db.$transaction([
-    db.order.update({
+  await db.$transaction(async (tx) => {
+    const customerId = hasRealCustomer
+      ? await upsertCustomerFromOrder(tx, {
+          name: data.customerName,
+          phone: data.customerPhone,
+        })
+      : null;
+
+    await tx.order.update({
       where: { id: orderId },
       data: {
+        customerId,
         customerName: data.customerName,
+        customerPhone: data.customerPhone ?? "",
         note: data.note,
         subtotal,
         total: subtotal,
       },
-    }),
-    db.orderItem.deleteMany({ where: { orderId } }),
-    db.orderItem.createMany({
+    });
+    await tx.orderItem.deleteMany({ where: { orderId } });
+    await tx.orderItem.createMany({
       data: data.items.map((line) => ({
         orderId,
         productId: line.productId,
@@ -136,8 +161,8 @@ export async function updateManualSale(
         lineTotal: line.unitPrice * line.quantity,
         variantName: line.variantName,
       })),
-    }),
-  ]);
+    });
+  });
 
   revalidateSalesPaths(orderId);
   return { orderId };

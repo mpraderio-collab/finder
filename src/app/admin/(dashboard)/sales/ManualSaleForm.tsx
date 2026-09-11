@@ -33,16 +33,21 @@ const initialState: ManualSaleState = {};
 
 export function ManualSaleForm({
   products,
+  customers,
   orderId,
   initialItems,
   initialCustomerName,
+  initialCustomerPhone,
   initialNote,
 }: {
   products: ProductOption[];
+  // Clientes ya cargados — alimentan el desplegable de autocompletado.
+  customers: { name: string; phone: string | null }[];
   // Si viene orderId, el form edita ese borrador en vez de crear uno nuevo.
   orderId?: string;
   initialItems?: LineItem[];
   initialCustomerName?: string;
+  initialCustomerPhone?: string;
   initialNote?: string;
 }) {
   const router = useRouter();
@@ -59,7 +64,18 @@ export function ManualSaleForm({
   const [unitPrice, setUnitPrice] = useState(products[0]?.price ?? 0);
   const [addError, setAddError] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState(initialCustomerName ?? "");
+  const [customerPhone, setCustomerPhone] = useState(initialCustomerPhone ?? "");
   const [note, setNote] = useState(initialNote ?? "");
+
+  // Al elegir un nombre que ya existe en el desplegable, autocompleta el
+  // teléfono si el campo todavía está vacío — no pisa lo que ya escribiste.
+  function handleCustomerNameChange(value: string) {
+    setCustomerName(value);
+    const match = customers.find(
+      (c) => c.name.toLowerCase() === value.trim().toLowerCase(),
+    );
+    if (match?.phone && !customerPhone) setCustomerPhone(match.phone);
+  }
 
   const selectedProduct = products.find((p) => p.id === selectedProductId);
 
@@ -277,18 +293,40 @@ export function ManualSaleForm({
       >
         <input type="hidden" name="items" value={JSON.stringify(items)} />
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-ink">
-            Cliente (opcional)
-          </span>
-          <input
-            name="customerName"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            placeholder="Venta manual"
-            className="input"
-          />
-        </label>
+        <div className="flex flex-wrap gap-4">
+          <label className="flex flex-1 min-w-[200px] flex-col gap-1.5">
+            <span className="text-sm font-medium text-ink">
+              Cliente (opcional)
+            </span>
+            <input
+              name="customerName"
+              value={customerName}
+              onChange={(e) => handleCustomerNameChange(e.target.value)}
+              placeholder="Venta manual"
+              list="manual-sale-customers"
+              autoComplete="off"
+              className="input"
+            />
+            <datalist id="manual-sale-customers">
+              {customers.map((c) => (
+                <option key={c.name} value={c.name} />
+              ))}
+            </datalist>
+          </label>
+
+          <label className="flex flex-1 min-w-[160px] flex-col gap-1.5">
+            <span className="text-sm font-medium text-ink">
+              Teléfono (opcional)
+            </span>
+            <input
+              name="customerPhone"
+              value={customerPhone}
+              onChange={(e) => setCustomerPhone(e.target.value)}
+              placeholder="Ej: 11 5555-5555"
+              className="input"
+            />
+          </label>
+        </div>
 
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-ink">Nota (opcional)</span>

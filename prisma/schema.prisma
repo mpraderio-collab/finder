@@ -97,6 +97,24 @@ model Review {
   @@index([productId])
 }
 
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  city      String?
+  province  String?
+  zip       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+
+  @@unique([email])
+  @@index([name])
+}
+
 model Order {
   id                String      @id @default(cuid())
   // cart (carrito online sin terminar) | draft (venta manual sin confirmar)
@@ -108,6 +126,8 @@ model Order {
   // se usa mientras el pedido online sigue en estado "cart", para poder
   // encontrar y actualizar el mismo carrito en vez de duplicarlo.
   sessionId         String?
+  customer          Customer?   @relation(fields: [customerId], references: [id])
+  customerId        String?
   customerName      String      @default("")
   customerEmail     String      @default("")
   customerPhone     String      @default("")
@@ -132,6 +152,7 @@ model Order {
   @@index([status])
   @@index([customerEmail])
   @@index([sessionId])
+  @@index([customerId])
 }
 
 model OrderItem {

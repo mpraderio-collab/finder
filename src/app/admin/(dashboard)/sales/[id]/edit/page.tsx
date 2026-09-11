@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { dedupeCustomersByName } from "@/lib/customers";
 import { ManualSaleForm } from "../../ManualSaleForm";
 
 export default async function EditManualSalePage(
@@ -7,7 +8,7 @@ export default async function EditManualSalePage(
 ) {
   const { id } = await props.params;
 
-  const [order, products] = await Promise.all([
+  const [order, products, allCustomers] = await Promise.all([
     db.order.findUnique({
       where: { id },
       include: { items: { include: { product: true } } },
@@ -17,11 +18,17 @@ export default async function EditManualSalePage(
       orderBy: { name: "asc" },
       include: { variants: true },
     }),
+    db.customer.findMany({
+      orderBy: { name: "asc" },
+      select: { name: true, phone: true },
+    }),
   ]);
 
   if (!order || order.channel !== "manual") notFound();
   // Ya se confirmó — de acá en más se ve y se gestiona como cualquier pedido.
   if (order.status !== "draft") redirect(`/admin/orders/${order.id}`);
+
+  const customers = dedupeCustomersByName(allCustomers);
 
   const options = products.map((p) => ({
     id: p.id,
@@ -53,9 +60,11 @@ export default async function EditManualSalePage(
       <div className="mt-8">
         <ManualSaleForm
           products={options}
+          customers={customers}
           orderId={order.id}
           initialItems={initialItems}
           initialCustomerName={order.customerName === "Venta manual" ? "" : order.customerName}
+          initialCustomerPhone={order.customerPhone}
           initialNote={order.note ?? ""}
         />
       </div>

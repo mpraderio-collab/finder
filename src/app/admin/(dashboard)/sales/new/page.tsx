@@ -1,12 +1,21 @@
 import { db } from "@/lib/db";
+import { dedupeCustomersByName } from "@/lib/customers";
 import { ManualSaleForm } from "../ManualSaleForm";
 
 export default async function NewManualSalePage() {
-  const products = await db.product.findMany({
-    where: { status: "active" },
-    orderBy: { name: "asc" },
-    include: { variants: true },
-  });
+  const [products, allCustomers] = await Promise.all([
+    db.product.findMany({
+      where: { status: "active" },
+      orderBy: { name: "asc" },
+      include: { variants: true },
+    }),
+    db.customer.findMany({
+      orderBy: { name: "asc" },
+      select: { name: true, phone: true },
+    }),
+  ]);
+
+  const customers = dedupeCustomersByName(allCustomers);
 
   const options = products.map((p) => ({
     id: p.id,
@@ -29,7 +38,7 @@ export default async function NewManualSalePage() {
       </p>
 
       <div className="mt-8">
-        <ManualSaleForm products={options} />
+        <ManualSaleForm products={options} customers={customers} />
       </div>
     </div>
   );

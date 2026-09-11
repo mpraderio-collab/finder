@@ -5,6 +5,7 @@ import { checkoutSchema } from "@/lib/validation";
 import { createPreference, isMercadoPagoConfigured } from "@/lib/mercadopago";
 import { shippingMethods } from "@/lib/shipping";
 import { calculateLineTotal, normalizePromo } from "@/lib/promotions";
+import { upsertCustomerFromOrder } from "@/lib/customers";
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -92,8 +93,19 @@ export async function POST(request: Request) {
 
       const shippingCost = shippingMethods[data.shippingMethod].cost;
 
+      const customerId = await upsertCustomerFromOrder(tx, {
+        name: data.customerName,
+        email: data.customerEmail,
+        phone: data.customerPhone,
+        address: data.shippingAddress,
+        city: data.shippingCity,
+        province: data.shippingProvince,
+        zip: data.shippingZip,
+      });
+
       const orderData = {
         status: "pending",
+        customerId,
         customerName: data.customerName,
         customerEmail: data.customerEmail,
         customerPhone: data.customerPhone,

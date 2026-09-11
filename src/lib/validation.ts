@@ -150,6 +150,10 @@ export const manualSaleSchema = z.object({
     (val) => (val === "" || val === null || val === undefined ? "Venta manual" : val),
     z.string().trim().min(1).max(120),
   ),
+  customerPhone: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().trim().max(30).optional(),
+  ),
   note: z.preprocess(
     (val) => (val === "" || val === null || val === undefined ? undefined : val),
     z.string().trim().max(500).optional(),
