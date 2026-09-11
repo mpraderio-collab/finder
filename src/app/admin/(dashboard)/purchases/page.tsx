@@ -4,7 +4,8 @@ import { formatPrice } from "@/lib/products";
 import { purchaseStatusLabels, purchaseStatusColors } from "@/lib/purchase-status";
 import { PurchaseRow } from "./PurchaseRow";
 
-function usd(value: number): string {
+function usd(value: number | null): string {
+  if (value === null) return "—";
   return `US$ ${value.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
@@ -14,31 +15,32 @@ export default async function AdminPurchasesPage() {
     include: { supplier: { select: { name: true } }, items: true },
   });
 
-  const rows = purchases.map((p) => {
-    const units = p.items.reduce((sum, i) => sum + i.quantity, 0);
-    const costPesos = p.items.reduce((sum, i) => sum + i.unitCostPesos * i.quantity, 0);
-    const usdRaw = p.items.reduce((sum, i) => sum + i.quantity * i.unitPriceUsd, 0);
-    const productsLabel =
-      p.items.length === 1
-        ? p.items[0].productName
-        : `${p.items.length} productos`;
-    return {
-      id: p.id,
+  // Una fila por línea de producto — el desglose en dólares puede variar
+  // línea a línea aunque sean de la misma compra, así que agregarlo por
+  // compra no tendría sentido.
+  const rows = purchases.flatMap((p) =>
+    p.items.map((item) => ({
+      purchaseId: p.id,
+      itemId: item.id,
       purchaseDate: p.purchaseDate,
       supplierName: p.supplier?.name ?? null,
       status: p.status,
-      productsLabel,
-      units,
-      costPesos,
-      usdRaw,
-    };
-  });
+      productName: item.productName,
+      quantity: item.quantity,
+      unitCostUsd: item.unitCostUsd,
+      unitCostUsdFinal: item.unitCostUsdFinal,
+      unitShippingCostUsd: item.unitShippingCostUsd,
+      totalUsd: item.totalUsd,
+      unitPriceUsd: item.unitPriceUsd,
+      costPesos: item.unitCostPesos * item.quantity,
+    })),
+  );
 
   // Los borradores todavía pueden cambiar y los cancelados no pasaron —
   // los totales reflejan compras reales (confirmadas o ya recibidas).
   const committed = rows.filter((r) => r.status === "confirmed" || r.status === "received");
-  const totalUnits = committed.reduce((sum, r) => sum + r.units, 0);
-  const totalUsdRaw = committed.reduce((sum, r) => sum + r.usdRaw, 0);
+  const totalUnits = committed.reduce((sum, r) => sum + r.quantity, 0);
+  const totalUsdRaw = committed.reduce((sum, r) => sum + r.quantity * r.unitPriceUsd, 0);
   const totalCostPesos = committed.reduce((sum, r) => sum + r.costPesos, 0);
 
   return (
@@ -93,20 +95,32 @@ export default async function AdminPurchasesPage() {
           </p>
 
           <div className="mt-6 overflow-x-auto rounded-xl border border-line bg-bg">
-            <table className="w-full min-w-[860px] text-left text-sm">
+            <table className="w-full min-w-[1220px] text-left text-sm">
               <thead className="border-b border-line">
                 <tr>
                   <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
                     Fecha
                   </th>
                   <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                    Productos
+                    Producto
                   </th>
                   <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
                     Proveedor
                   </th>
                   <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                    Unidades
+                    Cant.
+                  </th>
+                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                    Costo unit. (USD)
+                  </th>
+                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                    Costo neto (USD)
+                  </th>
+                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                    Costo envío (USD)
+                  </th>
+                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                    Costo total (USD)
                   </th>
                   <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
                     Costo (pesos)
@@ -118,13 +132,28 @@ export default async function AdminPurchasesPage() {
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <PurchaseRow key={row.id} href={`/admin/purchases/${row.id}/edit`}>
+                  <PurchaseRow
+                    key={row.itemId}
+                    href={`/admin/purchases/${row.purchaseId}/edit`}
+                  >
                     <td className="px-4 py-3 text-ink-soft">
                       {row.purchaseDate.toLocaleDateString("es-AR")}
                     </td>
-                    <td className="px-4 py-3 font-medium text-ink">{row.productsLabel}</td>
+                    <td className="px-4 py-3 font-medium text-ink">{row.productName}</td>
                     <td className="px-4 py-3 text-ink-soft">{row.supplierName ?? "—"}</td>
-                    <td className="px-4 py-3 text-right text-ink-soft">{row.units}</td>
+                    <td className="px-4 py-3 text-right text-ink-soft">{row.quantity}</td>
+                    <td className="px-4 py-3 text-right text-ink-soft">
+                      {usd(row.unitCostUsd)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-ink-soft">
+                      {usd(row.unitCostUsdFinal)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-ink-soft">
+                      {usd(row.unitShippingCostUsd)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-ink-soft">
+                      {usd(row.totalUsd)}
+                    </td>
                     <td className="px-4 py-3 text-right font-heading font-bold text-navy">
                       {formatPrice(row.costPesos)}
                     </td>
