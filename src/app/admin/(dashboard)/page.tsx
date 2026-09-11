@@ -27,6 +27,21 @@ function fifteenDaysAgo(): Date {
   return new Date(Date.now() - 15 * 24 * 60 * 60 * 1000);
 }
 
+const ANALYTICS_PERIODS = {
+  today: { label: "Hoy", days: 1 },
+  "7d": { label: "7 días", days: 7 },
+  "30d": { label: "30 días", days: 30 },
+  all: { label: "Todo", days: null },
+} as const;
+
+type AnalyticsPeriod = keyof typeof ANALYTICS_PERIODS;
+
+function periodSince(period: AnalyticsPeriod): Date | undefined {
+  const days = ANALYTICS_PERIODS[period].days;
+  if (days === null) return undefined;
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+}
+
 // Visitantes únicos por día — cuenta sessionId distintos dentro de cada
 // balde, no eventos sueltos (una misma visita puede tener varios page_view).
 function dailyUniqueVisitors(pageViews: { createdAt: Date; sessionId: string | null }[]) {
@@ -50,7 +65,18 @@ function dailyUniqueVisitors(pageViews: { createdAt: Date; sessionId: string | n
   return buckets.map((b) => ({ start: b.start, end: b.end, count: b.sessionIds.size }));
 }
 
-export default async function AdminDashboardPage() {
+export default async function AdminDashboardPage(
+  props: PageProps<"/admin">,
+) {
+  const searchParams = await props.searchParams;
+  const periodParam =
+    typeof searchParams?.period === "string" ? searchParams.period : undefined;
+  const period: AnalyticsPeriod =
+    periodParam && periodParam in ANALYTICS_PERIODS
+      ? (periodParam as AnalyticsPeriod)
+      : "all";
+  const since = periodSince(period);
+
   const [
     pendingCount,
     activeCartCount,
@@ -86,13 +112,27 @@ export default async function AdminDashboardPage() {
       orderBy: { createdAt: "desc" },
       take: 5,
     }),
-    db.analyticsEvent.count({ where: { type: "page_view" } }),
-    db.analyticsEvent.count({ where: { type: "view_content" } }),
-    db.analyticsEvent.count({ where: { type: "add_to_cart" } }),
-    db.analyticsEvent.count({ where: { type: "initiate_checkout" } }),
-    db.analyticsEvent.count({ where: { type: "purchase" } }),
+    db.analyticsEvent.count({
+      where: { type: "page_view", ...(since && { createdAt: { gte: since } }) },
+    }),
+    db.analyticsEvent.count({
+      where: { type: "view_content", ...(since && { createdAt: { gte: since } }) },
+    }),
+    db.analyticsEvent.count({
+      where: { type: "add_to_cart", ...(since && { createdAt: { gte: since } }) },
+    }),
+    db.analyticsEvent.count({
+      where: { type: "initiate_checkout", ...(since && { createdAt: { gte: since } }) },
+    }),
+    db.analyticsEvent.count({
+      where: { type: "purchase", ...(since && { createdAt: { gte: since } }) },
+    }),
     db.analyticsEvent.findMany({
-      where: { type: "page_view", sessionId: { not: null } },
+      where: {
+        type: "page_view",
+        sessionId: { not: null },
+        ...(since && { createdAt: { gte: since } }),
+      },
       distinct: ["sessionId"],
       select: { sessionId: true },
     }),
@@ -244,7 +284,24 @@ export default async function AdminDashboardPage() {
       </div>
 
       <div className="mt-8">
-        <p className="font-heading text-lg font-bold text-navy">Visitas</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="font-heading text-lg font-bold text-navy">Visitas</p>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(ANALYTICS_PERIODS) as AnalyticsPeriod[]).map((p) => (
+              <Link
+                key={p}
+                href={p === "all" ? "/admin" : `/admin?period=${p}`}
+                className={`rounded-full px-3 py-1.5 font-heading text-xs font-bold ${
+                  period === p
+                    ? "bg-navy text-white"
+                    : "border border-border-btn bg-bg text-ink-soft"
+                }`}
+              >
+                {ANALYTICS_PERIODS[p].label}
+              </Link>
+            ))}
+          </div>
+        </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {analyticsStats.map((stat) => (
             <div
