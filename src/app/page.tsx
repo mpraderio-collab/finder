@@ -72,7 +72,10 @@ export default async function Home() {
                   {allReviews.length} reseñas
                 </span>
                 <span>Envío a todo el país</span>
-                <span>{settings.installments} cuotas sin interés</span>
+                <span>
+                  {settings.installments}{" "}
+                  {settings.installments === 1 ? "cuota" : "cuotas"} sin interés
+                </span>
               </div>
             )}
           </div>

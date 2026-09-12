@@ -294,7 +294,8 @@ export function ProductPurchase({
               {formatPrice(price)}
             </span>
             <span className="text-[13px] text-ink-soft">
-              {installments} cuotas de {formatPrice(installment)}
+              {installments} {installments === 1 ? "cuota" : "cuotas"} de{" "}
+              {formatPrice(installment)}
             </span>
           </div>
 
