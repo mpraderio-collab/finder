@@ -30,6 +30,7 @@ export default async function AdminPurchasesPage() {
       unitCostUsd: item.unitCostUsd,
       unitCostUsdFinal: item.unitCostUsdFinal,
       unitShippingCostUsd: item.unitShippingCostUsd,
+      shippingCostUsd: item.shippingCostUsd,
       totalUsd: item.totalUsd,
       unitPriceUsd: item.unitPriceUsd,
       costPesos: item.unitCostPesos * item.quantity,
@@ -42,6 +43,7 @@ export default async function AdminPurchasesPage() {
   const totalUnits = committed.reduce((sum, r) => sum + r.quantity, 0);
   const totalUsdRaw = committed.reduce((sum, r) => sum + r.quantity * r.unitPriceUsd, 0);
   const totalCostPesos = committed.reduce((sum, r) => sum + r.costPesos, 0);
+  const totalShippingUsd = committed.reduce((sum, r) => sum + (r.shippingCostUsd ?? 0), 0);
 
   return (
     <div>
@@ -67,7 +69,7 @@ export default async function AdminPurchasesPage() {
         <p className="mt-10 text-ink-soft">Todavía no hay compras cargadas.</p>
       ) : (
         <>
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-xl border border-line bg-bg p-[18px]">
               <p className="text-[13px] text-ink-soft">Unidades compradas</p>
               <p className="mt-1 font-heading text-2xl font-extrabold text-navy">
@@ -80,6 +82,12 @@ export default async function AdminPurchasesPage() {
               </p>
               <p className="mt-1 font-heading text-2xl font-extrabold text-navy">
                 {usd(totalUsdRaw)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-line bg-bg p-[18px]">
+              <p className="text-[13px] text-ink-soft">Costo de envío (USD)</p>
+              <p className="mt-1 font-heading text-2xl font-extrabold text-navy">
+                {usd(totalShippingUsd)}
               </p>
             </div>
             <div className="rounded-xl border border-line bg-bg p-[18px]">
