@@ -220,6 +220,8 @@ export function ProductPurchase({
                 key={gallery[carouselIndex].id}
                 src={gallery[carouselIndex].url}
                 controls
+                controlsList="nofullscreen noremoteplayback"
+                disablePictureInPicture
                 playsInline
                 className="h-full w-full object-cover"
               />
