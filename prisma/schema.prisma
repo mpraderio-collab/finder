@@ -21,12 +21,6 @@ model Product {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Promoción por cantidad (ej: "llevando 2, $45.000") — ambos null si el
-  // producto no tiene promo. Se aplica por cada grupo completo de
-  // promoQuantity unidades; el resto se cobra al precio normal.
-  promoQuantity Int?
-  promoPrice    Int?
-
   images   ProductImage[]
   variants ProductVariant[]
   features ProductFeature[]
@@ -34,8 +28,44 @@ model Product {
   orderItems OrderItem[]
   stockNotifications StockNotification[]
   purchaseItems PurchaseItem[]
+  promotions Promotion[]
 
   @@index([status])
+}
+
+// Promoción combinable entre uno o varios productos (mix and match): las
+// cantidades (o los montos, según triggerType) de todos los productos
+// incluidos se suman para ver a qué tramo llega el cliente. Por convención
+// de la app, un producto participa en como máximo una promoción activa a
+// la vez (se valida al guardar, no a nivel de base).
+model Promotion {
+  id          String   @id @default(cuid())
+  name        String
+  // "quantity": los tramos son cantidad de unidades combinadas.
+  // "amount": los tramos son el monto total combinado, en pesos.
+  triggerType String   @default("quantity")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
+  tiers    PromotionTier[]
+
+  @@index([active])
+}
+
+// Un tramo: al alcanzar `threshold` (unidades o pesos, según
+// Promotion.triggerType) se aplica `percentOff` sobre el total de todas
+// las unidades de los productos de la promo presentes en el pedido.
+model PromotionTier {
+  id          String    @id @default(cuid())
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  promotionId String
+  threshold   Int
+  percentOff  Float
+
+  @@unique([promotionId, threshold])
+  @@index([promotionId])
 }
 
 model Supplier {

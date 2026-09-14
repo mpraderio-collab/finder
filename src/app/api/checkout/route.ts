@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { checkoutSchema } from "@/lib/validation";
 import { createPreference, isMercadoPagoConfigured } from "@/lib/mercadopago";
 import { shippingMethods } from "@/lib/shipping";
-import { calculateLineTotal, normalizePromo } from "@/lib/promotions";
+import { calculateLineTotals, activePromotion } from "@/lib/promotions";
 import { upsertCustomerFromOrder } from "@/lib/customers";
 
 export async function POST(request: Request) {
@@ -27,19 +27,22 @@ export async function POST(request: Request) {
 
   try {
     const order = await db.$transaction(async (tx) => {
-      let subtotal = 0;
-      const orderItemsData: {
+      const lines: {
+        key: string;
         productId: string;
         quantity: number;
         unitPrice: number;
-        lineTotal: number;
         variantName?: string;
+        promotion: ReturnType<typeof activePromotion>;
       }[] = [];
 
       for (const line of data.items) {
         const product = await tx.product.findUnique({
           where: { id: line.productId },
-          include: { variants: true },
+          include: {
+            variants: true,
+            promotions: { where: { active: true }, include: { tiers: true } },
+          },
         });
 
         if (!product || product.status !== "active") {
@@ -76,20 +79,25 @@ export async function POST(request: Request) {
           }
         }
 
-        const lineTotal = calculateLineTotal(
-          product.price,
-          line.quantity,
-          normalizePromo(product),
-        );
-        subtotal += lineTotal;
-        orderItemsData.push({
+        lines.push({
+          key: `${product.id}::${line.variantName ?? ""}`,
           productId: product.id,
           quantity: line.quantity,
           unitPrice: product.price,
-          lineTotal,
           variantName: line.variantName,
+          promotion: activePromotion(product),
         });
       }
+
+      const totals = calculateLineTotals(lines);
+      const orderItemsData = lines.map((l) => ({
+        productId: l.productId,
+        quantity: l.quantity,
+        unitPrice: l.unitPrice,
+        lineTotal: totals.get(l.key)!,
+        variantName: l.variantName,
+      }));
+      const subtotal = orderItemsData.reduce((sum, i) => sum + i.lineTotal, 0);
 
       const shippingCost = shippingMethods[data.shippingMethod].cost;
 

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Footer } from "@/components/Footer";
-import { useCart, cartItemKey, cartLineTotal } from "@/lib/cart-context";
+import { useCart, cartItemKey } from "@/lib/cart-context";
 import { trackEvent, getSessionId } from "@/lib/analytics";
 import { formatPrice } from "@/lib/products";
 import { shippingMethods, type ShippingMethod } from "@/lib/shipping";
@@ -31,7 +31,7 @@ const initialForm: FormState = {
 };
 
 export default function CheckoutPage() {
-  const { items, subtotal } = useCart();
+  const { items, subtotal, lineTotals } = useCart();
   const router = useRouter();
   const [form, setForm] = useState<FormState>(initialForm);
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod>("correo");
@@ -296,7 +296,10 @@ export default function CheckoutPage() {
                     {item.variantName ? ` (${item.variantName})` : ""}
                   </span>
                   <span className="font-heading text-[13px] font-bold text-ink">
-                    {formatPrice(cartLineTotal(item))}
+                    {formatPrice(
+                      lineTotals.get(cartItemKey(item.productId, item.variantName)) ??
+                        item.price * item.quantity,
+                    )}
                   </span>
                 </div>
               ))}

@@ -15,6 +15,13 @@ const productInclude = {
   },
   features: { orderBy: { position: "asc" as const } },
   reviews: { orderBy: { createdAt: "desc" as const } },
+  promotions: {
+    where: { active: true },
+    include: {
+      tiers: { orderBy: { threshold: "asc" as const } },
+      products: { select: { id: true, name: true, slug: true } },
+    },
+  },
 };
 
 export async function getActiveProducts() {

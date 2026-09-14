@@ -2,7 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
-import { calculateLineTotal, normalizePromo } from "@/lib/promotions";
+import { calculateLineTotals, activePromotion } from "@/lib/promotions";
 
 export type CartSyncItem = {
   productId: string;
@@ -27,26 +27,41 @@ export async function syncCartOrder(sessionId: string, items: CartSyncItem[]): P
     return;
   }
 
-  const orderItemsData: {
+  const lines: {
+    key: string;
     productId: string;
     quantity: number;
     unitPrice: number;
-    lineTotal: number;
     variantName?: string;
+    promotion: ReturnType<typeof activePromotion>;
   }[] = [];
 
   for (const line of items) {
-    const product = await db.product.findUnique({ where: { id: line.productId } });
+    const product = await db.product.findUnique({
+      where: { id: line.productId },
+      include: {
+        promotions: { where: { active: true }, include: { tiers: true } },
+      },
+    });
     if (!product) continue; // producto borrado desde que se agregó al carrito
-    const lineTotal = calculateLineTotal(product.price, line.quantity, normalizePromo(product));
-    orderItemsData.push({
+    lines.push({
+      key: `${product.id}::${line.variantName ?? ""}`,
       productId: product.id,
       quantity: line.quantity,
       unitPrice: product.price,
-      lineTotal,
       variantName: line.variantName,
+      promotion: activePromotion(product),
     });
   }
+
+  const totals = calculateLineTotals(lines);
+  const orderItemsData = lines.map((l) => ({
+    productId: l.productId,
+    quantity: l.quantity,
+    unitPrice: l.unitPrice,
+    lineTotal: totals.get(l.key)!,
+    variantName: l.variantName,
+  }));
 
   if (orderItemsData.length === 0) {
     if (existing) await db.order.delete({ where: { id: existing.id } });

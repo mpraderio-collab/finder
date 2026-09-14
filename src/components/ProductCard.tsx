@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { formatPrice, getHeroImageUrl } from "@/lib/products";
 import type { ProductWithRelations } from "@/lib/products";
-import { normalizePromo } from "@/lib/promotions";
+import { activePromotion, maxPercentOff } from "@/lib/promotions";
 
 export function ProductCard({ product }: { product: ProductWithRelations }) {
   const heroUrl = getHeroImageUrl(product);
@@ -11,7 +11,7 @@ export function ProductCard({ product }: { product: ProductWithRelations }) {
       ? product.variants.reduce((sum, v) => sum + v.stock, 0)
       : product.stock;
   const outOfStock = totalStock <= 0;
-  const promo = normalizePromo(product);
+  const promo = activePromotion(product);
 
   return (
     <Link
@@ -35,7 +35,7 @@ export function ProductCard({ product }: { product: ProductWithRelations }) {
         )}
         {!outOfStock && promo && (
           <span className="absolute left-3 top-3 rounded-md bg-amber px-2.5 py-1 font-heading text-xs font-bold text-[#3a2500]">
-            {promo.promoQuantity}x {formatPrice(promo.promoPrice)}
+            Hasta {maxPercentOff(promo)}% off
           </span>
         )}
       </div>

@@ -7,7 +7,12 @@ import { addCartItem } from "@/lib/cart-context";
 import { trackEvent } from "@/lib/analytics";
 import { NotifyStockForm } from "@/components/NotifyStockForm";
 import { formatPrice } from "@/lib/products";
-import { calculateLineTotal, promoSavings, type Promo } from "@/lib/promotions";
+import {
+  calculateSingleLineTotal,
+  currentPercentOff,
+  tierLabel,
+  type PromotionInfo,
+} from "@/lib/promotions";
 
 type GalleryImage = { id: string; url: string; type: string };
 
@@ -27,7 +32,7 @@ export function ProductPurchase({
   variants,
   images,
   installments,
-  promo,
+  promotion,
   aboveActions,
   belowActions,
 }: {
@@ -39,7 +44,7 @@ export function ProductPurchase({
   variants: Variant[];
   images: GalleryImage[];
   installments: number;
-  promo: Promo | null;
+  promotion: PromotionInfo | null;
   aboveActions?: React.ReactNode;
   belowActions?: React.ReactNode;
 }) {
@@ -202,8 +207,7 @@ export function ProductPurchase({
       image: cartImage,
       variantName: selectedVariant,
       maxStock,
-      promoQuantity: promo?.promoQuantity,
-      promoPrice: promo?.promoPrice,
+      promotion,
     };
   }
 
@@ -298,14 +302,21 @@ export function ProductPurchase({
             </span>
           </div>
 
-          {promo && (
-            <p className="w-fit rounded-lg bg-amber-soft px-3 py-2 text-[13px] font-semibold text-amber-ink">
-              Llevando {promo.promoQuantity}, pagás {formatPrice(promo.promoPrice)}
-              {" "}
-              <span className="font-normal">
-                (ahorrás {formatPrice(promoSavings(price, promo))})
-              </span>
-            </p>
+          {promotion && (
+            <div className="flex w-fit flex-col gap-1 rounded-lg bg-amber-soft px-3 py-2 text-[13px] font-semibold text-amber-ink">
+              {promotion.tiers.map((tier) => (
+                <p key={tier.threshold}>{tierLabel(promotion, tier)}</p>
+              ))}
+              {promotion.products && promotion.products.length > 1 && (
+                <p className="font-normal">
+                  Se combina con:{" "}
+                  {promotion.products
+                    .filter((p) => p.id !== productId)
+                    .map((p) => p.name)
+                    .join(", ")}
+                </p>
+              )}
+            </div>
           )}
 
           {variants.length > 0 && (
@@ -385,9 +396,9 @@ export function ProductPurchase({
             )}
           </div>
 
-          {promo && quantity >= promo.promoQuantity && (
+          {promotion && currentPercentOff(promotion, price, quantity) > 0 && (
             <p className="text-[13px] font-semibold text-navy">
-              Total: {formatPrice(calculateLineTotal(price, quantity, promo))}
+              Total: {formatPrice(calculateSingleLineTotal(price, quantity, promotion))}
             </p>
           )}
 

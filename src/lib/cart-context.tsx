@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
-import { calculateLineTotal } from "@/lib/promotions";
+import { calculateLineTotals, type PromotionInfo } from "@/lib/promotions";
 import { getSessionId } from "@/lib/analytics";
 import { syncCartOrder } from "@/app/cart-actions";
 
@@ -14,17 +14,19 @@ export type CartItem = {
   variantName?: string;
   quantity: number;
   maxStock: number;
-  promoQuantity?: number;
-  promoPrice?: number;
+  promotion?: PromotionInfo | null;
 };
 
-export function cartLineTotal(item: CartItem): number {
-  return calculateLineTotal(
-    item.price,
-    item.quantity,
-    item.promoQuantity && item.promoPrice
-      ? { promoQuantity: item.promoQuantity, promoPrice: item.promoPrice }
-      : null,
+// Agrupa por promoción para combinar productos distintos de una misma
+// promo (mix and match) — ver lib/promotions.ts.
+export function cartLineTotals(items: CartItem[]): Map<string, number> {
+  return calculateLineTotals(
+    items.map((i) => ({
+      key: cartItemKey(i.productId, i.variantName),
+      unitPrice: i.price,
+      quantity: i.quantity,
+      promotion: i.promotion ?? null,
+    })),
   );
 }
 
@@ -170,9 +172,10 @@ export function useCart() {
     () => items.reduce((sum, i) => sum + i.quantity, 0),
     [items],
   );
+  const lineTotals = useMemo(() => cartLineTotals(items), [items]);
   const subtotal = useMemo(
-    () => items.reduce((sum, i) => sum + cartLineTotal(i), 0),
-    [items],
+    () => Array.from(lineTotals.values()).reduce((sum, v) => sum + v, 0),
+    [lineTotals],
   );
 
   return {
@@ -183,5 +186,6 @@ export function useCart() {
     clear: clearCart,
     itemCount,
     subtotal,
+    lineTotals,
   };
 }

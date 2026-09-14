@@ -5,11 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { cartItemKey, cartLineTotal, useCart } from "@/lib/cart-context";
+import { cartItemKey, useCart } from "@/lib/cart-context";
 import { formatPrice } from "@/lib/products";
 
 export default function CarritoPage() {
-  const { items, updateQuantity, removeItem, subtotal } = useCart();
+  const { items, updateQuantity, removeItem, subtotal, lineTotals } = useCart();
   const router = useRouter();
 
   return (
@@ -41,6 +41,9 @@ export default function CarritoPage() {
               <div className="flex flex-col gap-4">
                 {items.map((item) => {
                   const key = cartItemKey(item.productId, item.variantName);
+                  const lineTotal = lineTotals.get(key) ?? item.price * item.quantity;
+                  const rawTotal = item.price * item.quantity;
+                  const discount = rawTotal - lineTotal;
                   return (
                     <div
                       key={key}
@@ -99,12 +102,12 @@ export default function CarritoPage() {
                             </button>
                           </div>
                           <span className="font-heading text-[17px] font-extrabold text-navy">
-                            {formatPrice(cartLineTotal(item))}
+                            {formatPrice(lineTotal)}
                           </span>
                         </div>
-                        {item.promoQuantity && item.promoPrice && item.quantity >= item.promoQuantity && (
+                        {discount > 0 && (
                           <p className="text-right text-[12px] font-semibold text-amber-ink">
-                            Promo {item.promoQuantity}x aplicada
+                            Promo aplicada (ahorrás {formatPrice(discount)})
                           </p>
                         )}
                       </div>
