@@ -35,12 +35,20 @@ export default async function AdminShipmentsPage() {
         <h1 className="font-heading text-2xl font-extrabold text-navy">
           Envíos
         </h1>
-        <Link
-          href="/admin/shipments/new"
-          className="rounded-lg bg-navy px-5 py-2.5 font-heading text-sm font-bold text-white hover:bg-navy-deep"
-        >
-          + Agrupar pedidos
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/admin/shipments/quote"
+            className="rounded-lg border border-line bg-bg px-5 py-2.5 font-heading text-sm font-bold text-navy hover:bg-surface"
+          >
+            Presupuestar envío
+          </Link>
+          <Link
+            href="/admin/shipments/new"
+            className="rounded-lg bg-navy px-5 py-2.5 font-heading text-sm font-bold text-white hover:bg-navy-deep"
+          >
+            + Agrupar pedidos
+          </Link>
+        </div>
       </div>
       <p className="mt-1 max-w-xl text-sm text-ink-soft">
         Pedidos de distintos clientes (web o ventas manuales) agrupados para
