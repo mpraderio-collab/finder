@@ -29,6 +29,7 @@ export async function createShipment(
     orderIds: formData.getAll("orderIds"),
     shippingMethod: formData.get("shippingMethod"),
     trackingCode: formData.get("trackingCode"),
+    actualShippingCost: formData.get("actualShippingCost"),
     note: formData.get("note"),
   });
   if (!result.success) {
@@ -53,6 +54,7 @@ export async function createShipment(
       data: {
         shippingMethod: data.shippingMethod ?? null,
         trackingCode: data.trackingCode ?? null,
+        actualShippingCost: data.actualShippingCost ?? null,
         note: data.note ?? null,
       },
     });
@@ -76,4 +78,30 @@ export async function createShipment(
   for (const id of data.orderIds) revalidatePath(`/admin/orders/${id}`);
 
   return { shipmentId: shipment.id };
+}
+
+// La factura del transportista suele llegar después de despachar — permite
+// cargar o corregir el costo real más adelante.
+export async function setShipmentActualShippingCost(
+  shipmentId: string,
+  value: string,
+): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const parsed = Number(value);
+  if (value.trim() === "" || !Number.isFinite(parsed) || parsed < 0) {
+    return { error: "Ingresá un monto válido." };
+  }
+
+  const shipment = await db.shipment.update({
+    where: { id: shipmentId },
+    data: { actualShippingCost: Math.round(parsed) },
+    include: { orders: { select: { id: true } } },
+  });
+
+  revalidatePath(`/admin/shipments/${shipmentId}`);
+  revalidatePath("/admin/shipments");
+  for (const order of shipment.orders) revalidatePath(`/admin/orders/${order.id}`);
+
+  return {};
 }

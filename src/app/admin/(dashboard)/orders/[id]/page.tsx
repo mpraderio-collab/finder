@@ -4,8 +4,10 @@ import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/products";
 import { orderStatusColors, orderStatusLabels, manualSaleStatuses } from "@/lib/order-status";
 import { shippingMethods, type ShippingMethod } from "@/lib/shipping";
+import { calculateCogs, calculateMargin } from "@/lib/margin";
 import { StatusSelect } from "./StatusSelect";
 import { TrackingCode } from "./TrackingCode";
+import { ActualShippingCost } from "./ActualShippingCost";
 
 const timelineSteps = [
   { key: "created", label: "Pedido creado" },
@@ -36,6 +38,14 @@ export default async function OrderDetailPage(
 
   const done = timelineProgress(order.status);
   const isCart = order.status === "cart";
+
+  // El costo real de envío vive en el Shipment cuando el pedido va
+  // agrupado — el campo propio del pedido solo aplica si se envía suelto.
+  const effectiveShippingCost = order.shipment
+    ? order.shipment.actualShippingCost
+    : order.actualShippingCost;
+  const cogs = calculateCogs(order.items);
+  const margin = calculateMargin(order.total, cogs, effectiveShippingCost);
 
   return (
     <div>
@@ -203,7 +213,7 @@ export default async function OrderDetailPage(
             </div>
           )}
 
-          {!isCart && (order.channel === "online" || order.shipmentId) && (
+          {!isCart && (
             <div className="rounded-xl border border-line bg-bg p-5">
               <p className="text-sm font-semibold text-navy">Envío</p>
               <dl className="mt-3 space-y-2 text-sm text-ink-soft">
@@ -232,6 +242,24 @@ export default async function OrderDetailPage(
                   <dt className="text-xs uppercase tracking-wide text-ink-faint">Seguimiento</dt>
                   <TrackingCode orderId={order.id} trackingCode={order.trackingCode} />
                 </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-ink-faint">
+                    Costo real de envío
+                  </dt>
+                  {order.shipmentId ? (
+                    <dd className="text-ink">
+                      {order.shipment?.actualShippingCost != null
+                        ? formatPrice(order.shipment.actualShippingCost)
+                        : "—"}{" "}
+                      <span className="text-xs text-ink-faint">(del envío agrupado)</span>
+                    </dd>
+                  ) : (
+                    <ActualShippingCost
+                      orderId={order.id}
+                      actualShippingCost={order.actualShippingCost}
+                    />
+                  )}
+                </div>
                 {order.shipmentId && (
                   <div>
                     <dt className="text-xs uppercase tracking-wide text-ink-faint">Envío agrupado</dt>
@@ -245,6 +273,32 @@ export default async function OrderDetailPage(
                     </dd>
                   </div>
                 )}
+              </dl>
+            </div>
+          )}
+
+          {!isCart && (
+            <div className="rounded-xl border border-line bg-bg p-5">
+              <p className="text-sm font-semibold text-navy">Rentabilidad</p>
+              <dl className="mt-3 space-y-2 text-sm text-ink-soft">
+                <div className="flex justify-between">
+                  <dt>Costo de mercadería</dt>
+                  <dd className="text-ink">{formatPrice(cogs)}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt>Costo real de envío</dt>
+                  <dd className="text-ink">
+                    {effectiveShippingCost != null ? formatPrice(effectiveShippingCost) : "—"}
+                  </dd>
+                </div>
+                <div className="flex justify-between border-t border-line pt-2">
+                  <dt className="font-semibold text-ink">Margen</dt>
+                  <dd
+                    className={`font-heading text-lg font-extrabold ${margin < 0 ? "text-err-ink" : "text-navy"}`}
+                  >
+                    {formatPrice(margin)}
+                  </dd>
+                </div>
               </dl>
             </div>
           )}

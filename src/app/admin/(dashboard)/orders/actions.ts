@@ -69,3 +69,25 @@ export async function setTrackingCode(
   revalidatePath(`/admin/orders/${orderId}`);
   return {};
 }
+
+// Solo aplica a pedidos que se envían sueltos (no agrupados) — el costo
+// real de un envío agrupado vive en el Shipment, no acá.
+export async function setActualShippingCost(
+  orderId: string,
+  value: string,
+): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const parsed = Number(value);
+  if (value.trim() === "" || !Number.isFinite(parsed) || parsed < 0) {
+    return { error: "Ingresá un monto válido." };
+  }
+
+  await db.order.update({
+    where: { id: orderId },
+    data: { actualShippingCost: Math.round(parsed) },
+  });
+
+  revalidatePath(`/admin/orders/${orderId}`);
+  return {};
+}

@@ -219,6 +219,10 @@ export const shipmentSchema = z.object({
     (val) => (val === "" || val === null || val === undefined ? undefined : val),
     z.string().trim().max(60).optional(),
   ),
+  actualShippingCost: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.coerce.number().int().min(0).optional(),
+  ),
   note: z.preprocess(
     (val) => (val === "" || val === null || val === undefined ? undefined : val),
     z.string().trim().max(500).optional(),

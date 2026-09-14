@@ -1,10 +1,32 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { formatPrice } from "@/lib/products";
+import { calculateCogs, calculateMargin } from "@/lib/margin";
 
 export default async function AdminShipmentsPage() {
   const shipments = await db.shipment.findMany({
     orderBy: { createdAt: "desc" },
-    include: { _count: { select: { orders: true } } },
+    include: {
+      orders: { include: { items: { include: { product: true } } } },
+    },
+  });
+
+  const rows = shipments.map((s) => {
+    const revenue = s.orders.reduce((sum, o) => sum + o.total, 0);
+    const cogs = s.orders.reduce(
+      (sum, o) => sum + calculateCogs(o.items),
+      0,
+    );
+    const margin = calculateMargin(revenue, cogs, s.actualShippingCost);
+    return {
+      id: s.id,
+      createdAt: s.createdAt,
+      shippingMethod: s.shippingMethod,
+      trackingCode: s.trackingCode,
+      actualShippingCost: s.actualShippingCost,
+      orderCount: s.orders.length,
+      margin,
+    };
   });
 
   return (
@@ -25,11 +47,11 @@ export default async function AdminShipmentsPage() {
         salir juntos en un mismo despacho.
       </p>
 
-      {shipments.length === 0 ? (
+      {rows.length === 0 ? (
         <p className="mt-10 text-ink-soft">Todavía no agrupaste ningún envío.</p>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-xl border border-line bg-bg">
-          <table className="w-full min-w-[640px] text-left text-sm">
+          <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="border-b border-line">
               <tr>
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
@@ -44,11 +66,17 @@ export default async function AdminShipmentsPage() {
                 <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
                   Pedidos
                 </th>
+                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                  Costo envío
+                </th>
+                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                  Margen
+                </th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
-              {shipments.map((s) => (
+              {rows.map((s) => (
                 <tr key={s.id} className="border-b border-line-soft last:border-0">
                   <td className="px-4 py-3 text-ink-soft">
                     {s.createdAt.toLocaleDateString("es-AR")}
@@ -56,7 +84,15 @@ export default async function AdminShipmentsPage() {
                   <td className="px-4 py-3 text-ink">{s.shippingMethod || "—"}</td>
                   <td className="px-4 py-3 text-ink-soft">{s.trackingCode || "—"}</td>
                   <td className="px-4 py-3 text-right text-ink-soft">
-                    {s._count.orders}
+                    {s.orderCount}
+                  </td>
+                  <td className="px-4 py-3 text-right text-ink-soft">
+                    {s.actualShippingCost != null ? formatPrice(s.actualShippingCost) : "—"}
+                  </td>
+                  <td
+                    className={`px-4 py-3 text-right font-semibold ${s.margin < 0 ? "text-err-ink" : "text-navy"}`}
+                  >
+                    {formatPrice(s.margin)}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Link

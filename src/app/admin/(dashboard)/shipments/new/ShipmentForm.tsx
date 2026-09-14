@@ -126,6 +126,18 @@ export function ShipmentForm({ orders }: { orders: OrderOption[] }) {
           </span>
           <input name="trackingCode" placeholder="Ej: CA123456789AR" className="input" />
         </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-ink">
+            Costo real de envío (opcional)
+          </span>
+          <input
+            type="number"
+            min={0}
+            name="actualShippingCost"
+            placeholder="Ej: 10500"
+            className="input"
+          />
+        </label>
         <label className="flex flex-col gap-1.5 sm:col-span-2">
           <span className="text-sm font-medium text-ink">Nota (opcional)</span>
           <textarea

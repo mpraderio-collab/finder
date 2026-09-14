@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/products";
 import { orderStatusColors, orderStatusLabels } from "@/lib/order-status";
+import { calculateCogs, calculateMargin } from "@/lib/margin";
+import { ShipmentActualShippingCost } from "./ShipmentActualShippingCost";
 
 export default async function ShipmentDetailPage(
   props: PageProps<"/admin/shipments/[id]">,
@@ -11,9 +13,18 @@ export default async function ShipmentDetailPage(
 
   const shipment = await db.shipment.findUnique({
     where: { id },
-    include: { orders: { include: { items: true }, orderBy: { createdAt: "asc" } } },
+    include: {
+      orders: {
+        include: { items: { include: { product: true } } },
+        orderBy: { createdAt: "asc" },
+      },
+    },
   });
   if (!shipment) notFound();
+
+  const revenue = shipment.orders.reduce((sum, o) => sum + o.total, 0);
+  const cogs = shipment.orders.reduce((sum, o) => sum + calculateCogs(o.items), 0);
+  const margin = calculateMargin(revenue, cogs, shipment.actualShippingCost);
 
   return (
     <div>
@@ -35,6 +46,21 @@ export default async function ShipmentDetailPage(
         <div className="rounded-xl border border-line bg-bg p-4">
           <p className="text-xs text-ink-soft">Código de seguimiento</p>
           <p className="mt-1 font-medium text-ink">{shipment.trackingCode || "—"}</p>
+        </div>
+        <div className="rounded-xl border border-line bg-bg p-4">
+          <p className="text-xs text-ink-soft">Costo real de envío</p>
+          <ShipmentActualShippingCost
+            shipmentId={shipment.id}
+            actualShippingCost={shipment.actualShippingCost}
+          />
+        </div>
+        <div className="rounded-xl border border-line bg-bg p-4">
+          <p className="text-xs text-ink-soft">Margen del envío</p>
+          <p
+            className={`mt-1 font-heading text-lg font-extrabold ${margin < 0 ? "text-err-ink" : "text-navy"}`}
+          >
+            {formatPrice(margin)}
+          </p>
         </div>
       </div>
 

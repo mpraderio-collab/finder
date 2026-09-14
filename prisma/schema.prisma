@@ -208,6 +208,11 @@ model Order {
   shippingMethod    String?     // "correo" | "oca" — solo pedidos online
   shippingCost      Int         @default(0)
   trackingCode      String?
+  // Lo que realmente cuesta despachar este pedido (no lo que se le cobra
+  // al cliente, que suele ser $0 por envío gratis) — solo aplica cuando el
+  // pedido se envía suelto; si es parte de un Shipment agrupado, el costo
+  // real vive ahí (Shipment.actualShippingCost) y este campo se ignora.
+  actualShippingCost Int?
   subtotal          Int
   total             Int
   mpPreferenceId    String?
@@ -236,6 +241,9 @@ model Shipment {
   shippingMethod String? // texto libre: "Correo Argentino", "Moto propia", etc.
   trackingCode   String?
   note           String?
+  // Lo que realmente costó el despacho combinado (una sola factura del
+  // transportista cubriendo todos los pedidos agrupados acá).
+  actualShippingCost Int?
   createdAt      DateTime @default(now())
 
   orders Order[]
