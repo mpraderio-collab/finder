@@ -75,11 +75,8 @@ export function ProductPurchase({
   // El carrito y el resumen del pedido necesitan una imagen real, nunca un video.
   const cartImage = gallery.find((g) => g.type !== "video")?.url;
 
-  // El lightbox navega solo entre fotos — un video no se agranda igual.
-  const imageGallery = useMemo(
-    () => gallery.filter((g) => g.type !== "video"),
-    [gallery],
-  );
+  // El lightbox navega por toda la galería, fotos y video incluido.
+  const imageGallery = gallery;
 
   const maxStock = variants.length === 0 ? stock : (activeVariant?.stock ?? 0);
   const outOfStock = maxStock <= 0;
@@ -535,13 +532,25 @@ export function ProductPurchase({
             onTouchStart={handleLightboxTouchStart}
             onTouchEnd={handleLightboxTouchEnd}
           >
-            <Image
-              src={imageGallery[lightboxIndex].url}
-              alt={name}
-              fill
-              className="object-contain"
-              sizes="100vw"
-            />
+            {imageGallery[lightboxIndex].type === "video" ? (
+              <video
+                key={imageGallery[lightboxIndex].id}
+                src={imageGallery[lightboxIndex].url}
+                controls
+                controlsList="nofullscreen noremoteplayback"
+                disablePictureInPicture
+                playsInline
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <Image
+                src={imageGallery[lightboxIndex].url}
+                alt={name}
+                fill
+                className="object-contain"
+                sizes="100vw"
+              />
+            )}
           </div>
 
           {imageGallery.length > 1 && (
@@ -554,18 +563,27 @@ export function ProductPurchase({
                   key={img.id}
                   type="button"
                   onClick={() => setLightboxIndex(i)}
-                  aria-label={`Ver foto ${i + 1}`}
+                  aria-label={img.type === "video" ? `Ver video ${i + 1}` : `Ver foto ${i + 1}`}
                   className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 bg-surface transition-colors ${
                     i === lightboxIndex ? "border-amber" : "border-white/20"
                   }`}
                 >
-                  <Image
-                    src={img.url}
-                    alt=""
-                    fill
-                    className="object-cover"
-                    sizes="56px"
-                  />
+                  {img.type === "video" ? (
+                    <>
+                      <video src={img.url} muted playsInline className="h-full w-full object-cover" />
+                      <span className="absolute inset-0 flex items-center justify-center bg-ink/20 text-sm text-white">
+                        ▶
+                      </span>
+                    </>
+                  ) : (
+                    <Image
+                      src={img.url}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      sizes="56px"
+                    />
+                  )}
                 </button>
               ))}
             </div>
