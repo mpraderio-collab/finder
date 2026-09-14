@@ -208,3 +208,19 @@ export const purchaseSchema = z.object({
   }, z.coerce.date({ message: "Ingresá una fecha válida" })),
   items: z.array(purchaseItemSchema).min(1, "Agregá al menos un producto"),
 });
+
+export const shipmentSchema = z.object({
+  orderIds: z.array(z.string().min(1)).min(1, "Elegí al menos un pedido"),
+  shippingMethod: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().trim().max(60).optional(),
+  ),
+  trackingCode: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().trim().max(60).optional(),
+  ),
+  note: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().trim().max(500).optional(),
+  ),
+});

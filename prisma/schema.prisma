@@ -217,12 +217,28 @@ model Order {
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
-  items OrderItem[]
+  items    OrderItem[]
+  shipment Shipment?   @relation(fields: [shipmentId], references: [id])
+  shipmentId String?
 
   @@index([status])
   @@index([customerEmail])
   @@index([sessionId])
   @@index([customerId])
+  @@index([shipmentId])
+}
+
+// Agrupa varios pedidos (web o manuales, de distintos clientes) que salen
+// juntos en un mismo despacho — para marcarlos todos como "Enviado" de una
+// y dejar registro de con qué transporte/código salieron.
+model Shipment {
+  id             String   @id @default(cuid())
+  shippingMethod String? // texto libre: "Correo Argentino", "Moto propia", etc.
+  trackingCode   String?
+  note           String?
+  createdAt      DateTime @default(now())
+
+  orders Order[]
 }
 
 model OrderItem {

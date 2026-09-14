@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/products";
@@ -25,7 +26,7 @@ export default async function OrderDetailPage(
   const { id } = await props.params;
   const order = await db.order.findUnique({
     where: { id },
-    include: { items: { include: { product: true } } },
+    include: { items: { include: { product: true } }, shipment: true },
   });
   if (!order) notFound();
   // Un borrador de venta manual se edita en su propia pantalla, no acá.
@@ -192,25 +193,28 @@ export default async function OrderDetailPage(
             </div>
           )}
 
-          {order.channel === "online" && !isCart && (
+          {!isCart && (order.channel === "online" || order.shipmentId) && (
             <div className="rounded-xl border border-line bg-bg p-5">
               <p className="text-sm font-semibold text-navy">Envío</p>
               <dl className="mt-3 space-y-2 text-sm text-ink-soft">
-                <div>
-                  <dt className="text-xs uppercase tracking-wide text-ink-faint">Dirección</dt>
-                  <dd className="text-ink">
-                    {order.shippingAddress}
-                    <br />
-                    {order.shippingCity}, {order.shippingProvince}
-                    <br />
-                    {order.shippingZip}
-                  </dd>
-                </div>
+                {order.channel === "online" && (
+                  <div>
+                    <dt className="text-xs uppercase tracking-wide text-ink-faint">Dirección</dt>
+                    <dd className="text-ink">
+                      {order.shippingAddress}
+                      <br />
+                      {order.shippingCity}, {order.shippingProvince}
+                      <br />
+                      {order.shippingZip}
+                    </dd>
+                  </div>
+                )}
                 <div>
                   <dt className="text-xs uppercase tracking-wide text-ink-faint">Transporte</dt>
                   <dd className="text-ink">
                     {order.shippingMethod
-                      ? shippingMethods[order.shippingMethod as ShippingMethod]?.label
+                      ? (shippingMethods[order.shippingMethod as ShippingMethod]?.label ??
+                        order.shippingMethod)
                       : "—"}
                   </dd>
                 </div>
@@ -218,6 +222,19 @@ export default async function OrderDetailPage(
                   <dt className="text-xs uppercase tracking-wide text-ink-faint">Seguimiento</dt>
                   <TrackingCode orderId={order.id} trackingCode={order.trackingCode} />
                 </div>
+                {order.shipmentId && (
+                  <div>
+                    <dt className="text-xs uppercase tracking-wide text-ink-faint">Envío agrupado</dt>
+                    <dd>
+                      <Link
+                        href={`/admin/shipments/${order.shipmentId}`}
+                        className="font-semibold text-blue hover:text-navy"
+                      >
+                        Ver envío →
+                      </Link>
+                    </dd>
+                  </div>
+                )}
               </dl>
             </div>
           )}
