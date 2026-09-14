@@ -132,6 +132,18 @@ export function ManualSaleForm({
     setItems((prev) => prev.filter((_, i) => i !== index));
   }
 
+  function updateItemQuantity(index: number, value: number) {
+    setItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, quantity: value } : item)),
+    );
+  }
+
+  function updateItemUnitPrice(index: number, value: number) {
+    setItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, unitPrice: value } : item)),
+    );
+  }
+
   function handleConfirm() {
     if (!orderId) return;
     if (!confirm("¿Confirmar esta venta? Se descuenta el stock y ya no se va a poder editar.")) {
@@ -253,6 +265,7 @@ export function ManualSaleForm({
               <tr>
                 <th className="px-4 py-2 font-medium">Producto</th>
                 <th className="px-4 py-2 font-medium">Cant.</th>
+                <th className="px-4 py-2 font-medium">Precio unit.</th>
                 <th className="px-4 py-2 font-medium">Subtotal</th>
                 <th className="px-4 py-2" />
               </tr>
@@ -264,7 +277,24 @@ export function ManualSaleForm({
                     {item.productName}
                     {item.variantName ? ` — ${item.variantName}` : ""}
                   </td>
-                  <td className="px-4 py-2 text-ink-soft">{item.quantity}</td>
+                  <td className="px-4 py-2">
+                    <input
+                      type="number"
+                      min={1}
+                      value={item.quantity}
+                      onChange={(e) => updateItemQuantity(i, Number(e.target.value))}
+                      className="input w-16 py-1"
+                    />
+                  </td>
+                  <td className="px-4 py-2">
+                    <input
+                      type="number"
+                      min={0}
+                      value={item.unitPrice}
+                      onChange={(e) => updateItemUnitPrice(i, Number(e.target.value))}
+                      className="input w-28 py-1"
+                    />
+                  </td>
                   <td className="px-4 py-2 text-ink-soft">
                     {formatPrice(item.unitPrice * item.quantity)}
                   </td>
