@@ -6,6 +6,7 @@ import { formatPrice } from "@/lib/products";
 import {
   createManualSale,
   updateManualSale,
+  updatePaidManualSale,
   finalizeManualSale,
   discardManualSale,
   type ManualSaleState,
@@ -35,6 +36,7 @@ export function ManualSaleForm({
   products,
   customers,
   orderId,
+  orderStatus,
   initialItems,
   initialCustomerName,
   initialCustomerPhone,
@@ -43,15 +45,23 @@ export function ManualSaleForm({
   products: ProductOption[];
   // Clientes ya cargados — alimentan el desplegable de autocompletado.
   customers: { name: string; phone: string | null }[];
-  // Si viene orderId, el form edita ese borrador en vez de crear uno nuevo.
+  // Si viene orderId, el form edita esa venta en vez de crear una nueva.
   orderId?: string;
+  // "draft" (default si no viene) | "paid" | "shipped" — cambia qué acción
+  // se llama al guardar y qué botones se muestran.
+  orderStatus?: string;
   initialItems?: LineItem[];
   initialCustomerName?: string;
   initialCustomerPhone?: string;
   initialNote?: string;
 }) {
   const router = useRouter();
-  const action = orderId ? updateManualSale.bind(null, orderId) : createManualSale;
+  const isDraft = !orderId || orderStatus === "draft";
+  const action = !orderId
+    ? createManualSale
+    : isDraft
+      ? updateManualSale.bind(null, orderId)
+      : updatePaidManualSale.bind(null, orderId);
   const [state, formAction, pending] = useActionState(action, initialState);
   const [confirmPending, startConfirmTransition] = useTransition();
   const [discardPending, startDiscardTransition] = useTransition();
@@ -251,9 +261,9 @@ export function ManualSaleForm({
           </button>
         </div>
         <p className="mt-2 text-xs text-ink-faint">
-          El stock recién se descuenta cuando confirmás la venta, así que
-          podés cargar más de lo que ves disponible ahora si sabés que va a
-          entrar.
+          {isDraft
+            ? "El stock recién se descuenta cuando confirmás la venta, así que podés cargar más de lo que ves disponible ahora si sabés que va a entrar."
+            : "Esta venta ya está confirmada: el stock se ajusta al guardar, según la diferencia con lo que había antes."}
         </p>
         {addError && <p className="mt-2 text-xs text-err-ink">{addError}</p>}
       </div>
@@ -387,10 +397,14 @@ export function ManualSaleForm({
             disabled={items.length === 0 || pending}
             className="w-fit rounded-lg bg-navy px-6 py-2.5 font-heading text-sm font-bold text-white disabled:opacity-40"
           >
-            {pending ? "Guardando…" : `Guardar borrador — ${formatPrice(total)}`}
+            {pending
+              ? "Guardando…"
+              : isDraft
+                ? `Guardar borrador — ${formatPrice(total)}`
+                : `Guardar cambios — ${formatPrice(total)}`}
           </button>
 
-          {orderId && (
+          {orderId && isDraft && (
             <>
               <button
                 type="button"

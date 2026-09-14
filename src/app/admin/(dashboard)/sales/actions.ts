@@ -168,6 +168,130 @@ export async function updateManualSale(
   return { orderId };
 }
 
+// Edita una venta manual ya confirmada (pagada o enviada) — a diferencia
+// del borrador, acá el stock ya se descontó, así que un cambio de cantidad
+// no vuelve a descontar todo de cero: se calcula la diferencia por
+// producto/variante entre los ítems viejos y los nuevos, y solo se ajusta
+// esa diferencia (se descuenta más si subiste la cantidad, se repone si la
+// bajaste o sacaste el producto).
+export async function updatePaidManualSale(
+  orderId: string,
+  _prev: ManualSaleState,
+  formData: FormData,
+): Promise<ManualSaleState> {
+  await requireAdmin();
+
+  const order = await db.order.findUnique({
+    where: { id: orderId },
+    include: { items: true },
+  });
+  if (!order || order.channel !== "manual") return { error: "Esta venta no existe." };
+  if (order.status !== "paid" && order.status !== "shipped") {
+    return { error: "Esta venta no se puede editar en este estado." };
+  }
+
+  const result = parseManualSaleForm(formData);
+  if (!result.success) return { error: result.error };
+  const data = result.data;
+  const hasRealCustomer = String(formData.get("customerName") ?? "").trim().length > 0;
+
+  const subtotal = data.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+
+  function lineKey(productId: string, variantName?: string | null) {
+    return `${productId}|${variantName ?? ""}`;
+  }
+
+  const oldQuantities = new Map<string, number>();
+  for (const item of order.items) {
+    const key = lineKey(item.productId, item.variantName);
+    oldQuantities.set(key, (oldQuantities.get(key) ?? 0) + item.quantity);
+  }
+  const newQuantities = new Map<string, number>();
+  for (const line of data.items) {
+    const key = lineKey(line.productId, line.variantName);
+    newQuantities.set(key, (newQuantities.get(key) ?? 0) + line.quantity);
+  }
+  const allKeys = new Set([...oldQuantities.keys(), ...newQuantities.keys()]);
+
+  try {
+    await db.$transaction(async (tx) => {
+      const customerId = hasRealCustomer
+        ? await upsertCustomerFromOrder(tx, {
+            name: data.customerName,
+            phone: data.customerPhone,
+          })
+        : null;
+
+      for (const key of allKeys) {
+        const [productId, variantName] = key.split("|");
+        const delta = (newQuantities.get(key) ?? 0) - (oldQuantities.get(key) ?? 0);
+        if (delta === 0) continue;
+
+        if (variantName) {
+          if (delta > 0) {
+            const updated = await tx.productVariant.updateMany({
+              where: { productId, name: variantName, stock: { gte: delta } },
+              data: { stock: { decrement: delta } },
+            });
+            if (updated.count === 0) {
+              throw new ManualSaleError("Sin stock suficiente para aplicar este cambio.");
+            }
+          } else {
+            await tx.productVariant.updateMany({
+              where: { productId, name: variantName },
+              data: { stock: { increment: -delta } },
+            });
+          }
+        } else {
+          if (delta > 0) {
+            const updated = await tx.product.updateMany({
+              where: { id: productId, stock: { gte: delta } },
+              data: { stock: { decrement: delta } },
+            });
+            if (updated.count === 0) {
+              throw new ManualSaleError("Sin stock suficiente para aplicar este cambio.");
+            }
+          } else {
+            await tx.product.updateMany({
+              where: { id: productId },
+              data: { stock: { increment: -delta } },
+            });
+          }
+        }
+      }
+
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          customerId,
+          customerName: data.customerName,
+          customerPhone: data.customerPhone ?? "",
+          note: data.note,
+          subtotal,
+          total: subtotal,
+        },
+      });
+      await tx.orderItem.deleteMany({ where: { orderId } });
+      await tx.orderItem.createMany({
+        data: data.items.map((line) => ({
+          orderId,
+          productId: line.productId,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+          lineTotal: line.unitPrice * line.quantity,
+          variantName: line.variantName,
+        })),
+      });
+    });
+  } catch (err) {
+    if (err instanceof ManualSaleError) return { error: err.message };
+    throw err;
+  }
+
+  revalidateSalesPaths(orderId);
+  return { orderId };
+}
+
 // El único momento en que una venta manual mueve stock: al confirmarla se
 // descuenta de verdad y pasa a contar como venta pagada. De ahí en más el
 // estado se maneja como cualquier otro pedido (ver StatusSelect).

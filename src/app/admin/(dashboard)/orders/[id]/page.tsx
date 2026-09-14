@@ -162,9 +162,19 @@ export default async function OrderDetailPage(
         <div className="flex flex-col gap-4">
           {!isCart && (
             <div className="rounded-xl border border-line bg-bg p-5">
-              <p className="text-sm font-semibold text-navy">
-                {order.channel === "manual" ? "Venta manual" : "Cliente"}
-              </p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-navy">
+                  {order.channel === "manual" ? "Venta manual" : "Cliente"}
+                </p>
+                {order.channel === "manual" && order.status !== "cancelled" && (
+                  <Link
+                    href={`/admin/sales/${order.id}/edit`}
+                    className="text-xs font-semibold text-blue hover:text-navy"
+                  >
+                    Editar venta
+                  </Link>
+                )}
+              </div>
               <dl className="mt-3 space-y-2 text-sm text-ink-soft">
                 <div>
                   <dt className="text-xs uppercase tracking-wide text-ink-faint">Nombre</dt>

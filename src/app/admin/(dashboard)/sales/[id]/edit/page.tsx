@@ -25,8 +25,8 @@ export default async function EditManualSalePage(
   ]);
 
   if (!order || order.channel !== "manual") notFound();
-  // Ya se confirmó — de acá en más se ve y se gestiona como cualquier pedido.
-  if (order.status !== "draft") redirect(`/admin/orders/${order.id}`);
+  // Cancelada: no tiene sentido editarla, se ve como cualquier pedido.
+  if (order.status === "cancelled") redirect(`/admin/orders/${order.id}`);
 
   const customers = dedupeCustomersByName(allCustomers);
 
@@ -47,14 +47,17 @@ export default async function EditManualSalePage(
     maxStock: 0,
   }));
 
+  const isDraft = order.status === "draft";
+
   return (
     <div>
       <h1 className="font-heading text-2xl font-extrabold text-ink">
-        Borrador de venta manual
+        {isDraft ? "Borrador de venta manual" : "Editar venta manual"}
       </h1>
       <p className="mt-1 max-w-xl text-sm text-ink-soft">
-        Podés seguir editando esta venta las veces que quieras. El stock
-        recién se descuenta cuando la confirmás.
+        {isDraft
+          ? "Podés seguir editando esta venta las veces que quieras. El stock recién se descuenta cuando la confirmás."
+          : "Esta venta ya está confirmada — si cambiás cantidades, el stock se ajusta solo por la diferencia (se descuenta más o se repone, según corresponda)."}
       </p>
 
       <div className="mt-8">
@@ -62,6 +65,7 @@ export default async function EditManualSalePage(
           products={options}
           customers={customers}
           orderId={order.id}
+          orderStatus={order.status}
           initialItems={initialItems}
           initialCustomerName={order.customerName === "Venta manual" ? "" : order.customerName}
           initialCustomerPhone={order.customerPhone}
