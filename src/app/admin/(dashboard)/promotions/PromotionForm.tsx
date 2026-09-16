@@ -44,6 +44,8 @@ export function PromotionForm({ action, products, defaultValues, submitLabel }: 
     new Set(defaultValues?.productIds ?? []),
   );
   const [shippingCost, setShippingCost] = useState<number | "">(10500);
+  const [mpPercent, setMpPercent] = useState<number | "">(5);
+  const [iibbPercent, setIibbPercent] = useState<number | "">(5);
   const [tiers, setTiers] = useState<Tier[]>(
     defaultValues?.tiers && defaultValues.tiers.length > 0
       ? defaultValues.tiers.map((t) => ({
@@ -106,7 +108,10 @@ export function PromotionForm({ action, products, defaultValues, submitLabel }: 
     const percentOff = t.percentOff === "" ? 0 : Number(t.percentOff);
     const totalAfterDiscount = total * (1 - percentOff / 100);
     const shipping = shippingCost === "" ? 0 : shippingCost;
-    const margin = cost !== null ? totalAfterDiscount - cost * quantity - shipping : null;
+    const mpFee = totalAfterDiscount * (mpPercent === "" ? 0 : mpPercent) / 100;
+    const iibbFee = totalAfterDiscount * (iibbPercent === "" ? 0 : iibbPercent) / 100;
+    const margin =
+      cost !== null ? totalAfterDiscount - cost * quantity - shipping - mpFee - iibbFee : null;
     return { price, cost, total, margin };
   }
 
@@ -211,16 +216,42 @@ export function PromotionForm({ action, products, defaultValues, submitLabel }: 
         {state.fieldErrors?.tiers && (
           <p className="mt-1 text-xs text-err-ink">{state.fieldErrors.tiers}</p>
         )}
-        <label className="mt-2 flex w-56 flex-col gap-1.5">
-          <span className="text-xs text-ink-soft">Costo de envío (se descuenta 1 vez por tramo)</span>
-          <input
-            type="number"
-            min={0}
-            value={shippingCost}
-            onChange={(e) => setShippingCost(e.target.value === "" ? "" : Number(e.target.value))}
-            className="input"
-          />
-        </label>
+        <div className="mt-2 flex flex-wrap gap-4">
+          <label className="flex w-56 flex-col gap-1.5">
+            <span className="text-xs text-ink-soft">Costo de envío (se descuenta 1 vez por tramo)</span>
+            <input
+              type="number"
+              min={0}
+              value={shippingCost}
+              onChange={(e) => setShippingCost(e.target.value === "" ? "" : Number(e.target.value))}
+              className="input"
+            />
+          </label>
+          <label className="flex w-40 flex-col gap-1.5">
+            <span className="text-xs text-ink-soft">% Mercado Pago</span>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step="any"
+              value={mpPercent}
+              onChange={(e) => setMpPercent(e.target.value === "" ? "" : Number(e.target.value))}
+              className="input"
+            />
+          </label>
+          <label className="flex w-40 flex-col gap-1.5">
+            <span className="text-xs text-ink-soft">% IIBB</span>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step="any"
+              value={iibbPercent}
+              onChange={(e) => setIibbPercent(e.target.value === "" ? "" : Number(e.target.value))}
+              className="input"
+            />
+          </label>
+        </div>
         <div className="mt-2 overflow-x-auto rounded-xl border border-line bg-bg">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-line text-xs text-ink-soft">
@@ -309,7 +340,8 @@ export function PromotionForm({ action, products, defaultValues, submitLabel }: 
         <p className="mt-2 text-xs text-ink-soft">
           Precio y costo arrancan sugiriendo el promedio de los productos elegidos — editalos
           por tramo si esa combinación puntual tiene un precio distinto. Total y Margen Total
-          se recalculan solos, y el Margen Total ya descuenta el costo de envío de arriba.
+          se recalculan solos, y el Margen Total ya descuenta el costo de envío, Mercado Pago
+          e IIBB de arriba (estos dos últimos, como % del total con descuento).
         </p>
       </div>
 
