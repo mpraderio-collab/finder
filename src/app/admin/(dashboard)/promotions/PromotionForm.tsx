@@ -12,7 +12,12 @@ type ProductOption = {
   otherActivePromoName: string | null;
 };
 
-type Tier = { threshold: number | ""; percentOff: number | "" };
+type Tier = {
+  threshold: number | "";
+  percentOff: number | "";
+  price: number | ""; // vacío = usar el promedio de los productos elegidos
+  cost: number | ""; // vacío = usar el promedio de los productos elegidos
+};
 
 type Props = {
   action: (
@@ -38,10 +43,16 @@ export function PromotionForm({ action, products, defaultValues, submitLabel }: 
   const [selected, setSelected] = useState<Set<string>>(
     new Set(defaultValues?.productIds ?? []),
   );
+  const [shippingCost, setShippingCost] = useState<number | "">(10500);
   const [tiers, setTiers] = useState<Tier[]>(
     defaultValues?.tiers && defaultValues.tiers.length > 0
-      ? defaultValues.tiers.map((t) => ({ threshold: t.threshold, percentOff: t.percentOff }))
-      : [{ threshold: "", percentOff: "" }],
+      ? defaultValues.tiers.map((t) => ({
+          threshold: t.threshold,
+          percentOff: t.percentOff,
+          price: "",
+          cost: "",
+        }))
+      : [{ threshold: "", percentOff: "", price: "", cost: "" }],
   );
 
   function toggleProduct(id: string) {
@@ -62,7 +73,7 @@ export function PromotionForm({ action, products, defaultValues, submitLabel }: 
   }
 
   function addTier() {
-    setTiers((prev) => [...prev, { threshold: "", percentOff: "" }]);
+    setTiers((prev) => [...prev, { threshold: "", percentOff: "", price: "", cost: "" }]);
   }
 
   function removeTier(index: number) {
@@ -75,11 +86,10 @@ export function PromotionForm({ action, products, defaultValues, submitLabel }: 
       .map((t) => ({ threshold: t.threshold, percentOff: t.percentOff })),
   );
 
-  // Estimado por tramo: como la promo puede mezclar productos distintos
-  // (mix and match), no hay un "combo" fijo — se estima con el precio y
-  // costo PROMEDIO de los productos elegidos, ponderando por esa cantidad
-  // de unidades (o, en el modo por monto, el monto del tramo dividido por
-  // el precio promedio, para estimar cuántas unidades representa).
+  // Precio/costo de cada tramo son editables (por si esa combinación puntual
+  // no es la típica), pero arrancan sugiriendo el promedio de los productos
+  // elegidos — la promo puede mezclar productos distintos, así que no hay
+  // un precio "correcto" único.
   const selectedProducts = products.filter((p) => selected.has(p.id));
   const avgPrice =
     selectedProducts.length > 0
@@ -87,18 +97,17 @@ export function PromotionForm({ action, products, defaultValues, submitLabel }: 
       : 0;
   const costsKnown = selectedProducts.filter((p) => p.cost !== null).map((p) => p.cost as number);
   const avgCost = costsKnown.length > 0 ? costsKnown.reduce((s, c) => s + c, 0) / costsKnown.length : null;
-  const missingCost = selectedProducts.length > 0 && costsKnown.length < selectedProducts.length;
 
-  function tierEstimate(t: Tier) {
-    if (t.threshold === "" || t.percentOff === "" || avgPrice === 0) return null;
-    const units = triggerType === "amount" ? Number(t.threshold) / avgPrice : Number(t.threshold);
-    const revenueBeforeDiscount = avgPrice * units;
-    const revenueAfterDiscount = revenueBeforeDiscount * (1 - Number(t.percentOff) / 100);
-    if (avgCost === null) return { total: revenueAfterDiscount, margin: null, marginPercent: null };
-    const cogs = avgCost * units;
-    const margin = revenueAfterDiscount - cogs;
-    const marginPercent = revenueAfterDiscount > 0 ? (margin / revenueAfterDiscount) * 100 : 0;
-    return { total: revenueAfterDiscount, margin, marginPercent };
+  function tierCalc(t: Tier) {
+    const price = t.price !== "" ? Number(t.price) : avgPrice;
+    const cost = t.cost !== "" ? Number(t.cost) : avgCost;
+    const quantity = triggerType === "amount" && price > 0 ? Number(t.threshold || 0) / price : Number(t.threshold || 0);
+    const total = triggerType === "amount" ? Number(t.threshold || 0) : price * quantity;
+    const percentOff = t.percentOff === "" ? 0 : Number(t.percentOff);
+    const totalAfterDiscount = total * (1 - percentOff / 100);
+    const shipping = shippingCost === "" ? 0 : shippingCost;
+    const margin = cost !== null ? totalAfterDiscount - cost * quantity - shipping : null;
+    return { price, cost, total, margin };
   }
 
   return (
@@ -202,89 +211,106 @@ export function PromotionForm({ action, products, defaultValues, submitLabel }: 
         {state.fieldErrors?.tiers && (
           <p className="mt-1 text-xs text-err-ink">{state.fieldErrors.tiers}</p>
         )}
-        <div className="mt-2 flex flex-col gap-2">
-          {tiers.map((tier, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <div className="flex-1">
-                <span className="text-xs text-ink-soft">
+        <label className="mt-2 flex w-56 flex-col gap-1.5">
+          <span className="text-xs text-ink-soft">Costo de envío (se descuenta 1 vez por tramo)</span>
+          <input
+            type="number"
+            min={0}
+            value={shippingCost}
+            onChange={(e) => setShippingCost(e.target.value === "" ? "" : Number(e.target.value))}
+            className="input"
+          />
+        </label>
+        <div className="mt-2 overflow-x-auto rounded-xl border border-line bg-bg">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-line text-xs text-ink-soft">
+              <tr>
+                <th className="px-3 py-2 font-medium">
                   {triggerType === "amount" ? "Monto ($)" : "Cantidad"}
-                </span>
-                <input
-                  type="number"
-                  min={1}
-                  value={tier.threshold}
-                  onChange={(e) => updateTier(i, "threshold", e.target.value)}
-                  placeholder={triggerType === "amount" ? "Ej: 100000" : "Ej: 2"}
-                  className="input"
-                />
-              </div>
-              <div className="flex-1">
-                <span className="text-xs text-ink-soft">% de descuento</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step="any"
-                  value={tier.percentOff}
-                  onChange={(e) => updateTier(i, "percentOff", e.target.value)}
-                  placeholder="Ej: 10"
-                  className="input"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => removeTier(i)}
-                disabled={tiers.length === 1}
-                className="mt-4 self-start text-ink-faint hover:text-err-ink disabled:cursor-not-allowed disabled:opacity-30"
-                aria-label="Quitar tramo"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
+                </th>
+                <th className="px-3 py-2 font-medium">Precio</th>
+                <th className="px-3 py-2 font-medium">Costo</th>
+                <th className="px-3 py-2 font-medium">Total</th>
+                <th className="px-3 py-2 font-medium">% Descuento</th>
+                <th className="px-3 py-2 font-medium">Margen Total</th>
+                <th className="w-8" />
+              </tr>
+            </thead>
+            <tbody>
+              {tiers.map((tier, i) => {
+                const calc = tierCalc(tier);
+                return (
+                  <tr key={i} className="border-b border-line-soft last:border-0">
+                    <td className="px-3 py-2">
+                      <input
+                        type="number"
+                        min={1}
+                        value={tier.threshold}
+                        onChange={(e) => updateTier(i, "threshold", e.target.value)}
+                        placeholder={triggerType === "amount" ? "100000" : "2"}
+                        className="input"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="number"
+                        min={0}
+                        value={tier.price}
+                        onChange={(e) => updateTier(i, "price", e.target.value)}
+                        placeholder={avgPrice > 0 ? String(Math.round(avgPrice)) : "0"}
+                        className="input"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="number"
+                        min={0}
+                        value={tier.cost}
+                        onChange={(e) => updateTier(i, "cost", e.target.value)}
+                        placeholder={avgCost !== null ? String(Math.round(avgCost)) : "sin datos"}
+                        className="input"
+                      />
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 font-semibold text-ink">
+                      {formatPrice(Math.round(calc.total))}
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="any"
+                        value={tier.percentOff}
+                        onChange={(e) => updateTier(i, "percentOff", e.target.value)}
+                        placeholder="10"
+                        className="input"
+                      />
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 font-semibold text-ink">
+                      {calc.margin !== null ? formatPrice(Math.round(calc.margin)) : "—"}
+                    </td>
+                    <td className="px-2 py-2">
+                      <button
+                        type="button"
+                        onClick={() => removeTier(i)}
+                        disabled={tiers.length === 1}
+                        className="text-ink-faint hover:text-err-ink disabled:cursor-not-allowed disabled:opacity-30"
+                        aria-label="Quitar tramo"
+                      >
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-        {tiers.some((t) => t.threshold !== "" && t.percentOff !== "") && (
-          <div className="mt-2 flex flex-col gap-1 rounded-lg bg-surface px-3 py-2.5 text-xs text-ink-soft">
-            <p className="font-semibold text-ink">Vista previa</p>
-            {selectedProducts.length === 0 ? (
-              <p>Elegí productos para ver el total y margen estimados.</p>
-            ) : (
-              <>
-                {tiers
-                  .filter((t) => t.threshold !== "" && t.percentOff !== "")
-                  .map((t, i) => {
-                    const label =
-                      triggerType === "amount"
-                        ? `desde ${formatPrice(Number(t.threshold))}: ${t.percentOff}% off`
-                        : `llevando ${t.threshold}+: ${t.percentOff}% off`;
-                    const est = tierEstimate(t);
-                    return (
-                      <p key={i}>
-                        {label}
-                        {est && (
-                          <>
-                            {" — "}total ~{formatPrice(Math.round(est.total))}
-                            {est.margin !== null && est.marginPercent !== null && (
-                              <>
-                                {" · "}margen ~{formatPrice(Math.round(est.margin))} (
-                                {est.marginPercent.toFixed(1)}%)
-                              </>
-                            )}
-                          </>
-                        )}
-                      </p>
-                    );
-                  })}
-                <p className="mt-1 text-ink-faint">
-                  Estimado con precio
-                  {avgCost !== null && " y costo"} promedio de los productos elegidos
-                  {missingCost && " (algunos no tienen costo cargado)"} — la promo mezcla
-                  productos, así que el total real varía según qué se compre.
-                </p>
-              </>
-            )}
-          </div>
-        )}
+        <p className="mt-2 text-xs text-ink-soft">
+          Precio y costo arrancan sugiriendo el promedio de los productos elegidos — editalos
+          por tramo si esa combinación puntual tiene un precio distinto. Total y Margen Total
+          se recalculan solos, y el Margen Total ya descuenta el costo de envío de arriba.
+        </p>
       </div>
 
       <button
