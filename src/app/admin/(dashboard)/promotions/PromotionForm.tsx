@@ -7,6 +7,8 @@ import type { PromotionActionState } from "./actions";
 type ProductOption = {
   id: string;
   name: string;
+  price: number;
+  cost: number | null;
   otherActivePromoName: string | null;
 };
 
@@ -72,6 +74,32 @@ export function PromotionForm({ action, products, defaultValues, submitLabel }: 
       .filter((t) => t.threshold !== "" && t.percentOff !== "")
       .map((t) => ({ threshold: t.threshold, percentOff: t.percentOff })),
   );
+
+  // Estimado por tramo: como la promo puede mezclar productos distintos
+  // (mix and match), no hay un "combo" fijo — se estima con el precio y
+  // costo PROMEDIO de los productos elegidos, ponderando por esa cantidad
+  // de unidades (o, en el modo por monto, el monto del tramo dividido por
+  // el precio promedio, para estimar cuántas unidades representa).
+  const selectedProducts = products.filter((p) => selected.has(p.id));
+  const avgPrice =
+    selectedProducts.length > 0
+      ? selectedProducts.reduce((sum, p) => sum + p.price, 0) / selectedProducts.length
+      : 0;
+  const costsKnown = selectedProducts.filter((p) => p.cost !== null).map((p) => p.cost as number);
+  const avgCost = costsKnown.length > 0 ? costsKnown.reduce((s, c) => s + c, 0) / costsKnown.length : null;
+  const missingCost = selectedProducts.length > 0 && costsKnown.length < selectedProducts.length;
+
+  function tierEstimate(t: Tier) {
+    if (t.threshold === "" || t.percentOff === "" || avgPrice === 0) return null;
+    const units = triggerType === "amount" ? Number(t.threshold) / avgPrice : Number(t.threshold);
+    const revenueBeforeDiscount = avgPrice * units;
+    const revenueAfterDiscount = revenueBeforeDiscount * (1 - Number(t.percentOff) / 100);
+    if (avgCost === null) return { total: revenueAfterDiscount, margin: null, marginPercent: null };
+    const cogs = avgCost * units;
+    const margin = revenueAfterDiscount - cogs;
+    const marginPercent = revenueAfterDiscount > 0 ? (margin / revenueAfterDiscount) * 100 : 0;
+    return { total: revenueAfterDiscount, margin, marginPercent };
+  }
 
   return (
     <form action={formAction} className="flex max-w-2xl flex-col gap-5">
@@ -216,17 +244,46 @@ export function PromotionForm({ action, products, defaultValues, submitLabel }: 
           ))}
         </div>
         {tiers.some((t) => t.threshold !== "" && t.percentOff !== "") && (
-          <p className="mt-2 text-xs text-ink-soft">
-            Vista previa:{" "}
-            {tiers
-              .filter((t) => t.threshold !== "" && t.percentOff !== "")
-              .map((t) =>
-                triggerType === "amount"
-                  ? `desde ${formatPrice(Number(t.threshold))}: ${t.percentOff}% off`
-                  : `llevando ${t.threshold}+: ${t.percentOff}% off`,
-              )
-              .join(" · ")}
-          </p>
+          <div className="mt-2 flex flex-col gap-1 rounded-lg bg-surface px-3 py-2.5 text-xs text-ink-soft">
+            <p className="font-semibold text-ink">Vista previa</p>
+            {selectedProducts.length === 0 ? (
+              <p>Elegí productos para ver el total y margen estimados.</p>
+            ) : (
+              <>
+                {tiers
+                  .filter((t) => t.threshold !== "" && t.percentOff !== "")
+                  .map((t, i) => {
+                    const label =
+                      triggerType === "amount"
+                        ? `desde ${formatPrice(Number(t.threshold))}: ${t.percentOff}% off`
+                        : `llevando ${t.threshold}+: ${t.percentOff}% off`;
+                    const est = tierEstimate(t);
+                    return (
+                      <p key={i}>
+                        {label}
+                        {est && (
+                          <>
+                            {" — "}total ~{formatPrice(Math.round(est.total))}
+                            {est.margin !== null && est.marginPercent !== null && (
+                              <>
+                                {" · "}margen ~{formatPrice(Math.round(est.margin))} (
+                                {est.marginPercent.toFixed(1)}%)
+                              </>
+                            )}
+                          </>
+                        )}
+                      </p>
+                    );
+                  })}
+                <p className="mt-1 text-ink-faint">
+                  Estimado con precio
+                  {avgCost !== null && " y costo"} promedio de los productos elegidos
+                  {missingCost && " (algunos no tienen costo cargado)"} — la promo mezcla
+                  productos, así que el total real varía según qué se compre.
+                </p>
+              </>
+            )}
+          </div>
         )}
       </div>
 

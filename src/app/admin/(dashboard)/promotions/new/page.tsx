@@ -6,12 +6,20 @@ export default async function NewPromotionPage() {
   const products = await db.product.findMany({
     where: { status: "active" },
     orderBy: { name: "asc" },
-    include: { promotions: { where: { active: true }, select: { name: true } } },
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      costPrice: true,
+      promotions: { where: { active: true }, select: { name: true } },
+    },
   });
 
   const options = products.map((p) => ({
     id: p.id,
     name: p.name,
+    price: p.price,
+    cost: p.costPrice,
     otherActivePromoName: p.promotions[0]?.name ?? null,
   }));
 

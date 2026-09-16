@@ -20,7 +20,11 @@ export default async function EditPromotionPage(
     db.product.findMany({
       where: { status: "active" },
       orderBy: { name: "asc" },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        costPrice: true,
         promotions: {
           where: { active: true, id: { not: id } },
           select: { name: true },
@@ -33,6 +37,8 @@ export default async function EditPromotionPage(
   const options = products.map((p) => ({
     id: p.id,
     name: p.name,
+    price: p.price,
+    cost: p.costPrice,
     otherActivePromoName: p.promotions[0]?.name ?? null,
   }));
 
