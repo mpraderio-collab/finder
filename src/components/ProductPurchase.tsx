@@ -436,8 +436,8 @@ export function ProductPurchase({
           )}
 
           <p className="text-xs text-ink-faint">
-            Envío a todo el país · Pagos con Mercado Pago · Cambios en 30
-            días
+            Envío gratis a todo el país · Pagos con Mercado Pago · Cambios
+            en 30 días
           </p>
         </div>
 

@@ -44,6 +44,17 @@ function toFieldErrors(result: ReturnType<typeof parseForm>) {
   return fieldErrors;
 }
 
+async function revalidateProductPages(productIds: string[]) {
+  if (productIds.length === 0) return;
+  const products = await db.product.findMany({
+    where: { id: { in: productIds } },
+    select: { slug: true },
+  });
+  for (const p of products) {
+    revalidatePath(`/catalogo/${p.slug}`);
+  }
+}
+
 // Un producto participa en, como máximo, una promoción activa a la vez —
 // evita que dos promos compitan por el mismo producto con tramos distintos.
 async function findConflictingProducts(productIds: string[], excludePromotionId?: string) {
@@ -96,6 +107,7 @@ export async function createPromotion(
     },
   });
 
+  await revalidateProductPages(data.productIds);
   revalidatePath("/admin/promotions");
   revalidatePath("/admin/products");
   revalidatePath("/catalogo");
@@ -126,6 +138,11 @@ export async function updatePromotion(
     }
   }
 
+  const previous = await db.promotion.findUnique({
+    where: { id },
+    select: { products: { select: { id: true } } },
+  });
+
   await db.$transaction([
     db.promotion.update({
       where: { id },
@@ -146,6 +163,8 @@ export async function updatePromotion(
     }),
   ]);
 
+  const previousIds = previous?.products.map((p) => p.id) ?? [];
+  await revalidateProductPages([...new Set([...previousIds, ...data.productIds])]);
   revalidatePath("/admin/promotions");
   revalidatePath(`/admin/promotions/${id}`);
   revalidatePath("/admin/products");
@@ -157,8 +176,12 @@ export async function updatePromotion(
 export async function deletePromotion(id: string): Promise<{ error?: string }> {
   await requireAdmin();
 
-  await db.promotion.delete({ where: { id } });
+  const promotion = await db.promotion.delete({
+    where: { id },
+    include: { products: { select: { id: true } } },
+  });
 
+  await revalidateProductPages(promotion.products.map((p) => p.id));
   revalidatePath("/admin/promotions");
   revalidatePath("/admin/products");
   revalidatePath("/catalogo");
