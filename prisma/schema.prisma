@@ -189,12 +189,18 @@ model Review {
   author    String
   rating    Int
   text      String
+  photoUrl  String? // foto opcional que adjunta el cliente al dejar la reseña
+  // Reseñas de siembra (isMocked=true) ya nacen aprobadas; las que dejan
+  // clientes reales (isMocked=false) arrancan sin aprobar hasta que un
+  // admin las revisa en /admin/reviews — recién ahí se muestran en la tienda.
+  approved  Boolean  @default(true)
   isMocked  Boolean  @default(true)
   createdAt DateTime @default(now())
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId String
 
   @@index([productId])
+  @@index([approved])
 }
 
 model Customer {

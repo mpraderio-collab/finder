@@ -9,6 +9,20 @@ export const contactSchema = z.object({
   website: z.string().max(0).optional().or(z.literal("")),
 });
 
+export const reviewSchema = z.object({
+  productId: z.string().min(1),
+  author: z.string().trim().min(2, "Ingresá tu nombre").max(80),
+  rating: z.coerce
+    .number({ message: "Elegí una calificación" })
+    .int()
+    .min(1, "Elegí al menos 1 estrella")
+    .max(5, "Máximo 5 estrellas"),
+  text: z.string().trim().min(5, "Contanos un poco más").max(1000),
+  photoUrl: z.string().trim().url().optional().or(z.literal("")),
+  // Campo señuelo: invisible para personas, si viene lleno es un bot.
+  website: z.string().max(0).optional().or(z.literal("")),
+});
+
 export const stockNotifySchema = z.object({
   productId: z.string().min(1),
   email: z.string().trim().email("El email no es válido"),

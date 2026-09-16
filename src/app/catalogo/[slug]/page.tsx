@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Header } from "@/components/Header";
@@ -6,6 +7,7 @@ import { Footer } from "@/components/Footer";
 import { Stars } from "@/components/Stars";
 import { ProductPurchase } from "@/components/ProductPurchase";
 import { ProductCard } from "@/components/ProductCard";
+import { ReviewForm } from "@/components/ReviewForm";
 import { averageRating, getActiveProducts, getProductBySlug } from "@/lib/products";
 import { getSiteSettings } from "@/lib/settings";
 import { activePromotion } from "@/lib/promotions";
@@ -110,31 +112,45 @@ export default async function ProductPage(
           />
         </section>
 
-        {product.reviews.length > 0 && (
-          <section className="border-t border-line bg-surface">
-            <div className="mx-auto max-w-6xl px-6 py-11">
-              <h2 className="font-heading text-[26px] font-extrabold text-navy">
-                Lo que dicen nuestros clientes
-              </h2>
+        <section className="border-t border-line bg-surface">
+          <div className="mx-auto max-w-6xl px-6 py-11">
+            <h2 className="font-heading text-[26px] font-extrabold text-navy">
+              Lo que dicen nuestros clientes
+            </h2>
+            {product.reviews.length > 0 && (
               <div className="mt-8 grid gap-6 sm:grid-cols-3">
                 {product.reviews.map((review) => (
                   <div
                     key={review.id}
-                    className="rounded-xl border border-line bg-bg p-5"
+                    className="flex flex-col gap-3 rounded-xl border border-line bg-bg p-5"
                   >
                     <Stars rating={review.rating} />
-                    <p className="mt-3 text-sm/[1.6] text-ink-soft">
+                    <p className="text-sm/[1.6] text-ink-soft">
                       &ldquo;{review.text}&rdquo;
                     </p>
-                    <p className="mt-3 font-heading text-sm font-bold text-navy">
+                    {review.photoUrl && (
+                      <div className="relative h-48 w-full overflow-hidden rounded-lg">
+                        <Image
+                          src={review.photoUrl}
+                          alt={`Foto de ${review.author}`}
+                          fill
+                          className="object-cover"
+                          sizes="(min-width: 640px) 33vw, 100vw"
+                        />
+                      </div>
+                    )}
+                    <p className="font-heading text-sm font-bold text-navy">
                       {review.author}
                     </p>
                   </div>
                 ))}
               </div>
+            )}
+            <div className="mt-8">
+              <ReviewForm productId={product.id} />
             </div>
-          </section>
-        )}
+          </div>
+        </section>
 
         {otherProducts.length > 0 && (
           <section className="mx-auto max-w-6xl px-6 py-11">

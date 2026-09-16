@@ -14,7 +14,10 @@ const productInclude = {
     include: { images: { orderBy: { position: "asc" as const } } },
   },
   features: { orderBy: { position: "asc" as const } },
-  reviews: { orderBy: { createdAt: "desc" as const } },
+  reviews: {
+    where: { approved: true },
+    orderBy: { createdAt: "desc" as const },
+  },
   promotions: {
     where: { active: true },
     include: {

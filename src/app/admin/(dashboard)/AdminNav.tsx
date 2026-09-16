@@ -7,6 +7,7 @@ const navLinks = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/products", label: "Productos" },
   { href: "/admin/promotions", label: "Promociones" },
+  { href: "/admin/reviews", label: "Reseñas" },
   { href: "/admin/orders", label: "Pedidos" },
   { href: "/admin/sales", label: "Ventas manuales" },
   { href: "/admin/shipments", label: "Envíos" },
@@ -16,7 +17,7 @@ const navLinks = [
   { href: "/admin/account", label: "Mi cuenta" },
 ];
 
-export function AdminNav() {
+export function AdminNav({ pendingReviewCount = 0 }: { pendingReviewCount?: number }) {
   const pathname = usePathname();
 
   return (
@@ -30,13 +31,18 @@ export function AdminNav() {
           <Link
             key={link.href}
             href={link.href}
-            className={`rounded-lg px-3 py-2.5 text-sm transition-colors ${
+            className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-sm transition-colors ${
               active
                 ? "bg-white/12 font-heading font-bold text-white"
                 : "font-medium text-white/78 hover:bg-white/12 hover:text-white"
             }`}
           >
             {link.label}
+            {link.href === "/admin/reviews" && pendingReviewCount > 0 && (
+              <span className="rounded-full bg-amber px-1.5 py-0.5 text-[11px] font-bold text-navy-deep">
+                {pendingReviewCount}
+              </span>
+            )}
           </Link>
         );
       })}

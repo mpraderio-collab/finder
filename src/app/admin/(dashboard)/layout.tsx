@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
+import { db } from "@/lib/db";
 import { AdminNav } from "./AdminNav";
 
 export default async function AdminDashboardLayout({
@@ -10,6 +11,8 @@ export default async function AdminDashboardLayout({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/admin/login");
+
+  const pendingReviewCount = await db.review.count({ where: { approved: false } });
 
   return (
     <div className="flex min-h-screen bg-surface">
@@ -26,7 +29,7 @@ export default async function AdminDashboardLayout({
             Panel de administración
           </p>
         </div>
-        <AdminNav />
+        <AdminNav pendingReviewCount={pendingReviewCount} />
         <div className="border-t border-white/12 p-3">
           <p className="truncate px-3 py-1 text-xs text-white/50">
             {session.user.email}
