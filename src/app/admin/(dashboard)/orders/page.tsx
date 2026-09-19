@@ -7,15 +7,18 @@ export default async function AdminOrdersPage(
   props: PageProps<"/admin/orders">,
 ) {
   const searchParams = await props.searchParams;
-  const statusFilter =
+  const statusParam =
     typeof searchParams?.status === "string" ? searchParams.status : undefined;
+  // Acepta uno o varios estados separados por coma (ej. "paid,shipped" para
+  // el link "Ventas confirmadas" del dashboard, que agrupa ambos).
+  const statusFilter = statusParam ? statusParam.split(",") : undefined;
 
   const orders = await db.order.findMany({
     where: {
       channel: "online",
       // Sin filtro, "Todos" no incluye los carritos sin terminar — para
       // eso está la pestaña "Carritos" aparte.
-      status: statusFilter ?? { not: "cart" },
+      status: statusFilter ? { in: statusFilter } : { not: "cart" },
     },
     orderBy: { createdAt: "desc" },
     include: { items: true },
@@ -28,6 +31,11 @@ export default async function AdminOrdersPage(
       <h1 className="font-heading text-2xl font-extrabold text-navy">
         Pedidos
       </h1>
+      {statusFilter && statusFilter.length > 1 && (
+        <p className="mt-1 text-sm text-ink-soft">
+          Mostrando: {statusFilter.map((s) => orderStatusLabels[s]).join(" + ")}
+        </p>
+      )}
 
       <div className="mt-4 flex flex-wrap gap-2">
         <Link
@@ -45,7 +53,7 @@ export default async function AdminOrdersPage(
             key={s}
             href={`/admin/orders?status=${s}`}
             className={`rounded-full px-3 py-1.5 font-heading text-xs font-bold ${
-              statusFilter === s
+              statusFilter?.length === 1 && statusFilter[0] === s
                 ? "bg-navy text-white"
                 : "border border-border-btn bg-bg text-ink-soft"
             }`}

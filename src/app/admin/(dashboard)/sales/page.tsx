@@ -3,9 +3,20 @@ import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/products";
 import { orderStatusColors, orderStatusLabels } from "@/lib/order-status";
 
-export default async function AdminSalesPage() {
+export default async function AdminSalesPage(
+  props: PageProps<"/admin/sales">,
+) {
+  const searchParams = await props.searchParams;
+  const unpaidFilter =
+    (typeof searchParams?.filter === "string" ? searchParams.filter : undefined) ===
+    "unpaid";
+
   const sales = await db.order.findMany({
-    where: { channel: "manual" },
+    where: {
+      channel: "manual",
+      // Mismo criterio que "Por cobrar" del dashboard.
+      ...(unpaidFilter && { isPaid: false, status: { in: ["paid", "shipped"] } }),
+    },
     orderBy: { createdAt: "desc" },
     include: { items: true },
   });
@@ -27,9 +38,21 @@ export default async function AdminSalesPage() {
         Ventas cargadas a mano (en persona, por WhatsApp, en una feria, etc.),
         aparte de las compras hechas en la página.
       </p>
+      {unpaidFilter && (
+        <p className="mt-1 flex items-center gap-2 text-sm text-ink-soft">
+          Mostrando solo ventas por cobrar.
+          <Link href="/admin/sales" className="font-semibold text-blue hover:text-navy">
+            Ver todas
+          </Link>
+        </p>
+      )}
 
       {sales.length === 0 ? (
-        <p className="mt-10 text-ink-soft">Todavía no cargaste ninguna venta manual.</p>
+        <p className="mt-10 text-ink-soft">
+          {unpaidFilter
+            ? "No hay ventas por cobrar ahora mismo."
+            : "Todavía no cargaste ninguna venta manual."}
+        </p>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-xl border border-line bg-bg">
           <table className="w-full min-w-[600px] text-left text-sm">

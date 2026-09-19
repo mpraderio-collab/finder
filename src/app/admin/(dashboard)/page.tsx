@@ -238,25 +238,27 @@ export default async function AdminDashboardPage(
   const stats = [
     { label: "Pedidos pendientes", value: pendingCount, href: "/admin/orders?status=pending" },
     { label: "Carritos activos", value: activeCartCount, href: "/admin/orders?status=cart" },
-    { label: "Ventas confirmadas", value: paidOrders.length, href: "/admin/orders?status=paid" },
-    { label: "Ingresos (pagados)", value: formatPrice(revenue), href: "/admin/orders?status=paid" },
+    // Estas 3 suman pedidos web + ventas manuales, así que van al informe
+    // de ventas (que agrupa ambos canales) y no a /admin/orders (solo web).
+    { label: "Ventas confirmadas", value: paidOrders.length, href: "/admin/reports/sales?from=2000-01-01" },
+    { label: "Ingresos (pagados)", value: formatPrice(revenue), href: "/admin/reports/sales?from=2000-01-01" },
     {
       label: "Margen real",
       value: formatPrice(realMargin),
       warn: realMargin < 0,
-      href: "/admin/orders?status=paid",
+      href: "/admin/reports/sales?from=2000-01-01",
     },
     {
       label: "Stock bajo",
       value: lowStock.length,
       warn: lowStock.length > 0,
-      href: "/admin/products",
+      href: "/admin/products?filter=low-stock",
     },
     {
       label: "Por cobrar",
       value: formatPrice(unpaidTotal),
       warn: unpaidOrders.length > 0,
-      href: "/admin/sales",
+      href: "/admin/sales?filter=unpaid",
     },
   ];
 

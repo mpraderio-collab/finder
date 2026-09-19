@@ -3,9 +3,18 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { formatPrice, getHeroImageUrl } from "@/lib/products";
 
-export default async function AdminProductsPage() {
+export default async function AdminProductsPage(
+  props: PageProps<"/admin/products">,
+) {
+  const searchParams = await props.searchParams;
+  const lowStockFilter =
+    (typeof searchParams?.filter === "string" ? searchParams.filter : undefined) ===
+    "low-stock";
+
   const products = await db.product.findMany({
-    orderBy: { createdAt: "desc" },
+    // Mismo criterio que la tarjeta "Stock bajo" del dashboard.
+    where: lowStockFilter ? { status: "active", stock: { lte: 3 } } : undefined,
+    orderBy: lowStockFilter ? { stock: "asc" } : { createdAt: "desc" },
     include: {
       _count: { select: { orderItems: true } },
       variants: true,
@@ -26,10 +35,20 @@ export default async function AdminProductsPage() {
           + Nuevo producto
         </Link>
       </div>
+      {lowStockFilter && (
+        <p className="mt-1 flex items-center gap-2 text-sm text-ink-soft">
+          Mostrando solo productos con poco stock.
+          <Link href="/admin/products" className="font-semibold text-blue hover:text-navy">
+            Ver todos
+          </Link>
+        </p>
+      )}
 
       {products.length === 0 ? (
         <p className="mt-10 text-ink-soft">
-          Todavía no cargaste ningún producto.
+          {lowStockFilter
+            ? "No hay productos con poco stock ahora mismo."
+            : "Todavía no cargaste ningún producto."}
         </p>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-xl border border-line bg-bg">
