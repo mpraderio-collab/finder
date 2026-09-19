@@ -185,23 +185,41 @@ export default async function AdminDashboardPage(
   const visitBuckets = dailyUniqueVisitors(recentPageViews);
   const maxVisitBucket = Math.max(...visitBuckets.map((b) => b.count), 1);
 
+  const periodQuery = period !== "all" ? `?period=${period}` : "";
   const analyticsStats = [
-    { label: "Visitantes únicos", value: uniqueVisitors.length },
-    { label: "Vistas de producto", value: viewContentCount },
-    { label: "Agregados al carrito", value: addToCartCount },
-    { label: "Checkouts iniciados", value: initiateCheckoutCount },
-    { label: "Conversión", value: `${conversionRate.toFixed(1)}%` },
+    {
+      label: "Visitantes únicos",
+      value: uniqueVisitors.length,
+      href: `/admin/analytics/page_view${periodQuery}`,
+    },
+    {
+      label: "Vistas de producto",
+      value: viewContentCount,
+      href: `/admin/analytics/view_content${periodQuery}`,
+    },
+    {
+      label: "Agregados al carrito",
+      value: addToCartCount,
+      href: `/admin/analytics/add_to_cart${periodQuery}`,
+    },
+    {
+      label: "Checkouts iniciados",
+      value: initiateCheckoutCount,
+      href: `/admin/analytics/initiate_checkout${periodQuery}`,
+    },
+    { label: "Conversión", value: `${conversionRate.toFixed(1)}%`, href: "/admin/orders?status=paid" },
   ];
 
   const stats = [
-    { label: "Pedidos pendientes", value: pendingCount },
-    { label: "Carritos activos", value: activeCartCount },
-    { label: "Ventas confirmadas", value: paidOrders.length },
-    { label: "Ingresos (pagados)", value: formatPrice(revenue) },
+    { label: "Pedidos pendientes", value: pendingCount, href: "/admin/orders?status=pending" },
+    { label: "Carritos activos", value: activeCartCount, href: "/admin/orders?status=cart" },
+    { label: "Ventas confirmadas", value: paidOrders.length, href: "/admin/orders?status=paid" },
+    { label: "Ingresos (pagados)", value: formatPrice(revenue), href: "/admin/orders?status=paid" },
     {
       label: "Stock bajo",
       value: lowStock.length,
       warn: lowStock.length > 0,
+      href: "/admin/products",
     },
   ];
 
@@ -213,9 +231,10 @@ export default async function AdminDashboardPage(
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
-          <div
+          <Link
             key={stat.label}
-            className="rounded-xl border border-line bg-bg p-[18px]"
+            href={stat.href}
+            className="rounded-xl border border-line bg-bg p-[18px] transition-colors hover:border-navy"
           >
             <p className="text-[13px] text-ink-soft">{stat.label}</p>
             <p
@@ -223,7 +242,7 @@ export default async function AdminDashboardPage(
             >
               {stat.value}
             </p>
-          </div>
+          </Link>
         ))}
       </div>
 
@@ -333,15 +352,16 @@ export default async function AdminDashboardPage(
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {analyticsStats.map((stat) => (
-            <div
+            <Link
               key={stat.label}
-              className="rounded-xl border border-line bg-bg p-[18px]"
+              href={stat.href}
+              className="rounded-xl border border-line bg-bg p-[18px] transition-colors hover:border-navy"
             >
               <p className="text-[13px] text-ink-soft">{stat.label}</p>
               <p className="mt-1 font-heading text-2xl font-extrabold text-navy">
                 {stat.value}
               </p>
-            </div>
+            </Link>
           ))}
         </div>
 
