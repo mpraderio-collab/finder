@@ -66,6 +66,7 @@ export function ManualSaleForm({
   const [confirmPending, startConfirmTransition] = useTransition();
   const [discardPending, startDiscardTransition] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
+  const [confirmAsPaid, setConfirmAsPaid] = useState(true);
 
   const [items, setItems] = useState<LineItem[]>(initialItems ?? []);
   const [selectedProductId, setSelectedProductId] = useState(products[0]?.id ?? "");
@@ -161,7 +162,7 @@ export function ManualSaleForm({
     }
     setActionError(null);
     startConfirmTransition(async () => {
-      const res = await finalizeManualSale(orderId);
+      const res = await finalizeManualSale(orderId, confirmAsPaid);
       if (res.error) {
         setActionError(res.error);
         return;
@@ -391,6 +392,23 @@ export function ManualSaleForm({
           </p>
         )}
 
+        {orderId && isDraft && (
+          <label className="flex w-fit items-center gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={confirmAsPaid}
+              onChange={(e) => setConfirmAsPaid(e.target.checked)}
+              className="h-4 w-4"
+            />
+            Ya está pagada
+            {!confirmAsPaid && (
+              <span className="text-xs text-warn-ink">
+                — queda como vendida/pendiente de envío sin cobrar (fiado); lo marcás pagado después
+              </span>
+            )}
+          </label>
+        )}
+
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="submit"
@@ -412,7 +430,11 @@ export function ManualSaleForm({
                 disabled={items.length === 0 || confirmPending || discardPending}
                 className="w-fit rounded-lg bg-ok-ink px-6 py-2.5 font-heading text-sm font-bold text-white disabled:opacity-40"
               >
-                {confirmPending ? "Confirmando…" : "Confirmar venta (marcar como pagado)"}
+                {confirmPending
+                  ? "Confirmando…"
+                  : confirmAsPaid
+                    ? "Confirmar venta (pagada)"
+                    : "Confirmar venta (sin cobrar)"}
               </button>
               <button
                 type="button"

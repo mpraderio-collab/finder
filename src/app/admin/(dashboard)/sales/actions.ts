@@ -293,9 +293,14 @@ export async function updatePaidManualSale(
 }
 
 // El único momento en que una venta manual mueve stock: al confirmarla se
-// descuenta de verdad y pasa a contar como venta pagada. De ahí en más el
-// estado se maneja como cualquier otro pedido (ver StatusSelect).
-export async function finalizeManualSale(orderId: string): Promise<{ error?: string }> {
+// descuenta de verdad, sin importar si ya se cobró o no — `isPaid` es
+// independiente del estado (se puede vender/enviar fiado). De ahí en más
+// el estado se maneja como cualquier otro pedido (ver StatusSelect), y el
+// pago se puede marcar después con setManualSalePaid.
+export async function finalizeManualSale(
+  orderId: string,
+  isPaid: boolean,
+): Promise<{ error?: string }> {
   await requireAdmin();
 
   const order = await db.order.findUnique({
@@ -335,7 +340,7 @@ export async function finalizeManualSale(orderId: string): Promise<{ error?: str
           }
         }
       }
-      await tx.order.update({ where: { id: orderId }, data: { status: "paid" } });
+      await tx.order.update({ where: { id: orderId }, data: { status: "paid", isPaid } });
     });
   } catch (err) {
     if (err instanceof ManualSaleError) return { error: err.message };
@@ -358,5 +363,21 @@ export async function discardManualSale(orderId: string): Promise<{ error?: stri
   await db.order.delete({ where: { id: orderId } });
 
   revalidateSalesPaths();
+  return {};
+}
+
+// Marca (o desmarca) el cobro de una venta manual ya confirmada — para
+// cuando se vendió/envió fiado y el cliente paga después. No toca stock
+// ni el estado de fulfillment (status).
+export async function setManualSalePaid(orderId: string, isPaid: boolean): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const order = await db.order.findUnique({ where: { id: orderId } });
+  if (!order || order.channel !== "manual") return { error: "Esta venta no existe." };
+  if (order.status === "draft") return { error: "Confirmá la venta antes de marcar el pago." };
+
+  await db.order.update({ where: { id: orderId }, data: { isPaid } });
+
+  revalidateSalesPaths(orderId);
   return {};
 }

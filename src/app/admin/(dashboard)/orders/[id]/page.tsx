@@ -8,6 +8,7 @@ import { calculateCogs, calculateMargin } from "@/lib/margin";
 import { StatusSelect } from "./StatusSelect";
 import { TrackingCode } from "./TrackingCode";
 import { ActualShippingCost } from "./ActualShippingCost";
+import { PaymentToggle } from "./PaymentToggle";
 
 const timelineSteps = [
   { key: "created", label: "Pedido creado" },
@@ -65,18 +66,32 @@ export default async function OrderDetailPage(
                 Venta manual
               </span>
             )}
+            {order.channel === "manual" && order.status !== "draft" && (
+              <span
+                className={`inline-block rounded-md px-2 py-0.5 text-xs font-semibold ${
+                  order.isPaid ? "bg-ok-bg text-ok-ink" : "bg-warn-bg text-warn-ink"
+                }`}
+              >
+                {order.isPaid ? "Pagada" : "Sin pagar (fiado)"}
+              </span>
+            )}
             <span className="text-xs text-ink-faint">
               {order.createdAt.toLocaleString("es-AR")}
             </span>
           </div>
         </div>
-        {order.status !== "cart" && (
-          <StatusSelect
-            orderId={order.id}
-            currentStatus={order.status}
-            statuses={order.channel === "manual" ? manualSaleStatuses : undefined}
-          />
-        )}
+        <div className="flex flex-col items-end gap-2">
+          {order.status !== "cart" && (
+            <StatusSelect
+              orderId={order.id}
+              currentStatus={order.status}
+              statuses={order.channel === "manual" ? manualSaleStatuses : undefined}
+            />
+          )}
+          {order.channel === "manual" && order.status !== "draft" && (
+            <PaymentToggle orderId={order.id} isPaid={order.isPaid} />
+          )}
+        </div>
       </div>
 
       {isCart && (

@@ -51,6 +51,9 @@ export default async function AdminSalesPage() {
                   Estado
                 </th>
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                  Pago
+                </th>
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
                   Fecha
                 </th>
                 <th className="px-4 py-3" />
@@ -78,6 +81,19 @@ export default async function AdminSalesPage() {
                     >
                       {orderStatusLabels[sale.status]}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {sale.status === "draft" ? (
+                      <span className="text-ink-faint">—</span>
+                    ) : (
+                      <span
+                        className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
+                          sale.isPaid ? "bg-ok-bg text-ok-ink" : "bg-warn-bg text-warn-ink"
+                        }`}
+                      >
+                        {sale.isPaid ? "Pagada" : "Sin pagar"}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-ink-soft">
                     {sale.createdAt.toLocaleDateString("es-AR")}

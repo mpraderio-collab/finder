@@ -259,6 +259,11 @@ model Order {
   shippingZip       String      @default("")
   shippingMethod    String?     // "correo" | "oca" — solo pedidos online
   shippingCost      Int         @default(0)
+  // Independiente de `status`: una venta manual puede estar confirmada y
+  // hasta enviada sin haberse cobrado todavía (fiado). Los pedidos online
+  // siempre nacen pagados de verdad (el status "paid" ya implica que
+  // Mercado Pago acreditó el cobro), así que quedan en true sin uso.
+  isPaid            Boolean     @default(true)
   trackingCode      String?
   // Lo que realmente cuesta despachar este pedido (no lo que se le cobra
   // al cliente, que suele ser $0 por envío gratis) — solo aplica cuando el
