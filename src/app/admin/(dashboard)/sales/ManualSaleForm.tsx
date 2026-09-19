@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { formatPrice } from "@/lib/products";
 import {
   createManualSale,
+  createAndFinalizeManualSale,
   updateManualSale,
   updatePaidManualSale,
   finalizeManualSale,
@@ -63,6 +64,10 @@ export function ManualSaleForm({
       ? updateManualSale.bind(null, orderId)
       : updatePaidManualSale.bind(null, orderId);
   const [state, formAction, pending] = useActionState(action, initialState);
+  const [createConfirmState, createConfirmFormAction, createConfirmPending] = useActionState(
+    createAndFinalizeManualSale,
+    initialState,
+  );
   const [confirmPending, startConfirmTransition] = useTransition();
   const [discardPending, startDiscardTransition] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
@@ -102,6 +107,13 @@ export function ManualSaleForm({
     // editar, ya estamos en esa pantalla.
     if (!orderId && state.orderId) router.push(`/admin/sales/${state.orderId}/edit`);
   }, [orderId, state.orderId, router]);
+
+  useEffect(() => {
+    // Crear y confirmar en un solo paso: va directo al pedido ya confirmado.
+    if (!orderId && createConfirmState.orderId) {
+      router.push(`/admin/orders/${createConfirmState.orderId}`);
+    }
+  }, [orderId, createConfirmState.orderId, router]);
 
   const maxStockForSelection = useMemo(() => {
     if (!selectedProduct) return 0;
@@ -392,10 +404,17 @@ export function ManualSaleForm({
           </p>
         )}
 
-        {orderId && isDraft && (
+        {createConfirmState.error && (
+          <p className="rounded-lg bg-err-bg px-3 py-2 text-sm text-err-ink">
+            {createConfirmState.error}
+          </p>
+        )}
+
+        {isDraft && (
           <label className="flex w-fit items-center gap-2 text-sm text-ink">
             <input
               type="checkbox"
+              name="isPaid"
               checked={confirmAsPaid}
               onChange={(e) => setConfirmAsPaid(e.target.checked)}
               className="h-4 w-4"
@@ -421,6 +440,21 @@ export function ManualSaleForm({
                 ? `Guardar borrador — ${formatPrice(total)}`
                 : `Guardar cambios — ${formatPrice(total)}`}
           </button>
+
+          {!orderId && (
+            <button
+              type="submit"
+              formAction={createConfirmFormAction}
+              disabled={items.length === 0 || createConfirmPending}
+              className="w-fit rounded-lg bg-ok-ink px-6 py-2.5 font-heading text-sm font-bold text-white disabled:opacity-40"
+            >
+              {createConfirmPending
+                ? "Confirmando…"
+                : confirmAsPaid
+                  ? "Confirmar venta (pagada)"
+                  : "Confirmar venta (sin cobrar)"}
+            </button>
+          )}
 
           {orderId && isDraft && (
             <>

@@ -110,6 +110,96 @@ export async function createManualSale(
   return { orderId: order.id };
 }
 
+// Crea y confirma la venta en un solo paso (sin pasar por borrador) —
+// misma validación que createManualSale, pero descuenta stock de una y
+// queda lista/enviable de entrada, como si se hubiera guardado el
+// borrador y tocado "Confirmar venta" a continuación.
+export async function createAndFinalizeManualSale(
+  _prev: ManualSaleState,
+  formData: FormData,
+): Promise<ManualSaleState> {
+  await requireAdmin();
+
+  const result = parseManualSaleForm(formData);
+  if (!result.success) return { error: result.error };
+  const data = result.data;
+  if (data.items.length === 0) {
+    return { error: "Agregá al menos un producto." };
+  }
+  const hasRealCustomer = String(formData.get("customerName") ?? "").trim().length > 0;
+  const isPaid = formData.get("isPaid") === "on";
+
+  const subtotal = data.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+
+  let orderId: string;
+  try {
+    orderId = await db.$transaction(async (tx) => {
+      for (const line of data.items) {
+        if (line.variantName) {
+          const updated = await tx.productVariant.updateMany({
+            where: { productId: line.productId, name: line.variantName, stock: { gte: line.quantity } },
+            data: { stock: { decrement: line.quantity } },
+          });
+          if (updated.count === 0) {
+            throw new ManualSaleError("Sin stock suficiente para uno de los productos.");
+          }
+        } else {
+          const updated = await tx.product.updateMany({
+            where: { id: line.productId, stock: { gte: line.quantity } },
+            data: { stock: { decrement: line.quantity } },
+          });
+          if (updated.count === 0) {
+            throw new ManualSaleError("Sin stock suficiente para uno de los productos.");
+          }
+        }
+      }
+
+      const customerId = hasRealCustomer
+        ? await upsertCustomerFromOrder(tx, {
+            name: data.customerName,
+            phone: data.customerPhone,
+          })
+        : null;
+
+      const order = await tx.order.create({
+        data: {
+          status: "paid",
+          isPaid,
+          channel: "manual",
+          customerId,
+          customerName: data.customerName,
+          customerEmail: "",
+          customerPhone: data.customerPhone ?? "",
+          shippingAddress: "",
+          shippingCity: "",
+          shippingProvince: "",
+          shippingZip: "",
+          note: data.note,
+          subtotal,
+          total: subtotal,
+          idempotencyKey: randomUUID(),
+          items: {
+            create: data.items.map((line) => ({
+              productId: line.productId,
+              quantity: line.quantity,
+              unitPrice: line.unitPrice,
+              lineTotal: line.unitPrice * line.quantity,
+              variantName: line.variantName,
+            })),
+          },
+        },
+      });
+      return order.id;
+    });
+  } catch (err) {
+    if (err instanceof ManualSaleError) return { error: err.message };
+    throw err;
+  }
+
+  revalidateSalesPaths(orderId);
+  return { orderId };
+}
+
 // Reemplaza cliente/nota/items enteros de un borrador — solo mientras
 // sigue siendo borrador, no toca stock.
 export async function updateManualSale(
