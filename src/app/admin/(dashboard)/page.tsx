@@ -84,6 +84,7 @@ export default async function AdminDashboardPage(
     lowStock,
     recentOnlineOrders,
     recentManualSales,
+    unpaidOrders,
     viewContentCount,
     addToCartCount,
     initiateCheckoutCount,
@@ -112,6 +113,13 @@ export default async function AdminDashboardPage(
       where: { channel: "manual" },
       orderBy: { createdAt: "desc" },
       take: 5,
+    }),
+    // Ventas ya confirmadas (o hasta enviadas) pero que todavía no se
+    // cobraron — hoy solo pasa con ventas manuales fiadas, ver isPaid.
+    db.order.findMany({
+      where: { isPaid: false, status: { in: ["paid", "shipped"] } },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, customerName: true, total: true, status: true, createdAt: true },
     }),
     db.analyticsEvent.count({
       where: { type: "view_content", ...(since && { createdAt: { gte: since } }) },
@@ -210,6 +218,8 @@ export default async function AdminDashboardPage(
     { label: "Conversión", value: `${conversionRate.toFixed(1)}%`, href: "/admin/orders?status=paid" },
   ];
 
+  const unpaidTotal = unpaidOrders.reduce((sum, o) => sum + o.total, 0);
+
   const stats = [
     { label: "Pedidos pendientes", value: pendingCount, href: "/admin/orders?status=pending" },
     { label: "Carritos activos", value: activeCartCount, href: "/admin/orders?status=cart" },
@@ -220,6 +230,12 @@ export default async function AdminDashboardPage(
       value: lowStock.length,
       warn: lowStock.length > 0,
       href: "/admin/products",
+    },
+    {
+      label: "Por cobrar",
+      value: formatPrice(unpaidTotal),
+      warn: unpaidOrders.length > 0,
+      href: "/admin/sales",
     },
   ];
 
@@ -459,6 +475,41 @@ export default async function AdminDashboardPage(
           )}
         </div>
       </div>
+
+      {unpaidOrders.length > 0 && (
+        <div className="mt-8 rounded-xl border border-amber-line bg-amber-soft p-5">
+          <div className="flex items-baseline justify-between">
+            <p className="text-sm font-semibold text-amber-ink">
+              Ingresos por cobrar — ventas vendidas/enviadas sin cobrar todavía
+            </p>
+            <p className="font-heading text-lg font-bold text-amber-ink">
+              {formatPrice(unpaidTotal)}
+            </p>
+          </div>
+          <ul className="mt-3 flex flex-col gap-2">
+            {unpaidOrders.map((o) => (
+              <li key={o.id} className="flex items-center justify-between text-sm">
+                <span className="text-ink">
+                  {o.customerName || "Cliente"}{" "}
+                  <span className="text-ink-faint">
+                    · {o.createdAt.toLocaleDateString("es-AR")} ·{" "}
+                    {o.status === "shipped" ? "enviada" : "vendida"}
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-3">
+                  <span className="font-semibold text-ink">{formatPrice(o.total)}</span>
+                  <Link
+                    href={`/admin/orders/${o.id}`}
+                    className="rounded-lg border border-border-btn bg-bg px-2.5 py-1 text-xs font-semibold text-navy hover:bg-surface"
+                  >
+                    Ver
+                  </Link>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="mt-8 grid gap-8 lg:grid-cols-2">
         <RecentOrdersList
