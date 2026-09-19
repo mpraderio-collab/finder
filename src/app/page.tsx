@@ -10,7 +10,7 @@ import { getSiteSettings } from "@/lib/settings";
 
 const valueProps = [
   {
-    title: "Envío a todo el país",
+    title: "Envío gratis a todo el país",
     text: "Recibí tu pedido en la puerta de tu casa, estés donde estés.",
   },
   {
@@ -71,7 +71,7 @@ export default async function Home() {
                   {overallRating.toFixed(1).replace(".", ",")} ·{" "}
                   {allReviews.length} reseñas
                 </span>
-                <span>Envío a todo el país</span>
+                <span>Envío gratis a todo el país</span>
                 <span>
                   {settings.installments}{" "}
                   {settings.installments === 1 ? "cuota" : "cuotas"} sin interés

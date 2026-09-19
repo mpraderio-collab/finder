@@ -4,6 +4,7 @@ import { CartProvider } from "@/lib/cart-context";
 import { WhatsAppButtonGate } from "@/components/WhatsAppButtonGate";
 import { PageViewTracker } from "@/components/PageViewTracker";
 import { MetaPixel } from "@/components/MetaPixel";
+import { PromoBanner } from "@/components/PromoBanner";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col bg-bg text-ink">
         <MetaPixel />
+        <PromoBanner />
         <CartProvider>{children}</CartProvider>
         <WhatsAppButtonGate />
         <PageViewTracker />
