@@ -29,7 +29,7 @@ export default async function OrderDetailPage(
   const { id } = await props.params;
   const order = await db.order.findUnique({
     where: { id },
-    include: { items: { include: { product: true } }, shipment: true },
+    include: { items: { include: { product: true } } },
   });
   if (!order) notFound();
   // Un borrador de venta manual se edita en su propia pantalla, no acá.
@@ -40,11 +40,12 @@ export default async function OrderDetailPage(
   const done = timelineProgress(order.status);
   const isCart = order.status === "cart";
 
-  // El costo real de envío vive en el Shipment cuando el pedido va
-  // agrupado — el campo propio del pedido solo aplica si se envía suelto.
-  const effectiveShippingCost = order.shipment
-    ? order.shipment.actualShippingCost
-    : order.actualShippingCost;
+  // Si el pedido va en un envío agrupado, ese costo es de todo el grupo
+  // (varios clientes juntos) — no hay forma justa de prorratearlo por
+  // pedido individual, así que acá ni se muestra ni se descuenta del
+  // margen (el costo real del grupo se ve enterito en /admin/shipments).
+  // Suelto, sigue siendo el costo real de ese pedido puntual.
+  const effectiveShippingCost = order.shipmentId ? null : order.actualShippingCost;
   const cogs = calculateCogs(order.items);
   const margin = calculateMargin(order.total, cogs, effectiveShippingCost);
 
@@ -257,24 +258,17 @@ export default async function OrderDetailPage(
                   <dt className="text-xs uppercase tracking-wide text-ink-faint">Seguimiento</dt>
                   <TrackingCode orderId={order.id} trackingCode={order.trackingCode} />
                 </div>
-                <div>
-                  <dt className="text-xs uppercase tracking-wide text-ink-faint">
-                    Costo real de envío
-                  </dt>
-                  {order.shipmentId ? (
-                    <dd className="text-ink">
-                      {order.shipment?.actualShippingCost != null
-                        ? formatPrice(order.shipment.actualShippingCost)
-                        : "—"}{" "}
-                      <span className="text-xs text-ink-faint">(del envío agrupado)</span>
-                    </dd>
-                  ) : (
+                {!order.shipmentId && (
+                  <div>
+                    <dt className="text-xs uppercase tracking-wide text-ink-faint">
+                      Costo real de envío
+                    </dt>
                     <ActualShippingCost
                       orderId={order.id}
                       actualShippingCost={order.actualShippingCost}
                     />
-                  )}
-                </div>
+                  </div>
+                )}
                 {order.shipmentId && (
                   <div>
                     <dt className="text-xs uppercase tracking-wide text-ink-faint">Envío agrupado</dt>
@@ -300,12 +294,20 @@ export default async function OrderDetailPage(
                   <dt>Costo de mercadería</dt>
                   <dd className="text-ink">{formatPrice(cogs)}</dd>
                 </div>
-                <div className="flex justify-between">
-                  <dt>Costo real de envío</dt>
-                  <dd className="text-ink">
-                    {effectiveShippingCost != null ? formatPrice(effectiveShippingCost) : "—"}
-                  </dd>
-                </div>
+                {!order.shipmentId && (
+                  <div className="flex justify-between">
+                    <dt>Costo real de envío</dt>
+                    <dd className="text-ink">
+                      {effectiveShippingCost != null ? formatPrice(effectiveShippingCost) : "—"}
+                    </dd>
+                  </div>
+                )}
+                {order.shipmentId && (
+                  <p className="text-xs text-ink-faint">
+                    Va en un envío agrupado — el costo es del grupo entero, no de este pedido solo,
+                    así que no se descuenta acá (lo ves en el envío agrupado).
+                  </p>
+                )}
                 <div className="flex justify-between border-t border-line pt-2">
                   <dt className="font-semibold text-ink">Margen</dt>
                   <dd
