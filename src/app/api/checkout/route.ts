@@ -99,6 +99,19 @@ export async function POST(request: Request) {
       }));
       const subtotal = orderItemsData.reduce((sum, i) => sum + i.lineTotal, 0);
 
+      // El cupón se valida acá, nunca se confía en nada que mande el
+      // cliente más que el código — se aplica sobre el subtotal ya con
+      // promociones, nunca sobre el envío.
+      const coupon = data.couponCode
+        ? await tx.coupon.findFirst({
+            where: { code: data.couponCode.toUpperCase(), active: true },
+          })
+        : null;
+      if (data.couponCode && !coupon) {
+        throw new CheckoutError(`El cupón "${data.couponCode}" no es válido.`);
+      }
+      const couponDiscount = coupon ? Math.round((subtotal * coupon.percentOff) / 100) : 0;
+
       const shippingCost = shippingMethods[data.shippingMethod].cost;
 
       const customerId = await upsertCustomerFromOrder(tx, {
@@ -123,8 +136,10 @@ export async function POST(request: Request) {
         shippingZip: data.shippingZip,
         shippingMethod: data.shippingMethod,
         shippingCost,
+        couponId: coupon?.id ?? null,
+        couponDiscount,
         subtotal,
-        total: subtotal + shippingCost,
+        total: subtotal - couponDiscount + shippingCost,
       };
 
       // Si este carrito ya estaba siendo trackeado (ver cart-actions.ts), se
@@ -159,19 +174,34 @@ export async function POST(request: Request) {
       });
     }
 
+    // Mercado Pago no acepta unit_price negativo, así que el cupón no se
+    // manda como un ítem de descuento aparte: se reparte proporcionalmente
+    // entre los ítems de producto (el envío queda afuera, el cupón nunca
+    // aplica sobre el envío). El redondeo de cada línea se ajusta en la
+    // última para que la suma coincida exacto con order.total.
+    const productItemsPreDiscount = order.items.map((item) => ({
+      title: `${item.product.name}${item.variantName ? ` (${item.variantName})` : ""} x${item.quantity}`,
+      amount: item.lineTotal ?? item.unitPrice * item.quantity,
+    }));
+    const preDiscountSum = productItemsPreDiscount.reduce((sum, i) => sum + i.amount, 0);
+    const targetSum = preDiscountSum - order.couponDiscount;
+    let runningSum = 0;
+    const productItems = productItemsPreDiscount.map((item, idx) => {
+      const isLast = idx === productItemsPreDiscount.length - 1;
+      const unit_price = isLast
+        ? targetSum - runningSum
+        : preDiscountSum > 0
+          ? Math.round((item.amount / preDiscountSum) * targetSum)
+          : 0;
+      runningSum += unit_price;
+      return { title: item.title, quantity: 1, unit_price, currency_id: "ARS" as const };
+    });
+
     const preference = await createPreference({
       orderId: order.id,
       payerEmail: order.customerEmail,
       items: [
-        ...order.items.map((item) => ({
-          // quantity 1 con unit_price = total de la línea: evita tener que
-          // partir el precio promocional en un unit_price fraccionario
-          // cuando la cantidad no es múltiplo exacto de la promo.
-          title: `${item.product.name}${item.variantName ? ` (${item.variantName})` : ""} x${item.quantity}`,
-          quantity: 1,
-          unit_price: item.lineTotal ?? item.unitPrice * item.quantity,
-          currency_id: "ARS" as const,
-        })),
+        ...productItems,
         ...(order.shippingCost > 0
           ? [
               {

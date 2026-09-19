@@ -7,6 +7,7 @@ const navLinks = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/products", label: "Productos" },
   { href: "/admin/promotions", label: "Promociones" },
+  { href: "/admin/coupons", label: "Cupones" },
   { href: "/admin/reviews", label: "Reseñas" },
   { href: "/admin/orders", label: "Pedidos" },
   { href: "/admin/sales", label: "Ventas manuales" },

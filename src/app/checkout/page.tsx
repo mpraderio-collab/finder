@@ -38,8 +38,44 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; percentOff: number } | null>(
+    null,
+  );
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponChecking, setCouponChecking] = useState(false);
+
   const shippingCost = shippingMethods[shippingMethod].cost;
-  const total = subtotal + shippingCost;
+  const couponDiscount = appliedCoupon
+    ? Math.round((subtotal * appliedCoupon.percentOff) / 100)
+    : 0;
+  const total = subtotal - couponDiscount + shippingCost;
+
+  async function applyCoupon() {
+    const code = couponInput.trim();
+    if (!code) return;
+    setCouponChecking(true);
+    setCouponError(null);
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCouponError(data.error ?? "No pudimos validar el código.");
+        setAppliedCoupon(null);
+        return;
+      }
+      setAppliedCoupon({ code: data.code, percentOff: data.percentOff });
+      setCouponInput("");
+    } catch {
+      setCouponError("Error de conexión. Intentá de nuevo.");
+    } finally {
+      setCouponChecking(false);
+    }
+  }
   const trackedInitiateCheckout = useRef(false);
 
   useEffect(() => {
@@ -73,6 +109,7 @@ export default function CheckoutPage() {
           ...form,
           sessionId: getSessionId(),
           shippingMethod,
+          couponCode: appliedCoupon?.code,
           items: items.map((i) => ({
             productId: i.productId,
             quantity: i.quantity,
@@ -304,12 +341,63 @@ export default function CheckoutPage() {
                 </div>
               ))}
             </div>
+            <div className="mt-4 border-t border-line pt-4">
+              {appliedCoupon ? (
+                <div className="flex items-center justify-between rounded-lg border border-amber-line bg-amber-soft px-3 py-2 text-[13px]">
+                  <span className="font-semibold text-amber-ink">
+                    Cupón {appliedCoupon.code} aplicado (-{appliedCoupon.percentOff}%)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setAppliedCoupon(null)}
+                    className="text-xs font-semibold text-ink-soft hover:underline"
+                  >
+                    Quitar
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex gap-2">
+                    <input
+                      value={couponInput}
+                      onChange={(e) => setCouponInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          applyCoupon();
+                        }
+                      }}
+                      placeholder="Código de descuento"
+                      className="input flex-1 uppercase"
+                    />
+                    <button
+                      type="button"
+                      onClick={applyCoupon}
+                      disabled={couponChecking || !couponInput.trim()}
+                      className="shrink-0 rounded-lg border border-border-btn px-3.5 text-[13px] font-semibold text-navy hover:bg-bg disabled:opacity-50"
+                    >
+                      {couponChecking ? "…" : "Aplicar"}
+                    </button>
+                  </div>
+                  {couponError && (
+                    <span className="text-xs text-err-ink">{couponError}</span>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="mt-4 flex justify-between border-t border-line pt-3 text-sm text-ink-soft">
               <span>Subtotal</span>
               <span className="font-semibold text-ink">
                 {formatPrice(subtotal)}
               </span>
             </div>
+            {appliedCoupon && (
+              <div className="mt-1.5 flex justify-between text-sm text-amber-ink">
+                <span>Descuento ({appliedCoupon.code})</span>
+                <span className="font-semibold">-{formatPrice(couponDiscount)}</span>
+              </div>
+            )}
             <div className="mt-1.5 flex justify-between text-sm text-ink-soft">
               <span>Envío</span>
               <span className="font-semibold text-ink">

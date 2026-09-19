@@ -98,6 +98,23 @@ export const promotionSchema = z.object({
 
 export type PromotionFormValues = z.infer<typeof promotionSchema>;
 
+export const couponSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .min(3, "Muy corto")
+    .max(40)
+    .regex(/^[A-Za-z0-9]+$/, "Solo letras y números, sin espacios")
+    .transform((v) => v.toUpperCase()),
+  percentOff: z.coerce
+    .number({ message: "Tiene que ser un número" })
+    .positive("Tiene que ser mayor a cero")
+    .max(100, "No puede superar el 100%"),
+  active: z.boolean(),
+});
+
+export type CouponFormValues = z.infer<typeof couponSchema>;
+
 // Una característica por línea de texto; se descartan líneas vacías. El
 // textarea completo llega como un solo string desde el form.
 export const featuresTextSchema = z
@@ -141,6 +158,10 @@ export const checkoutSchema = z.object({
   shippingProvince: z.string().trim().min(2).max(100),
   shippingZip: z.string().trim().min(3).max(15),
   shippingMethod: z.enum(["correo"]).default("correo"),
+  couponCode: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().trim().max(40).optional(),
+  ),
   items: z
     .array(
       z.object({

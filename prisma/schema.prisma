@@ -68,6 +68,22 @@ model PromotionTier {
   @@index([promotionId])
 }
 
+// Código de descuento que el cliente tipea en el checkout (distinto de
+// Promotion, que es automática por producto/cantidad) — se aplica sobre el
+// subtotal ya con promociones, antes del envío.
+model Coupon {
+  id         String   @id @default(cuid())
+  code       String   @unique // se guarda en mayúsculas, se compara sin importar mayúsculas/minúsculas
+  percentOff Float
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  orders Order[]
+
+  @@index([active])
+}
+
 model Supplier {
   id        String   @id @default(cuid())
   name      String
@@ -249,6 +265,13 @@ model Order {
   // pedido se envía suelto; si es parte de un Shipment agrupado, el costo
   // real vive ahí (Shipment.actualShippingCost) y este campo se ignora.
   actualShippingCost Int?
+  // Cupón de descuento tipeado en el checkout (ver model Coupon) — distinto
+  // de Promotion. couponDiscount ya está restado de `total`; `subtotal`
+  // sigue siendo el monto con promociones pero SIN el cupón, para no romper
+  // reportes que ya asumen ese significado.
+  couponId          String?
+  coupon            Coupon?     @relation(fields: [couponId], references: [id])
+  couponDiscount    Int         @default(0)
   subtotal          Int
   total             Int
   mpPreferenceId    String?
