@@ -2,6 +2,12 @@ import { Resend } from "resend";
 import { formatPrice } from "@/lib/products";
 
 const FROM_ADDRESS = "Finder <pedidos@findertecno.com>";
+// Para imágenes en emails: nunca localhost aunque NEXT_PUBLIC_SITE_URL no
+// esté seteada, porque el mail lo abre el cliente desde cualquier lado.
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL && !process.env.NEXT_PUBLIC_SITE_URL.includes("localhost")
+    ? process.env.NEXT_PUBLIC_SITE_URL
+    : "https://www.findertecno.com";
 
 function getClient(): Resend | null {
   const apiKey = process.env.RESEND_API_KEY;
@@ -201,6 +207,12 @@ export async function sendOrderConfirmationToCustomer(order: OrderEmailData) {
     subject: "Confirmamos tu pedido en Finder",
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+        <img
+          src="${SITE_URL}/email/gracias-por-tu-compra.png"
+          alt="¡Gracias por tu compra! 10% OFF en tu próxima compra con el código FINDER10"
+          width="600"
+          style="width:100%;max-width:600px;height:auto;display:block;"
+        />
         <h2>¡Gracias por tu compra, ${order.customerName}!</h2>
         <p>Confirmamos tu pago. Preparamos tu pedido para enviarlo a la brevedad.</p>
         <table style="width:100%;border-collapse:collapse;margin-top:16px;">
