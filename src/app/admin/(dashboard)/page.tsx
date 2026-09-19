@@ -2,6 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/products";
 import { orderStatusColors, orderStatusLabels } from "@/lib/order-status";
+import { calculateCogs, calculateMargin } from "@/lib/margin";
 
 function weeklySales(orders: { createdAt: Date; total: number }[]) {
   const now = new Date();
@@ -98,7 +99,13 @@ export default async function AdminDashboardPage(
     db.order.count({ where: { status: "cart" } }),
     db.order.findMany({
       where: { status: { in: ["paid", "shipped"] } },
-      select: { createdAt: true, total: true },
+      select: {
+        createdAt: true,
+        total: true,
+        shipmentId: true,
+        actualShippingCost: true,
+        items: { select: { quantity: true, product: { select: { costPrice: true } } } },
+      },
     }),
     db.product.findMany({
       where: { status: "active", stock: { lte: 3 } },
@@ -183,6 +190,14 @@ export default async function AdminDashboardPage(
   }));
 
   const revenue = paidOrders.reduce((sum, o) => sum + o.total, 0);
+  // Igual criterio que el detalle de cada pedido: costo de mercadería +
+  // costo real de envío, salvo que vaya en un envío agrupado (ahí ese
+  // costo es del grupo, no de este pedido — ver /admin/orders/[id]).
+  const realMargin = paidOrders.reduce((sum, o) => {
+    const cogs = calculateCogs(o.items);
+    const shippingCost = o.shipmentId ? null : o.actualShippingCost;
+    return sum + calculateMargin(o.total, cogs, shippingCost);
+  }, 0);
   const buckets = weeklySales(paidOrders);
   const maxBucket = Math.max(...buckets.map((b) => b.total), 1);
 
@@ -225,6 +240,12 @@ export default async function AdminDashboardPage(
     { label: "Carritos activos", value: activeCartCount, href: "/admin/orders?status=cart" },
     { label: "Ventas confirmadas", value: paidOrders.length, href: "/admin/orders?status=paid" },
     { label: "Ingresos (pagados)", value: formatPrice(revenue), href: "/admin/orders?status=paid" },
+    {
+      label: "Margen real",
+      value: formatPrice(realMargin),
+      warn: realMargin < 0,
+      href: "/admin/orders?status=paid",
+    },
     {
       label: "Stock bajo",
       value: lowStock.length,
