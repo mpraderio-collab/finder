@@ -45,6 +45,20 @@ export default async function AdminPurchasesPage() {
   const totalCostPesos = committed.reduce((sum, r) => sum + r.costPesos, 0);
   const totalShippingUsd = committed.reduce((sum, r) => sum + (r.shippingCostUsd ?? 0), 0);
 
+  // purchases ya viene ordenado por fecha desc, así que las compras de una
+  // misma fecha quedan contiguas — alcanza con agrupar de a tramos
+  // consecutivos en vez de un Map.
+  const dateGroups: { dateKey: string; purchases: typeof purchases }[] = [];
+  for (const p of purchases) {
+    const dateKey = p.purchaseDate.toISOString().slice(0, 10);
+    const last = dateGroups[dateGroups.length - 1];
+    if (last && last.dateKey === dateKey) {
+      last.purchases.push(p);
+    } else {
+      dateGroups.push({ dateKey, purchases: [p] });
+    }
+  }
+
   return (
     <div>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -102,80 +116,90 @@ export default async function AdminPurchasesPage() {
             cancelados no suman acá.
           </p>
 
-          <div className="mt-6 overflow-x-auto rounded-xl border border-line bg-bg">
-            <table className="w-full min-w-[1220px] text-left text-sm">
-              <thead className="border-b border-line">
-                <tr>
-                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                    Fecha
-                  </th>
-                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                    Producto
-                  </th>
-                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                    Proveedor
-                  </th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                    Cant.
-                  </th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                    Costo unit. (USD)
-                  </th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                    Costo neto (USD)
-                  </th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                    Costo envío (USD)
-                  </th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                    Costo total (USD)
-                  </th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                    Costo (pesos)
-                  </th>
-                  <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                    Estado
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <PurchaseRow
-                    key={row.itemId}
-                    href={`/admin/purchases/${row.purchaseId}/edit`}
-                  >
-                    <td className="px-4 py-3 text-ink-soft">
-                      {row.purchaseDate.toLocaleDateString("es-AR")}
-                    </td>
-                    <td className="px-4 py-3 font-medium text-ink">{row.productName}</td>
-                    <td className="px-4 py-3 text-ink-soft">{row.supplierName ?? "—"}</td>
-                    <td className="px-4 py-3 text-right text-ink-soft">{row.quantity}</td>
-                    <td className="px-4 py-3 text-right text-ink-soft">
-                      {usd(row.unitCostUsd)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-ink-soft">
-                      {usd(row.unitCostUsdFinal)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-ink-soft">
-                      {usd(row.unitShippingCostUsd)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-ink-soft">
-                      {usd(row.totalUsd)}
-                    </td>
-                    <td className="px-4 py-3 text-right font-heading font-bold text-navy">
-                      {formatPrice(row.costPesos)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-md px-2 py-0.5 text-xs font-semibold ${purchaseStatusColors[row.status]}`}
-                      >
-                        {purchaseStatusLabels[row.status] ?? row.status}
-                      </span>
-                    </td>
-                  </PurchaseRow>
-                ))}
-              </tbody>
-            </table>
+          <div className="mt-6 flex flex-col gap-6">
+            {dateGroups.map((group) => (
+              <div key={group.dateKey}>
+                <p className="mb-2 font-heading text-sm font-bold text-navy">
+                  {group.purchases[0].purchaseDate.toLocaleDateString("es-AR")}
+                </p>
+                <div className="flex flex-col gap-3">
+                  {group.purchases.map((purchase) => (
+                    <div
+                      key={purchase.id}
+                      className="overflow-x-auto rounded-xl border border-line bg-bg"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
+                        <span className="text-sm font-medium text-ink">
+                          {purchase.supplier?.name ?? "Sin proveedor"}
+                        </span>
+                        <span
+                          className={`rounded-md px-2 py-0.5 text-xs font-semibold ${purchaseStatusColors[purchase.status]}`}
+                        >
+                          {purchaseStatusLabels[purchase.status] ?? purchase.status}
+                        </span>
+                      </div>
+                      <table className="w-full min-w-[980px] text-left text-sm">
+                        <thead className="border-b border-line">
+                          <tr>
+                            <th className="px-4 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                              Producto
+                            </th>
+                            <th className="px-4 py-2 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                              Cant.
+                            </th>
+                            <th className="px-4 py-2 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                              Costo unit. (USD)
+                            </th>
+                            <th className="px-4 py-2 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                              Costo neto (USD)
+                            </th>
+                            <th className="px-4 py-2 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                              Costo envío (USD)
+                            </th>
+                            <th className="px-4 py-2 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                              Costo total (USD)
+                            </th>
+                            <th className="px-4 py-2 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                              Costo (pesos)
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {purchase.items.map((item) => (
+                            <PurchaseRow
+                              key={item.id}
+                              href={`/admin/purchases/${purchase.id}/edit`}
+                            >
+                              <td className="px-4 py-2.5 font-medium text-ink">
+                                {item.productName}
+                              </td>
+                              <td className="px-4 py-2.5 text-right text-ink-soft">
+                                {item.quantity}
+                              </td>
+                              <td className="px-4 py-2.5 text-right text-ink-soft">
+                                {usd(item.unitCostUsd)}
+                              </td>
+                              <td className="px-4 py-2.5 text-right text-ink-soft">
+                                {usd(item.unitCostUsdFinal)}
+                              </td>
+                              <td className="px-4 py-2.5 text-right text-ink-soft">
+                                {usd(item.unitShippingCostUsd)}
+                              </td>
+                              <td className="px-4 py-2.5 text-right text-ink-soft">
+                                {usd(item.totalUsd)}
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-heading font-bold text-navy">
+                                {formatPrice(item.unitCostPesos * item.quantity)}
+                              </td>
+                            </PurchaseRow>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </>
       )}
