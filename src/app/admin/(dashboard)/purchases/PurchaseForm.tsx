@@ -245,14 +245,7 @@ export function PurchaseForm({
             </label>
 
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-ink-soft">
-                Precio unitario (USD)
-                {!isNewProduct && lastPrices?.[productChoice] !== undefined && (
-                  <span className="ml-1 text-ink-faint">
-                    (sugerido: último pagado {usd(lastPrices[productChoice])})
-                  </span>
-                )}
-              </span>
+              <span className="text-xs text-ink-soft">Precio unitario (USD)</span>
               <input
                 type="number"
                 step="0.01"
@@ -261,6 +254,11 @@ export function PurchaseForm({
                 onChange={(e) => setUnitPriceUsd(Number(e.target.value))}
                 className="input"
               />
+              {!isNewProduct && lastPrices?.[productChoice] !== undefined && (
+                <span className="text-[11px] text-ink-faint">
+                  Sugerido: último pagado {usd(lastPrices[productChoice])}
+                </span>
+              )}
             </label>
 
             <label className="flex flex-col gap-1.5">
