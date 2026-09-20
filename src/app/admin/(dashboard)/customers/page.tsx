@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/products";
 
@@ -59,12 +60,17 @@ export default async function AdminCustomersPage() {
                 <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
                   Alta
                 </th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.id} className="border-b border-line-soft last:border-0">
-                  <td className="px-4 py-3 font-medium text-ink">{row.name}</td>
+                <tr key={row.id} className="border-b border-line-soft last:border-0 hover:bg-surface">
+                  <td className="px-4 py-3 font-medium text-ink">
+                    <Link href={`/admin/customers/${row.id}`} className="hover:text-blue">
+                      {row.name}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3 text-ink-soft">{row.email || "—"}</td>
                   <td className="px-4 py-3 text-ink-soft">{row.phone || "—"}</td>
                   <td className="px-4 py-3 text-right text-ink-soft">
@@ -75,6 +81,14 @@ export default async function AdminCustomersPage() {
                   </td>
                   <td className="px-4 py-3 text-right text-ink-faint">
                     {row.createdAt.toLocaleDateString("es-AR")}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Link
+                      href={`/admin/customers/${row.id}`}
+                      className="font-heading text-sm font-bold text-blue hover:text-navy"
+                    >
+                      Ver
+                    </Link>
                   </td>
                 </tr>
               ))}

@@ -219,6 +219,26 @@ const purchaseItemSchema = z.object({
   suggestedPrice: z.coerce.number().int().positive().optional(),
 });
 
+function optionalTrimmed(max: number) {
+  return z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().trim().max(max).optional(),
+  );
+}
+
+export const customerSchema = z.object({
+  name: z.string().trim().min(1, "El nombre es obligatorio").max(120),
+  email: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().trim().email("El email no es válido").max(160).optional(),
+  ),
+  phone: optionalTrimmed(30),
+  address: optionalTrimmed(200),
+  city: optionalTrimmed(100),
+  province: optionalTrimmed(100),
+  zip: optionalTrimmed(15),
+});
+
 export const purchaseSchema = z.object({
   supplierName: z.preprocess(
     (val) => (val === "" || val === null || val === undefined ? undefined : val),
