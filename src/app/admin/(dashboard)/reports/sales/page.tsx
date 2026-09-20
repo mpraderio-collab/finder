@@ -2,6 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/products";
 import { dateBuckets, endOfToday, startOfMonth, startOfToday, startOfYear, toDateInputValue } from "@/lib/reports";
+import { calculateCogs, calculateMargin } from "@/lib/margin";
 import { ExportCsvButton } from "@/components/ExportCsvButton";
 import { BarChart } from "@/components/charts/BarChart";
 import { DonutChart } from "@/components/charts/DonutChart";
@@ -28,14 +29,23 @@ export default async function SalesReportPage(props: PageProps<"/admin/reports/s
         ...(productIdParam && { items: { some: { productId: productIdParam } } }),
       },
       orderBy: { createdAt: "desc" },
-      include: { items: { include: { product: { select: { name: true } } } } },
+      include: {
+        items: { include: { product: { select: { name: true, costPrice: true } } } },
+      },
     }),
     db.product.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
 
   const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0);
   const saleCount = sales.length;
-  const avgTicket = saleCount > 0 ? totalRevenue / saleCount : 0;
+  // Mismo criterio que "Margen real" del dashboard: costo de mercadería +
+  // costo real de envío, salvo que vaya en un envío agrupado (ahí ese
+  // costo es del grupo, no de este pedido).
+  const realMargin = sales.reduce((sum, s) => {
+    const cogs = calculateCogs(s.items);
+    const shippingCost = s.shipmentId ? null : s.actualShippingCost;
+    return sum + calculateMargin(s.total, cogs, shippingCost);
+  }, 0);
   const webTotal = sales.filter((s) => s.channel === "online").reduce((sum, s) => sum + s.total, 0);
   const manualTotal = sales.filter((s) => s.channel === "manual").reduce((sum, s) => sum + s.total, 0);
 
@@ -201,8 +211,12 @@ export default async function SalesReportPage(props: PageProps<"/admin/reports/s
           <p className="mt-1 font-heading text-2xl font-extrabold text-navy">{saleCount}</p>
         </div>
         <div className="rounded-xl border border-line bg-bg p-[18px]">
-          <p className="text-[13px] text-ink-soft">Ticket promedio</p>
-          <p className="mt-1 font-heading text-2xl font-extrabold text-navy">{formatPrice(avgTicket)}</p>
+          <p className="text-[13px] text-ink-soft">Margen real</p>
+          <p
+            className={`mt-1 font-heading text-2xl font-extrabold ${realMargin < 0 ? "text-amber-ink" : "text-navy"}`}
+          >
+            {formatPrice(realMargin)}
+          </p>
         </div>
       </div>
 
