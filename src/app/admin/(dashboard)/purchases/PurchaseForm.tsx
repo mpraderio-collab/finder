@@ -129,6 +129,15 @@ export function PurchaseForm({
       setAddError("Completá precio unitario y cotización.");
       return;
     }
+    const isDuplicate = isNewProduct
+      ? items.some(
+          (item) => !item.productId && item.productName.trim().toLowerCase() === productName.trim().toLowerCase(),
+        )
+      : items.some((item) => item.productId === productChoice);
+    if (isDuplicate) {
+      setAddError("Este producto ya está en la lista — editá la línea existente en vez de agregarlo de nuevo.");
+      return;
+    }
 
     setItems((prev) => [
       ...prev,
@@ -158,6 +167,47 @@ export function PurchaseForm({
 
   function updateItem(index: number, patch: Partial<ItemLine>) {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  }
+
+  type SortKey = "productName" | "quantity" | "unitPriceUsd" | "unitCostPesos" | "subtotalUsd";
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  // Ordena una copia con el índice original a mano — remove/update siguen
+  // operando sobre la posición real en `items`, no en el orden mostrado.
+  const sortedItems = useMemo(() => {
+    const withIndex = items.map((item, index) => ({
+      item,
+      index,
+      productName: item.productName.toLowerCase(),
+      quantity: item.quantity,
+      unitPriceUsd: item.unitPriceUsd,
+      unitCostPesos: calcPurchaseCosts(item).unitCostPesos,
+      subtotalUsd: item.quantity * item.unitPriceUsd,
+    }));
+    if (!sortKey) return withIndex;
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...withIndex].sort((a, b) => {
+      const av = a[sortKey];
+      const bv = b[sortKey];
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return 0;
+    });
+  }, [items, sortKey, sortDir]);
+
+  function sortIndicator(key: SortKey) {
+    if (sortKey !== key) return null;
+    return <span className="ml-1">{sortDir === "asc" ? "↑" : "↓"}</span>;
   }
 
   const totals = useMemo(() => {
@@ -334,72 +384,87 @@ export function PurchaseForm({
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="border-b border-line text-ink-soft">
               <tr>
-                <th className="px-4 py-2 font-medium">Producto</th>
-                <th className="px-4 py-2 font-medium">Cant.</th>
-                <th className="px-4 py-2 font-medium">P. unitario</th>
-                <th className="px-4 py-2 font-medium">Costo unit. (pesos)</th>
-                <th className="px-4 py-2 font-medium">Subtotal (USD)</th>
+                <th className="px-4 py-2 font-medium">
+                  <button type="button" onClick={() => toggleSort("productName")} className="hover:text-ink">
+                    Producto{sortIndicator("productName")}
+                  </button>
+                </th>
+                <th className="px-4 py-2 font-medium">
+                  <button type="button" onClick={() => toggleSort("quantity")} className="hover:text-ink">
+                    Cant.{sortIndicator("quantity")}
+                  </button>
+                </th>
+                <th className="px-4 py-2 font-medium">
+                  <button type="button" onClick={() => toggleSort("unitPriceUsd")} className="hover:text-ink">
+                    P. unitario{sortIndicator("unitPriceUsd")}
+                  </button>
+                </th>
+                <th className="px-4 py-2 font-medium">
+                  <button type="button" onClick={() => toggleSort("unitCostPesos")} className="hover:text-ink">
+                    Costo unit. (pesos){sortIndicator("unitCostPesos")}
+                  </button>
+                </th>
+                <th className="px-4 py-2 font-medium">
+                  <button type="button" onClick={() => toggleSort("subtotalUsd")} className="hover:text-ink">
+                    Subtotal (USD){sortIndicator("subtotalUsd")}
+                  </button>
+                </th>
                 {!readOnly && <th className="px-4 py-2" />}
               </tr>
             </thead>
             <tbody>
-              {items.map((item, i) => {
-                const costs = calcPurchaseCosts(item);
-                return (
-                  <tr key={i} className="border-b border-line last:border-0">
-                    <td className="px-4 py-2 text-ink">
-                      {item.productName}
-                      {!item.productId && (
-                        <span className="ml-1 text-xs text-ink-faint">(sin vincular)</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2 text-ink-soft">
-                      {readOnly ? (
-                        item.quantity
-                      ) : (
-                        <input
-                          type="number"
-                          min={1}
-                          value={item.quantity}
-                          onChange={(e) => updateItem(i, { quantity: Number(e.target.value) })}
-                          className="input w-20"
-                        />
-                      )}
-                    </td>
-                    <td className="px-4 py-2 text-ink-soft">
-                      {readOnly ? (
-                        usd(item.unitPriceUsd)
-                      ) : (
-                        <input
-                          type="number"
-                          step="0.01"
-                          min={0}
-                          value={item.unitPriceUsd}
-                          onChange={(e) => updateItem(i, { unitPriceUsd: Number(e.target.value) })}
-                          className="input w-24"
-                        />
-                      )}
-                    </td>
-                    <td className="px-4 py-2 text-ink-soft">
-                      {formatPrice(costs.unitCostPesos)}
-                    </td>
-                    <td className="px-4 py-2 font-medium text-ink">
-                      {usd(item.unitPriceUsd * item.quantity)}
-                    </td>
-                    {!readOnly && (
-                      <td className="px-4 py-2 text-right">
-                        <button
-                          type="button"
-                          onClick={() => removeItem(i)}
-                          className="text-xs font-semibold text-err-ink hover:underline"
-                        >
-                          Quitar
-                        </button>
-                      </td>
+              {sortedItems.map(({ item, index, unitCostPesos }) => (
+                <tr key={index} className="border-b border-line last:border-0">
+                  <td className="px-4 py-2 text-ink">
+                    {item.productName}
+                    {!item.productId && (
+                      <span className="ml-1 text-xs text-ink-faint">(sin vincular)</span>
                     )}
-                  </tr>
-                );
-              })}
+                  </td>
+                  <td className="px-4 py-2 text-ink-soft">
+                    {readOnly ? (
+                      item.quantity
+                    ) : (
+                      <input
+                        type="number"
+                        min={1}
+                        value={item.quantity}
+                        onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
+                        className="input w-20"
+                      />
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-ink-soft">
+                    {readOnly ? (
+                      usd(item.unitPriceUsd)
+                    ) : (
+                      <input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={item.unitPriceUsd}
+                        onChange={(e) => updateItem(index, { unitPriceUsd: Number(e.target.value) })}
+                        className="input w-24"
+                      />
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-ink-soft">{formatPrice(unitCostPesos)}</td>
+                  <td className="px-4 py-2 font-medium text-ink">
+                    {usd(item.unitPriceUsd * item.quantity)}
+                  </td>
+                  {!readOnly && (
+                    <td className="px-4 py-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => removeItem(index)}
+                        className="text-xs font-semibold text-err-ink hover:underline"
+                      >
+                        Quitar
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
             </tbody>
           </table>
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-3 text-sm">
