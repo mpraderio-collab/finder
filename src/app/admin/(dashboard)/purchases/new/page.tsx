@@ -3,16 +3,30 @@ import { dedupeSuppliersByName } from "@/lib/suppliers";
 import { PurchaseForm } from "../PurchaseForm";
 
 export default async function NewPurchasePage() {
-  const [products, allSuppliers] = await Promise.all([
+  const [products, allSuppliers, priceHistory] = await Promise.all([
     db.product.findMany({
       where: { status: "active" },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
     db.supplier.findMany({ orderBy: { name: "asc" }, select: { name: true } }),
+    db.purchaseItem.findMany({
+      where: { productId: { not: null }, purchase: { status: { not: "cancelled" } } },
+      select: { productId: true, unitPriceUsd: true },
+      orderBy: { purchase: { purchaseDate: "desc" } },
+    }),
   ]);
 
   const suppliers = dedupeSuppliersByName(allSuppliers);
+
+  // Primera ocurrencia por producto = la más reciente (ya viene ordenado
+  // desc por fecha de compra) — para sugerir el último precio pagado.
+  const lastPricesByProduct: Record<string, number> = {};
+  for (const row of priceHistory) {
+    if (row.productId && !(row.productId in lastPricesByProduct)) {
+      lastPricesByProduct[row.productId] = row.unitPriceUsd;
+    }
+  }
 
   return (
     <div>
@@ -26,7 +40,7 @@ export default async function NewPurchasePage() {
       </p>
 
       <div className="mt-8">
-        <PurchaseForm products={products} suppliers={suppliers} />
+        <PurchaseForm products={products} suppliers={suppliers} lastPrices={lastPricesByProduct} />
       </div>
     </div>
   );

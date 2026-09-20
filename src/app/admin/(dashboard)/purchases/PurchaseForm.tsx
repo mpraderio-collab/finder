@@ -53,11 +53,13 @@ export function PurchaseForm({
   suppliers,
   purchaseId,
   initial,
+  lastPrices,
 }: {
   products: ProductOption[];
   suppliers: { name: string }[];
   purchaseId?: string;
   initial?: InitialValues;
+  lastPrices?: Record<string, number>;
 }) {
   const router = useRouter();
   const action = purchaseId ? updatePurchase.bind(null, purchaseId) : createPurchase;
@@ -76,7 +78,9 @@ export function PurchaseForm({
   const [productChoice, setProductChoice] = useState(products[0]?.id ?? NEW_PRODUCT);
   const [productName, setProductName] = useState(products[0]?.name ?? "");
   const [quantity, setQuantity] = useState(1);
-  const [unitPriceUsd, setUnitPriceUsd] = useState(0);
+  const [unitPriceUsd, setUnitPriceUsd] = useState(
+    lastPrices?.[products[0]?.id ?? ""] ?? 0,
+  );
   const [exchangeRate, setExchangeRate] = useState(0);
   const [taxesPesos, setTaxesPesos] = useState<number | "">("");
   const [shippingCostUsd, setShippingCostUsd] = useState<number | "">("");
@@ -90,8 +94,12 @@ export function PurchaseForm({
     if (id !== NEW_PRODUCT) {
       const product = products.find((p) => p.id === id);
       if (product) setProductName(product.name);
+      // Sugiere el último precio unitario pagado por este producto — se
+      // puede pisar a mano si esta vez cambió.
+      setUnitPriceUsd(lastPrices?.[id] ?? 0);
     } else {
       setProductName("");
+      setUnitPriceUsd(0);
     }
   }
 
@@ -146,6 +154,10 @@ export function PurchaseForm({
 
   function removeItem(index: number) {
     setItems((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updateItem(index: number, patch: Partial<ItemLine>) {
+    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   }
 
   const totals = useMemo(() => {
@@ -233,7 +245,14 @@ export function PurchaseForm({
             </label>
 
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-ink-soft">Precio unitario (USD)</span>
+              <span className="text-xs text-ink-soft">
+                Precio unitario (USD)
+                {!isNewProduct && lastPrices?.[productChoice] !== undefined && (
+                  <span className="ml-1 text-ink-faint">
+                    (sugerido: último pagado {usd(lastPrices[productChoice])})
+                  </span>
+                )}
+              </span>
               <input
                 type="number"
                 step="0.01"
@@ -321,7 +340,7 @@ export function PurchaseForm({
                 <th className="px-4 py-2 font-medium">Cant.</th>
                 <th className="px-4 py-2 font-medium">P. unitario</th>
                 <th className="px-4 py-2 font-medium">Costo unit. (pesos)</th>
-                <th className="px-4 py-2 font-medium">Subtotal</th>
+                <th className="px-4 py-2 font-medium">Subtotal (USD)</th>
                 {!readOnly && <th className="px-4 py-2" />}
               </tr>
             </thead>
@@ -336,13 +355,38 @@ export function PurchaseForm({
                         <span className="ml-1 text-xs text-ink-faint">(sin vincular)</span>
                       )}
                     </td>
-                    <td className="px-4 py-2 text-ink-soft">{item.quantity}</td>
-                    <td className="px-4 py-2 text-ink-soft">{usd(item.unitPriceUsd)}</td>
+                    <td className="px-4 py-2 text-ink-soft">
+                      {readOnly ? (
+                        item.quantity
+                      ) : (
+                        <input
+                          type="number"
+                          min={1}
+                          value={item.quantity}
+                          onChange={(e) => updateItem(i, { quantity: Number(e.target.value) })}
+                          className="input w-20"
+                        />
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-ink-soft">
+                      {readOnly ? (
+                        usd(item.unitPriceUsd)
+                      ) : (
+                        <input
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          value={item.unitPriceUsd}
+                          onChange={(e) => updateItem(i, { unitPriceUsd: Number(e.target.value) })}
+                          className="input w-24"
+                        />
+                      )}
+                    </td>
                     <td className="px-4 py-2 text-ink-soft">
                       {formatPrice(costs.unitCostPesos)}
                     </td>
                     <td className="px-4 py-2 font-medium text-ink">
-                      {formatPrice(costs.unitCostPesos * item.quantity)}
+                      {usd(item.unitPriceUsd * item.quantity)}
                     </td>
                     {!readOnly && (
                       <td className="px-4 py-2 text-right">
