@@ -48,8 +48,13 @@ function revalidatePurchasePaths(productIds: (string | null | undefined)[] = [])
 }
 
 function buildItemsData(items: ReturnType<typeof purchaseSchema.parse>["items"]) {
+  // Cotización, impuestos, envío y recargo por tarjeta son datos del lote
+  // completo (se cargan una sola vez en el form) — impuestos y envío se
+  // prorratean entre TODAS las unidades de la compra, no solo las de cada
+  // línea, ver calcPurchaseCosts.
+  const totalLotQuantity = items.reduce((sum, line) => sum + line.quantity, 0);
   return items.map((line) => {
-    const costs = calcPurchaseCosts(line);
+    const costs = calcPurchaseCosts({ ...line, totalLotQuantity });
     return {
       productId: line.productId || null,
       productName: line.productName,

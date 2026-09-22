@@ -27,8 +27,11 @@ type ItemLine = {
   exchangeRate: number;
   taxesPesos?: number;
   shippingCostUsd?: number;
+  cardFeePercent?: number;
   suggestedPrice?: number;
 };
+
+const DEFAULT_CARD_FEE_PERCENT = 2.9;
 
 type InitialValues = {
   supplierName: string;
@@ -74,6 +77,19 @@ export function PurchaseForm({
   const [purchaseDate, setPurchaseDate] = useState(initial?.purchaseDate ?? todayIso());
   const [items, setItems] = useState<ItemLine[]>(initial?.items ?? []);
 
+  // Datos del lote — se cargan una sola vez y valen para toda la compra
+  // (todas las líneas), no por producto. Si se está editando una compra ya
+  // cargada, se toman del primer ítem (todos comparten el mismo valor).
+  const [exchangeRate, setExchangeRate] = useState(initial?.items[0]?.exchangeRate ?? 0);
+  const [taxesPesos, setTaxesPesos] = useState<number | "">(initial?.items[0]?.taxesPesos ?? "");
+  const [shippingCostUsd, setShippingCostUsd] = useState<number | "">(
+    initial?.items[0]?.shippingCostUsd ?? "",
+  );
+  // El % de recargo por pago con tarjeta no se guardaba antes de este
+  // campo, así que no hay forma de recuperarlo para compras viejas — se
+  // usa el default también al editarlas.
+  const [cardFeePercent, setCardFeePercent] = useState<number | "">(DEFAULT_CARD_FEE_PERCENT);
+
   // Formulario de la línea que se está armando, todavía no agregada.
   const [productChoice, setProductChoice] = useState(products[0]?.id ?? NEW_PRODUCT);
   const [productName, setProductName] = useState(products[0]?.name ?? "");
@@ -81,9 +97,6 @@ export function PurchaseForm({
   const [unitPriceUsd, setUnitPriceUsd] = useState(
     lastPrices?.[products[0]?.id ?? ""] ?? 0,
   );
-  const [exchangeRate, setExchangeRate] = useState(0);
-  const [taxesPesos, setTaxesPesos] = useState<number | "">("");
-  const [shippingCostUsd, setShippingCostUsd] = useState<number | "">("");
   const [suggestedPrice, setSuggestedPrice] = useState<number | "">("");
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -103,6 +116,10 @@ export function PurchaseForm({
     }
   }
 
+  // Cantidad total del lote hasta ahora (líneas ya agregadas) — se usa para
+  // prorratear impuestos/envío/tarjeta, que son del lote completo.
+  const addedLotQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+
   const draftCosts = useMemo(
     () =>
       calcPurchaseCosts({
@@ -111,8 +128,10 @@ export function PurchaseForm({
         exchangeRate: exchangeRate || 0,
         taxesPesos: taxesPesos === "" ? undefined : taxesPesos,
         shippingCostUsd: shippingCostUsd === "" ? undefined : shippingCostUsd,
+        cardFeePercent: cardFeePercent === "" ? undefined : cardFeePercent,
+        totalLotQuantity: addedLotQuantity + (quantity || 0),
       }),
-    [quantity, unitPriceUsd, exchangeRate, taxesPesos, shippingCostUsd],
+    [quantity, unitPriceUsd, exchangeRate, taxesPesos, shippingCostUsd, cardFeePercent, addedLotQuantity],
   );
 
   function addItem() {
@@ -126,7 +145,7 @@ export function PurchaseForm({
       return;
     }
     if (unitPriceUsd <= 0 || exchangeRate <= 0) {
-      setAddError("Completá precio unitario y cotización.");
+      setAddError("Completá precio unitario y cotización del lote.");
       return;
     }
     const isDuplicate = isNewProduct
@@ -149,15 +168,14 @@ export function PurchaseForm({
         exchangeRate,
         taxesPesos: taxesPesos === "" ? undefined : taxesPesos,
         shippingCostUsd: shippingCostUsd === "" ? undefined : shippingCostUsd,
+        cardFeePercent: cardFeePercent === "" ? undefined : cardFeePercent,
         suggestedPrice: suggestedPrice === "" ? undefined : suggestedPrice,
       },
     ]);
-    // La cotización suele repetirse entre líneas de la misma compra —se deja
-    // cargada para la próxima; el resto se resetea.
+    // Cotización/impuestos/envío/tarjeta son del lote — quedan cargados
+    // para la próxima línea; solo se resetea lo propio de este producto.
     setQuantity(1);
     setUnitPriceUsd(0);
-    setTaxesPesos("");
-    setShippingCostUsd("");
     setSuggestedPrice("");
   }
 
@@ -182,6 +200,22 @@ export function PurchaseForm({
     }
   }
 
+  // Costo de una línea usando los datos del lote vigentes ahora mismo (no
+  // lo que tenía guardado esa línea al agregarla) — así, si se corrige la
+  // cotización o el envío del lote, se refleja en todas las líneas ya
+  // cargadas, no solo en las nuevas.
+  function costsFor(item: ItemLine) {
+    return calcPurchaseCosts({
+      quantity: item.quantity,
+      unitPriceUsd: item.unitPriceUsd,
+      exchangeRate: exchangeRate || 0,
+      taxesPesos: taxesPesos === "" ? undefined : taxesPesos,
+      shippingCostUsd: shippingCostUsd === "" ? undefined : shippingCostUsd,
+      cardFeePercent: cardFeePercent === "" ? undefined : cardFeePercent,
+      totalLotQuantity: addedLotQuantity,
+    });
+  }
+
   // Ordena una copia con el índice original a mano — remove/update siguen
   // operando sobre la posición real en `items`, no en el orden mostrado.
   const sortedItems = useMemo(() => {
@@ -191,7 +225,7 @@ export function PurchaseForm({
       productName: item.productName.toLowerCase(),
       quantity: item.quantity,
       unitPriceUsd: item.unitPriceUsd,
-      unitCostPesos: calcPurchaseCosts(item).unitCostPesos,
+      unitCostPesos: costsFor(item).unitCostPesos,
       subtotalUsd: item.quantity * item.unitPriceUsd,
     }));
     if (!sortKey) return withIndex;
@@ -203,7 +237,8 @@ export function PurchaseForm({
       if (av > bv) return 1 * dir;
       return 0;
     });
-  }, [items, sortKey, sortDir]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- costsFor lee exchangeRate/taxesPesos/shippingCostUsd/cardFeePercent/addedLotQuantity, ya listados abajo
+  }, [items, sortKey, sortDir, exchangeRate, taxesPesos, shippingCostUsd, cardFeePercent, addedLotQuantity]);
 
   function sortIndicator(key: SortKey) {
     if (sortKey !== key) return null;
@@ -213,7 +248,7 @@ export function PurchaseForm({
   const totals = useMemo(() => {
     return items.reduce(
       (acc, item) => {
-        const costs = calcPurchaseCosts(item);
+        const costs = costsFor(item);
         acc.totalUsdRaw += item.quantity * item.unitPriceUsd;
         acc.totalPesos += costs.unitCostPesos * item.quantity;
         acc.units += item.quantity;
@@ -221,7 +256,8 @@ export function PurchaseForm({
       },
       { totalUsdRaw: 0, totalPesos: 0, units: 0 },
     );
-  }, [items]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- costsFor lee exchangeRate/taxesPesos/shippingCostUsd/cardFeePercent/addedLotQuantity, ya listados abajo
+  }, [items, exchangeRate, taxesPesos, shippingCostUsd, cardFeePercent, addedLotQuantity]);
 
   useEffect(() => {
     if (state.purchaseId && !purchaseId) router.push("/admin/purchases");
@@ -248,6 +284,70 @@ export function PurchaseForm({
           <span className="rounded-md bg-surface px-2 py-0.5 text-xs font-semibold text-ink">
             {purchaseStatusLabels[status] ?? status}
           </span>
+        </div>
+      )}
+
+      {!readOnly && (
+        <div className="rounded-xl border border-line bg-bg p-5">
+          <p className="text-sm font-semibold text-ink">Datos del lote</p>
+          <p className="mt-1 text-xs text-ink-faint">
+            Se cargan una sola vez y aplican a todos los productos de esta compra.
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Cotización del dólar</span>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={exchangeRate}
+                onChange={(e) => setExchangeRate(Number(e.target.value))}
+                className="input"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Impuestos del lote (pesos)</span>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={taxesPesos}
+                onChange={(e) =>
+                  setTaxesPesos(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                className="input"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Costo de envío del lote (USD)</span>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={shippingCostUsd}
+                onChange={(e) =>
+                  setShippingCostUsd(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                className="input"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Impuesto pago con tarjeta (%)</span>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={cardFeePercent}
+                onChange={(e) =>
+                  setCardFeePercent(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                className="input"
+              />
+            </label>
+          </div>
         </div>
       )}
 
@@ -309,46 +409,6 @@ export function PurchaseForm({
                   Sugerido: último pagado {usd(lastPrices[productChoice])}
                 </span>
               )}
-            </label>
-
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-ink-soft">Cotización del dólar</span>
-              <input
-                type="number"
-                step="0.01"
-                min={0}
-                value={exchangeRate}
-                onChange={(e) => setExchangeRate(Number(e.target.value))}
-                className="input"
-              />
-            </label>
-
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-ink-soft">Impuestos del lote (pesos)</span>
-              <input
-                type="number"
-                step="0.01"
-                min={0}
-                value={taxesPesos}
-                onChange={(e) =>
-                  setTaxesPesos(e.target.value === "" ? "" : Number(e.target.value))
-                }
-                className="input"
-              />
-            </label>
-
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-ink-soft">Costo de envío del lote (USD)</span>
-              <input
-                type="number"
-                step="0.01"
-                min={0}
-                value={shippingCostUsd}
-                onChange={(e) =>
-                  setShippingCostUsd(e.target.value === "" ? "" : Number(e.target.value))
-                }
-                className="input"
-              />
             </label>
 
             <label className="flex flex-col gap-1.5">
@@ -484,7 +544,19 @@ export function PurchaseForm({
         action={formAction}
         className="flex flex-col gap-4 rounded-xl border border-line bg-bg p-5"
       >
-        <input type="hidden" name="items" value={JSON.stringify(items)} />
+        <input
+          type="hidden"
+          name="items"
+          value={JSON.stringify(
+            items.map((item) => ({
+              ...item,
+              exchangeRate,
+              taxesPesos: taxesPesos === "" ? undefined : taxesPesos,
+              shippingCostUsd: shippingCostUsd === "" ? undefined : shippingCostUsd,
+              cardFeePercent: cardFeePercent === "" ? undefined : cardFeePercent,
+            })),
+          )}
+        />
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5">
