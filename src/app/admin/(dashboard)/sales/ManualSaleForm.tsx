@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatPrice } from "@/lib/products";
+import { InvoicePreview } from "./InvoicePreview";
 import {
   createManualSale,
   createAndFinalizeManualSale,
@@ -207,7 +208,8 @@ export function ManualSaleForm({
   }
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
+    <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+    <div className="flex max-w-2xl flex-1 flex-col gap-6">
       <div className="rounded-xl border border-line bg-bg p-5">
         <p className="text-sm font-semibold text-ink">Agregar producto</p>
         <div className="mt-3 flex flex-wrap items-end gap-3">
@@ -496,6 +498,18 @@ export function ManualSaleForm({
           border-color: var(--color-amber);
         }
       `}</style>
+    </div>
+
+    <div className="w-full lg:w-[380px] lg:shrink-0">
+      <InvoicePreview
+        customerName={customerName}
+        customerPhone={customerPhone}
+        items={items}
+        total={total}
+        note={note}
+        reference={orderId ? orderId.slice(-6).toUpperCase() : undefined}
+      />
+    </div>
     </div>
   );
 }
