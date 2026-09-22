@@ -250,11 +250,12 @@ export function PurchaseForm({
       (acc, item) => {
         const costs = costsFor(item);
         acc.totalUsdRaw += item.quantity * item.unitPriceUsd;
+        acc.totalNetUsd += costs.unitCostUsdFinal * item.quantity;
         acc.totalPesos += costs.unitCostPesos * item.quantity;
         acc.units += item.quantity;
         return acc;
       },
-      { totalUsdRaw: 0, totalPesos: 0, units: 0 },
+      { totalUsdRaw: 0, totalNetUsd: 0, totalPesos: 0, units: 0 },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- costsFor lee exchangeRate/taxesPesos/shippingCostUsd/cardFeePercent/addedLotQuantity, ya listados abajo
   }, [items, exchangeRate, taxesPesos, shippingCostUsd, cardFeePercent, addedLotQuantity]);
@@ -532,6 +533,10 @@ export function PurchaseForm({
             <span className="text-ink-soft">
               Total (cant. × precio unitario):{" "}
               <strong className="text-ink">{usd(totals.totalUsdRaw)}</strong>
+            </span>
+            <span className="text-ink-soft">
+              Total neto (+ impuestos + envío + tarjeta):{" "}
+              <strong className="text-ink">{usd(totals.totalNetUsd)}</strong>
             </span>
             <span className="font-heading font-bold text-navy">
               Costo total: {formatPrice(totals.totalPesos)}
