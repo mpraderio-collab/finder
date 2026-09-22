@@ -251,11 +251,10 @@ export function PurchaseForm({
         const costs = costsFor(item);
         acc.totalUsdRaw += item.quantity * item.unitPriceUsd;
         acc.totalNetUsd += costs.unitCostUsdFinal * item.quantity;
-        acc.totalPesos += costs.unitCostPesos * item.quantity;
         acc.units += item.quantity;
         return acc;
       },
-      { totalUsdRaw: 0, totalNetUsd: 0, totalPesos: 0, units: 0 },
+      { totalUsdRaw: 0, totalNetUsd: 0, units: 0 },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- costsFor lee exchangeRate/taxesPesos/shippingCostUsd/cardFeePercent/addedLotQuantity, ya listados abajo
   }, [items, exchangeRate, taxesPesos, shippingCostUsd, cardFeePercent, addedLotQuantity]);
@@ -349,6 +348,11 @@ export function PurchaseForm({
               />
             </label>
           </div>
+
+          <p className="mt-4 text-sm text-ink-soft">
+            Total neto (Total + impuestos + envío + tarjeta):{" "}
+            <strong className="text-ink">{usd(totals.totalNetUsd)}</strong>
+          </p>
         </div>
       )}
 
@@ -527,21 +531,17 @@ export function PurchaseForm({
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="border-t border-line font-medium">
+                <td className="px-4 py-2 text-ink">Total</td>
+                <td className="px-4 py-2 text-ink-soft">{totals.units}</td>
+                <td className="px-4 py-2" />
+                <td className="px-4 py-2" />
+                <td className="px-4 py-2 text-ink">{usd(totals.totalUsdRaw)}</td>
+                {!readOnly && <td className="px-4 py-2" />}
+              </tr>
+            </tfoot>
           </table>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-3 text-sm">
-            <span className="text-ink-soft">{totals.units} unidades</span>
-            <span className="text-ink-soft">
-              Total (cant. × precio unitario):{" "}
-              <strong className="text-ink">{usd(totals.totalUsdRaw)}</strong>
-            </span>
-            <span className="text-ink-soft">
-              Total neto (+ impuestos + envío + tarjeta):{" "}
-              <strong className="text-ink">{usd(totals.totalNetUsd)}</strong>
-            </span>
-            <span className="font-heading font-bold text-navy">
-              Costo total: {formatPrice(totals.totalPesos)}
-            </span>
-          </div>
         </div>
       )}
 
