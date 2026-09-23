@@ -5,6 +5,7 @@ import { formatPrice } from "@/lib/products";
 import { orderStatusColors, orderStatusLabels } from "@/lib/order-status";
 import { calculateCogs, calculateMargin } from "@/lib/margin";
 import { ShipmentActualShippingCost } from "./ShipmentActualShippingCost";
+import { ShipmentInvoice } from "./ShipmentInvoice";
 
 export default async function ShipmentDetailPage(
   props: PageProps<"/admin/shipments/[id]">,
@@ -126,6 +127,27 @@ export default async function ShipmentDetailPage(
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-6">
+        <ShipmentInvoice
+          shipmentDate={shipment.createdAt.toLocaleDateString("es-AR")}
+          shippingMethod={shipment.shippingMethod || ""}
+          trackingCode={shipment.trackingCode || ""}
+          orders={shipment.orders.map((order) => ({
+            reference: order.id.slice(-6).toUpperCase(),
+            customerName: order.customerName || "Visitante anónimo",
+            items: order.items.map((item) => ({
+              productName: item.product.name,
+              variantName: item.variantName,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+            })),
+            total: order.total,
+          }))}
+          total={revenue}
+          actualShippingCost={shipment.actualShippingCost}
+        />
       </div>
     </div>
   );
