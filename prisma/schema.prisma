@@ -146,18 +146,28 @@ model PurchaseItem {
   unitShippingCostUsd Float? // legado — ver shippingCostUsd
   unitCostUsdFinal    Float? // "Costo Neto Unitario" (USD, sin envío — el envío ya no se suma acá, es gasto de toda la compra)
 
-  // Envío por volumen: cada línea es UNA caja (sin importar la cantidad de
-  // unidades que contenga), cuyo costo de envío es su volumen en m³ por el
-  // costo por m³ del lote (costPerCubicMeterUsd, mismo valor en todas las
-  // líneas de la compra).
+  // Envío por volumen: costo de envío de la línea = volumen de UNA caja
+  // (ancho × largo × alto) × costo por m³ del lote (costPerCubicMeterUsd,
+  // mismo valor en todas las líneas de la compra) × cantidad de cajas
+  // (boxCount).
   boxWidthM            Float? // "Ancho caja (m)"
   boxLengthM           Float? // "Largo caja (m)"
   boxHeightM           Float? // "Alto caja (m)"
+  // Cuántas unidades entran en la caja llena — si esta línea trae menos
+  // (la caja no viene completa), el volumen se prorratea por cantidad ÷
+  // capacidad antes de calcular el envío (ver boxShippingCostUsd).
+  boxCapacityUnits     Int?
+  boxCount             Int? // cantidad de cajas iguales de esta línea
   costPerCubicMeterUsd Float? // "Costo por m³ (USD)" — dato del lote
-  boxShippingCostUsd   Float? // ancho × largo × alto × costo por m³
+  boxShippingCostUsd   Float? // ancho × largo × alto × (cantidad ÷ capacidad de la caja) × cantidad de cajas × costo por m³
 
-  unitCostPesos  Int  // "Costo en Pesos" — lo que se usa como costPrice del producto
-  suggestedPrice Int? // "Precio de Venta" sugerido por la planilla
+  unitCostPesos  Int     // "Costo en Pesos" — lo que se usa como costPrice del producto
+  suggestedPrice Int?    // "Precio de Venta" sugerido por la planilla
+  referenceUrl   String? // link de referencia al producto en el sitio del proveedor
+  // Solo para líneas sin producto vinculado (subida a mano) — si la línea
+  // está vinculada a un producto, se muestra la foto principal de ese
+  // producto en vez de esta.
+  imageUrl       String?
 
   @@index([purchaseId])
   @@index([productId])

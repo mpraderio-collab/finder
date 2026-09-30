@@ -7,7 +7,15 @@ export default async function NewPurchasePage() {
     db.product.findMany({
       where: { status: "active" },
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: {
+        id: true,
+        name: true,
+        images: {
+          where: { isHero: true, type: "image" },
+          select: { url: true },
+          take: 1,
+        },
+      },
     }),
     db.supplier.findMany({ orderBy: { name: "asc" }, select: { name: true } }),
     db.purchaseItem.findMany({
@@ -18,6 +26,11 @@ export default async function NewPurchasePage() {
   ]);
 
   const suppliers = dedupeSuppliersByName(allSuppliers);
+  const productOptions = products.map((p) => ({
+    id: p.id,
+    name: p.name,
+    heroImageUrl: p.images[0]?.url,
+  }));
 
   // Primera ocurrencia por producto = la más reciente (ya viene ordenado
   // desc por fecha de compra) — para sugerir el último precio pagado.
@@ -40,7 +53,7 @@ export default async function NewPurchasePage() {
       </p>
 
       <div className="mt-8">
-        <PurchaseForm products={products} suppliers={suppliers} lastPrices={lastPricesByProduct} />
+        <PurchaseForm products={productOptions} suppliers={suppliers} lastPrices={lastPricesByProduct} />
       </div>
     </div>
   );

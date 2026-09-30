@@ -72,9 +72,13 @@ function buildItemsData(items: ReturnType<typeof purchaseSchema.parse>["items"])
       boxWidthM: line.boxWidthM ?? null,
       boxLengthM: line.boxLengthM ?? null,
       boxHeightM: line.boxHeightM ?? null,
+      boxCapacityUnits: line.boxCapacityUnits ?? null,
+      boxCount: line.boxCount ?? null,
       costPerCubicMeterUsd: line.costPerCubicMeterUsd ?? null,
       boxShippingCostUsd: costs.boxShippingCostUsd ?? null,
       suggestedPrice: line.suggestedPrice ?? null,
+      referenceUrl: line.referenceUrl ?? null,
+      imageUrl: line.imageUrl ?? null,
     };
   });
 }

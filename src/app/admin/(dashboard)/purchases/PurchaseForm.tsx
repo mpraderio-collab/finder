@@ -1,7 +1,9 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { upload } from "@vercel/blob/client";
 import { formatPrice } from "@/lib/products";
 import { calcPurchaseCosts } from "@/lib/purchases";
 import { purchaseStatusLabels } from "@/lib/purchase-status";
@@ -17,7 +19,7 @@ import {
 
 const NEW_PRODUCT = "__new__";
 
-type ProductOption = { id: string; name: string };
+type ProductOption = { id: string; name: string; heroImageUrl?: string };
 
 type ItemLine = {
   productId?: string;
@@ -31,8 +33,14 @@ type ItemLine = {
   boxWidthM?: number;
   boxLengthM?: number;
   boxHeightM?: number;
+  boxCapacityUnits?: number;
+  boxCount?: number;
   suggestedPrice?: number;
+  referenceUrl?: string;
+  imageUrl?: string;
 };
+
+const MAX_LINE_IMAGE_SIZE = 5 * 1024 * 1024;
 
 const DEFAULT_CARD_FEE_PERCENT = 2.9;
 
@@ -104,12 +112,22 @@ export function PurchaseForm({
   const [boxWidthM, setBoxWidthM] = useState<number | "">("");
   const [boxLengthM, setBoxLengthM] = useState<number | "">("");
   const [boxHeightM, setBoxHeightM] = useState<number | "">("");
+  const [boxCapacityUnits, setBoxCapacityUnits] = useState<number | "">("");
+  const [boxCount, setBoxCount] = useState<number | "">("");
+  const [referenceUrl, setReferenceUrl] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [addError, setAddError] = useState<string | null>(null);
 
   const isNewProduct = productChoice === NEW_PRODUCT;
+  const selectedProductImage = !isNewProduct
+    ? products.find((p) => p.id === productChoice)?.heroImageUrl
+    : undefined;
 
   function selectProduct(id: string) {
     setProductChoice(id);
+    setImageUrl("");
     if (id !== NEW_PRODUCT) {
       const product = products.find((p) => p.id === id);
       if (product) setProductName(product.name);
@@ -119,6 +137,32 @@ export function PurchaseForm({
     } else {
       setProductName("");
       setUnitPriceUsd(0);
+    }
+  }
+
+  // Solo aplica a producto nuevo (sin vincular) — uno ya vinculado siempre
+  // muestra su propia foto principal, no tiene sentido subirle otra acá.
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAddError(null);
+    if (file.size > MAX_LINE_IMAGE_SIZE) {
+      setAddError("La imagen pesa más de 5MB.");
+      if (imageInputRef.current) imageInputRef.current.value = "";
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const blob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/upload-token",
+      });
+      setImageUrl(blob.url);
+    } catch {
+      setAddError("No se pudo subir la imagen. Probá de nuevo.");
+    } finally {
+      setUploadingImage(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
     }
   }
 
@@ -138,6 +182,8 @@ export function PurchaseForm({
         boxWidthM: boxWidthM === "" ? undefined : boxWidthM,
         boxLengthM: boxLengthM === "" ? undefined : boxLengthM,
         boxHeightM: boxHeightM === "" ? undefined : boxHeightM,
+        boxCapacityUnits: boxCapacityUnits === "" ? undefined : boxCapacityUnits,
+        boxCount: boxCount === "" ? undefined : boxCount,
         costPerCubicMeterUsd: costPerCubicMeterUsd === "" ? undefined : costPerCubicMeterUsd,
       }),
     [
@@ -150,6 +196,8 @@ export function PurchaseForm({
       boxWidthM,
       boxLengthM,
       boxHeightM,
+      boxCapacityUnits,
+      boxCount,
       costPerCubicMeterUsd,
     ],
   );
@@ -192,7 +240,11 @@ export function PurchaseForm({
         boxWidthM: boxWidthM === "" ? undefined : boxWidthM,
         boxLengthM: boxLengthM === "" ? undefined : boxLengthM,
         boxHeightM: boxHeightM === "" ? undefined : boxHeightM,
+        boxCapacityUnits: boxCapacityUnits === "" ? undefined : boxCapacityUnits,
+        boxCount: boxCount === "" ? undefined : boxCount,
         suggestedPrice: suggestedPrice === "" ? undefined : suggestedPrice,
+        referenceUrl: referenceUrl.trim() === "" ? undefined : referenceUrl.trim(),
+        imageUrl: isNewProduct && imageUrl ? imageUrl : undefined,
       },
     ]);
     // Cotización/impuestos/tarjeta/costo por m³ son del lote — quedan
@@ -204,6 +256,10 @@ export function PurchaseForm({
     setBoxWidthM("");
     setBoxLengthM("");
     setBoxHeightM("");
+    setBoxCapacityUnits("");
+    setBoxCount("");
+    setReferenceUrl("");
+    setImageUrl("");
   }
 
   function removeItem(index: number) {
@@ -243,6 +299,8 @@ export function PurchaseForm({
       boxWidthM: item.boxWidthM,
       boxLengthM: item.boxLengthM,
       boxHeightM: item.boxHeightM,
+      boxCapacityUnits: item.boxCapacityUnits,
+      boxCount: item.boxCount,
       costPerCubicMeterUsd: costPerCubicMeterUsd === "" ? undefined : costPerCubicMeterUsd,
     });
   }
@@ -504,15 +562,92 @@ export function PurchaseForm({
                 onChange={(e) => setBoxHeightM(e.target.value === "" ? "" : Number(e.target.value))}
                 className="input"
               />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Capacidad de la caja (unidades)</span>
+              <input
+                type="number"
+                min={1}
+                value={boxCapacityUnits}
+                onChange={(e) =>
+                  setBoxCapacityUnits(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                className="input"
+              />
               <span className="text-[11px] text-ink-faint">
-                Una caja por línea — no se multiplica por la cantidad.
+                Si trae menos que esto, el volumen se prorratea por el % que ocupa.
               </span>
             </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Cantidad de cajas</span>
+              <input
+                type="number"
+                min={1}
+                value={boxCount}
+                onChange={(e) => setBoxCount(e.target.value === "" ? "" : Number(e.target.value))}
+                className="input"
+              />
+              <span className="text-[11px] text-ink-faint">
+                Cuántas cajas iguales tiene esta línea (por defecto, 1).
+              </span>
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Link de referencia (opcional)</span>
+              <input
+                type="url"
+                value={referenceUrl}
+                onChange={(e) => setReferenceUrl(e.target.value)}
+                placeholder="https://proveedor.com/producto"
+                className="input"
+              />
+            </label>
+
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Foto del producto</span>
+              {isNewProduct ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    {imageUrl && (
+                      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-line bg-surface">
+                        <Image src={imageUrl} alt="" fill className="object-cover" sizes="40px" />
+                      </div>
+                    )}
+                    <label className="flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-border-btn px-3 py-1.5 text-xs font-semibold text-navy hover:bg-surface">
+                      {uploadingImage ? "Subiendo…" : imageUrl ? "Cambiar foto" : "+ Subir foto"}
+                      <input
+                        ref={imageInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={handleImageUpload}
+                        disabled={uploadingImage}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                </>
+              ) : selectedProductImage ? (
+                <div className="flex items-center gap-2">
+                  <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-line bg-surface">
+                    <Image src={selectedProductImage} alt="" fill className="object-cover" sizes="40px" />
+                  </div>
+                  <span className="text-[11px] text-ink-faint">Foto principal del producto</span>
+                </div>
+              ) : (
+                <span className="text-[11px] text-ink-faint">Este producto todavía no tiene fotos cargadas.</span>
+              )}
+            </div>
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-ink-soft">
             <span>Costo unitario en pesos: <strong className="text-ink">{formatPrice(draftCosts.unitCostPesos)}</strong></span>
-            <span>Envío de esta caja: <strong className="text-ink">{usd(draftCosts.boxShippingCostUsd)}</strong></span>
+            <span>
+              Envío de esta línea
+              {draftCosts.boxFillRatio < 1 ? ` (${Math.round(draftCosts.boxFillRatio * 100)}% llena)` : ""}:{" "}
+              <strong className="text-ink">{usd(draftCosts.boxShippingCostUsd)}</strong>
+            </span>
             <button
               type="button"
               onClick={addItem}
@@ -563,9 +698,31 @@ export function PurchaseForm({
               {sortedItems.map(({ item, index, unitCostPesos }) => (
                 <tr key={index} className="border-b border-line last:border-0">
                   <td className="px-4 py-2 text-ink">
-                    {item.productName}
+                    <span className="inline-flex items-center gap-2">
+                      {(() => {
+                        const thumb = item.productId
+                          ? products.find((p) => p.id === item.productId)?.heroImageUrl
+                          : item.imageUrl;
+                        return thumb ? (
+                          <span className="relative inline-block h-8 w-8 shrink-0 overflow-hidden rounded-md border border-line bg-surface align-middle">
+                            <Image src={thumb} alt="" fill className="object-cover" sizes="32px" />
+                          </span>
+                        ) : null;
+                      })()}
+                      <span>{item.productName}</span>
+                    </span>
                     {!item.productId && (
                       <span className="ml-1 text-xs text-ink-faint">(sin vincular)</span>
+                    )}
+                    {item.referenceUrl && (
+                      <a
+                        href={item.referenceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-1 text-xs font-semibold text-blue hover:underline"
+                      >
+                        Ver ↗
+                      </a>
                     )}
                   </td>
                   <td className="px-4 py-2 text-ink-soft">

@@ -219,8 +219,18 @@ const purchaseItemSchema = z.object({
   boxWidthM: z.coerce.number().min(0).optional(),
   boxLengthM: z.coerce.number().min(0).optional(),
   boxHeightM: z.coerce.number().min(0).optional(),
+  boxCapacityUnits: z.coerce.number().int().positive().optional(),
+  boxCount: z.coerce.number().int().positive().optional(),
   costPerCubicMeterUsd: z.coerce.number().min(0).optional(),
   suggestedPrice: z.coerce.number().int().positive().optional(),
+  referenceUrl: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().trim().url("El link no es válido").max(500).optional(),
+  ),
+  imageUrl: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().trim().url("La imagen no es válida").max(500).optional(),
+  ),
 });
 
 function optionalTrimmed(max: number) {

@@ -19,7 +19,15 @@ export default async function EditPurchasePage(
     db.product.findMany({
       where: { status: "active" },
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: {
+        id: true,
+        name: true,
+        images: {
+          where: { isHero: true, type: "image" },
+          select: { url: true },
+          take: 1,
+        },
+      },
     }),
     db.supplier.findMany({ orderBy: { name: "asc" }, select: { name: true } }),
   ]);
@@ -32,8 +40,8 @@ export default async function EditPurchasePage(
     .map((i) => i.product)
     .filter((p): p is { id: string; name: string; status: string } => p !== null && p.status !== "active");
   const productOptions = [
-    ...archivedLinked.map((p) => ({ id: p.id, name: p.name })),
-    ...products,
+    ...archivedLinked.map((p) => ({ id: p.id, name: p.name, heroImageUrl: undefined })),
+    ...products.map((p) => ({ id: p.id, name: p.name, heroImageUrl: p.images[0]?.url })),
   ];
 
   const suppliers = dedupeSuppliersByName(allSuppliers);
@@ -63,8 +71,12 @@ export default async function EditPurchasePage(
               boxWidthM: item.boxWidthM ?? undefined,
               boxLengthM: item.boxLengthM ?? undefined,
               boxHeightM: item.boxHeightM ?? undefined,
+              boxCapacityUnits: item.boxCapacityUnits ?? undefined,
+              boxCount: item.boxCount ?? undefined,
               costPerCubicMeterUsd: item.costPerCubicMeterUsd ?? undefined,
               suggestedPrice: item.suggestedPrice ?? undefined,
+              referenceUrl: item.referenceUrl ?? undefined,
+              imageUrl: item.imageUrl ?? undefined,
             })),
           }}
         />
