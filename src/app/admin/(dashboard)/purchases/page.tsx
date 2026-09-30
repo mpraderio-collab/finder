@@ -28,9 +28,6 @@ export default async function AdminPurchasesPage() {
       productName: item.productName,
       quantity: item.quantity,
       unitCostUsd: item.unitCostUsd,
-      unitCostUsdFinal: item.unitCostUsdFinal,
-      unitShippingCostUsd: item.unitShippingCostUsd,
-      shippingCostUsd: item.shippingCostUsd,
       totalUsd: item.totalUsd,
       unitPriceUsd: item.unitPriceUsd,
       costPesos: item.unitCostPesos * item.quantity,
@@ -39,11 +36,14 @@ export default async function AdminPurchasesPage() {
 
   // Los borradores todavía pueden cambiar y los cancelados no pasaron —
   // los totales reflejan compras reales (confirmadas o ya recibidas).
-  const committed = rows.filter((r) => r.status === "confirmed" || r.status === "received");
-  const totalUnits = committed.reduce((sum, r) => sum + r.quantity, 0);
-  const totalUsdRaw = committed.reduce((sum, r) => sum + r.quantity * r.unitPriceUsd, 0);
-  const totalCostPesos = committed.reduce((sum, r) => sum + r.costPesos, 0);
-  const totalShippingUsd = committed.reduce((sum, r) => sum + (r.shippingCostUsd ?? 0), 0);
+  const committed = purchases.filter((p) => p.status === "confirmed" || p.status === "received");
+  const committedRows = rows.filter((r) => r.status === "confirmed" || r.status === "received");
+  const totalUnits = committedRows.reduce((sum, r) => sum + r.quantity, 0);
+  const totalUsdRaw = committedRows.reduce((sum, r) => sum + r.quantity * r.unitPriceUsd, 0);
+  const totalCostPesos = committedRows.reduce((sum, r) => sum + r.costPesos, 0);
+  // El envío es un gasto por compra, no por línea — sumarlo por línea
+  // (como antes) lo contaba una vez por cada producto de la misma compra.
+  const totalShippingUsd = committed.reduce((sum, p) => sum + (p.items[0]?.shippingCostUsd ?? 0), 0);
 
   // purchases ya viene ordenado por fecha desc, así que las compras de una
   // misma fecha quedan contiguas — alcanza con agrupar de a tramos
@@ -132,13 +132,20 @@ export default async function AdminPurchasesPage() {
                         <span className="text-sm font-medium text-ink">
                           {purchase.supplier?.name ?? "Sin proveedor"}
                         </span>
-                        <span
-                          className={`rounded-md px-2 py-0.5 text-xs font-semibold ${purchaseStatusColors[purchase.status]}`}
-                        >
-                          {purchaseStatusLabels[purchase.status] ?? purchase.status}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          {purchase.items[0]?.shippingCostUsd != null && (
+                            <span className="text-xs text-ink-faint">
+                              Envío del lote: {usd(purchase.items[0].shippingCostUsd)}
+                            </span>
+                          )}
+                          <span
+                            className={`rounded-md px-2 py-0.5 text-xs font-semibold ${purchaseStatusColors[purchase.status]}`}
+                          >
+                            {purchaseStatusLabels[purchase.status] ?? purchase.status}
+                          </span>
+                        </div>
                       </div>
-                      <table className="w-full min-w-[980px] text-left text-sm">
+                      <table className="w-full min-w-[720px] text-left text-sm">
                         <thead className="border-b border-line">
                           <tr>
                             <th className="px-4 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
@@ -149,12 +156,6 @@ export default async function AdminPurchasesPage() {
                             </th>
                             <th className="px-4 py-2 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
                               Costo unit. (USD)
-                            </th>
-                            <th className="px-4 py-2 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                              Costo neto (USD)
-                            </th>
-                            <th className="px-4 py-2 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                              Costo envío (USD)
                             </th>
                             <th className="px-4 py-2 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
                               Costo total (USD)
@@ -178,12 +179,6 @@ export default async function AdminPurchasesPage() {
                               </td>
                               <td className="px-4 py-2.5 text-right text-ink-soft">
                                 {usd(item.unitCostUsd)}
-                              </td>
-                              <td className="px-4 py-2.5 text-right text-ink-soft">
-                                {usd(item.unitCostUsdFinal)}
-                              </td>
-                              <td className="px-4 py-2.5 text-right text-ink-soft">
-                                {usd(item.unitShippingCostUsd)}
                               </td>
                               <td className="px-4 py-2.5 text-right text-ink-soft">
                                 {usd(item.totalUsd)}

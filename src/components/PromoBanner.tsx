@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 const MESSAGES = [
-  "🚚 Envío gratis a todo el país",
+  "🚚 Envío a todo el país",
   "🎁 10% OFF llevando 3 productos — combinalos como quieras",
 ];
 

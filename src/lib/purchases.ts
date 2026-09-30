@@ -5,10 +5,13 @@
 //
 // Cotización, impuestos, costo de envío e impuesto por pago con tarjeta se
 // cargan una sola vez por compra (referencian a todo el lote, no a una
-// línea puntual) — por eso impuestos y envío se prorratean acá por
-// `totalLotQuantity` (la suma de unidades de TODA la compra), no por la
-// cantidad de esta línea sola, o se estaría contando el total del lote una
-// vez por cada línea en vez de repartirlo entre todas.
+// línea puntual). Los impuestos sí se prorratean por `totalLotQuantity` y
+// pasan a formar parte del costo unitario de cada producto (van dentro del
+// paquete que llega, ARCA los cobra por eso). El costo de envío en cambio
+// NO se prorratea ni se suma al costo del producto — es un gasto de la
+// compra en su conjunto (como el flete de un pedido a proveedor), se suma
+// una sola vez al total de la compra y no afecta el costo/margen de cada
+// producto individual.
 export function calcPurchaseCosts(input: {
   quantity: number;
   unitPriceUsd: number;
@@ -43,9 +46,13 @@ export function calcPurchaseCosts(input: {
   const unitTaxesUsd = taxesUsd !== undefined && lotQuantity > 0 ? taxesUsd / lotQuantity : undefined;
   const totalUsd = netUsd + (unitTaxesUsd ?? 0) * quantity;
   const unitCostUsd = quantity > 0 ? totalUsd / quantity : 0;
+  // Ya no se prorratea ni se suma al costo del producto — se mantiene como
+  // dato informativo (cuánto de ese envío total "le tocaría" a esta línea)
+  // pero no entra en unitCostUsdFinal/unitCostPesos, que es lo que termina
+  // siendo el costPrice del producto.
   const unitShippingCostUsd =
     shippingCostUsd !== undefined && lotQuantity > 0 ? shippingCostUsd / lotQuantity : undefined;
-  const unitCostUsdFinal = unitCostUsd + (unitShippingCostUsd ?? 0);
+  const unitCostUsdFinal = unitCostUsd;
   const unitCostPesos = Math.round(unitCostUsdFinal * exchangeRate);
 
   return {

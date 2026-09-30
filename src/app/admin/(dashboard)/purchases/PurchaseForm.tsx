@@ -246,16 +246,22 @@ export function PurchaseForm({
   }
 
   const totals = useMemo(() => {
-    return items.reduce(
+    const base = items.reduce(
       (acc, item) => {
         const costs = costsFor(item);
         acc.totalUsdRaw += item.quantity * item.unitPriceUsd;
-        acc.totalNetUsd += costs.unitCostUsdFinal * item.quantity;
+        // Costo de la mercadería + impuestos + tarjeta, SIN envío — es lo
+        // que termina siendo el costo/margen de cada producto.
+        acc.totalGoodsUsd += costs.unitCostUsdFinal * item.quantity;
         acc.units += item.quantity;
         return acc;
       },
-      { totalUsdRaw: 0, totalNetUsd: 0, units: 0 },
+      { totalUsdRaw: 0, totalGoodsUsd: 0, units: 0 },
     );
+    // El envío se suma una sola vez acá, como gasto de toda la compra, no
+    // prorrateado por producto.
+    const shippingTotalUsd = shippingCostUsd === "" ? 0 : shippingCostUsd;
+    return { ...base, totalNetUsd: base.totalGoodsUsd + shippingTotalUsd };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- costsFor lee exchangeRate/taxesPesos/shippingCostUsd/cardFeePercent/addedLotQuantity, ya listados abajo
   }, [items, exchangeRate, taxesPesos, shippingCostUsd, cardFeePercent, addedLotQuantity]);
 
@@ -332,6 +338,9 @@ export function PurchaseForm({
                 }
                 className="input"
               />
+              <span className="text-[11px] text-ink-faint">
+                Gasto de la compra, no se suma al costo de cada producto.
+              </span>
             </label>
 
             <label className="flex flex-col gap-1.5">

@@ -70,7 +70,7 @@ export function Footer() {
                 Contacto
               </Link>
             </li>
-            <li>Envío gratis a todo el país</li>
+            <li>Envío a todo el país</li>
             <li>Pagos con Mercado Pago</li>
           </ul>
         </div>
