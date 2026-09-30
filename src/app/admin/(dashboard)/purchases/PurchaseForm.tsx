@@ -371,10 +371,11 @@ export function PurchaseForm({
         acc.totalGoodsUsd += costs.unitCostUsd * item.quantity;
         // Envío: volumen de la caja de esta línea × costo por m³ del lote.
         acc.totalShippingUsd += costs.boxShippingCostUsd ?? 0;
+        acc.totalVolumeM3 += costs.boxVolumeM3 ?? 0;
         acc.units += item.quantity;
         return acc;
       },
-      { totalUsdRaw: 0, totalGoodsUsd: 0, totalShippingUsd: 0, units: 0 },
+      { totalUsdRaw: 0, totalGoodsUsd: 0, totalShippingUsd: 0, totalVolumeM3: 0, units: 0 },
     );
     return { ...base, totalNetUsd: base.totalGoodsUsd + base.totalShippingUsd };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- costsFor lee exchangeRate/taxesPesos/cardFeePercent/costPerCubicMeterUsd/addedLotQuantity, ya listados abajo
@@ -478,6 +479,15 @@ export function PurchaseForm({
             <strong className="text-ink">{usd(totals.totalNetUsd)}</strong>
             {" · "}
             Envío: <strong className="text-ink">{usd(totals.totalShippingUsd)}</strong>
+            {" · "}
+            Volumen total:{" "}
+            <strong className="text-ink">
+              {totals.totalVolumeM3.toLocaleString("es-AR", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 3,
+              })}{" "}
+              m³
+            </strong>
           </p>
         </div>
       )}
