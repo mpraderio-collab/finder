@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { checkoutSchema } from "@/lib/validation";
 import { createPreference, isMercadoPagoConfigured } from "@/lib/mercadopago";
-import { shippingMethods } from "@/lib/shipping";
+import { getShippingCostForProvince } from "@/lib/shipping-zones";
 import { calculateLineTotals, activePromotion } from "@/lib/promotions";
 import { upsertCustomerFromOrder } from "@/lib/customers";
 
@@ -112,7 +112,9 @@ export async function POST(request: Request) {
       }
       const couponDiscount = coupon ? Math.round((subtotal * coupon.percentOff) / 100) : 0;
 
-      const shippingCost = shippingMethods[data.shippingMethod].cost;
+      // Nunca se confía en un costo mandado por el cliente — se recalcula
+      // acá a partir de la provincia declarada.
+      const shippingCost = getShippingCostForProvince(data.shippingProvince);
 
       const customerId = await upsertCustomerFromOrder(tx, {
         name: data.customerName,

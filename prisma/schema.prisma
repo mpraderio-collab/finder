@@ -142,9 +142,19 @@ model PurchaseItem {
   totalUsd   Float? // "Total" = Impuestos USD + Neto
 
   unitCostUsd         Float? // "Costo Unitario" (USD, sin envío)
-  shippingCostUsd      Float? // "Costo Envío" — total del lote
-  unitShippingCostUsd Float? // "Costo Unitario Envío"
-  unitCostUsdFinal    Float? // "Costo Neto Unitario" (USD, con envío)
+  shippingCostUsd      Float? // legado: "Costo Envío" total del lote, cargado a mano — reemplazado por el cálculo volumétrico (ver boxShippingCostUsd). Se conserva solo para compras viejas.
+  unitShippingCostUsd Float? // legado — ver shippingCostUsd
+  unitCostUsdFinal    Float? // "Costo Neto Unitario" (USD, sin envío — el envío ya no se suma acá, es gasto de toda la compra)
+
+  // Envío por volumen: cada línea es UNA caja (sin importar la cantidad de
+  // unidades que contenga), cuyo costo de envío es su volumen en m³ por el
+  // costo por m³ del lote (costPerCubicMeterUsd, mismo valor en todas las
+  // líneas de la compra).
+  boxWidthM            Float? // "Ancho caja (m)"
+  boxLengthM           Float? // "Largo caja (m)"
+  boxHeightM           Float? // "Alto caja (m)"
+  costPerCubicMeterUsd Float? // "Costo por m³ (USD)" — dato del lote
+  boxShippingCostUsd   Float? // ancho × largo × alto × costo por m³
 
   unitCostPesos  Int  // "Costo en Pesos" — lo que se usa como costPrice del producto
   suggestedPrice Int? // "Precio de Venta" sugerido por la planilla

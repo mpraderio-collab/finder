@@ -60,7 +60,10 @@ export default async function EditPurchasePage(
               unitPriceUsd: item.unitPriceUsd,
               exchangeRate: item.exchangeRate,
               taxesPesos: item.taxesPesos ?? undefined,
-              shippingCostUsd: item.shippingCostUsd ?? undefined,
+              boxWidthM: item.boxWidthM ?? undefined,
+              boxLengthM: item.boxLengthM ?? undefined,
+              boxHeightM: item.boxHeightM ?? undefined,
+              costPerCubicMeterUsd: item.costPerCubicMeterUsd ?? undefined,
               suggestedPrice: item.suggestedPrice ?? undefined,
             })),
           }}

@@ -9,6 +9,16 @@ function usd(value: number | null): string {
   return `US$ ${value.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+// Envío de una compra entera: suma el costo de envío por caja de cada línea
+// (cálculo nuevo, por volumen). Las compras viejas no tienen ese dato por
+// línea — ahí se cae al valor manual que se cargaba antes (uno solo,
+// repetido igual en todas las líneas de esa compra).
+function purchaseShippingUsd(items: { boxShippingCostUsd: number | null; shippingCostUsd: number | null }[]): number {
+  const hasBoxData = items.some((i) => i.boxShippingCostUsd != null);
+  if (hasBoxData) return items.reduce((sum, i) => sum + (i.boxShippingCostUsd ?? 0), 0);
+  return items[0]?.shippingCostUsd ?? 0;
+}
+
 export default async function AdminPurchasesPage() {
   const purchases = await db.purchase.findMany({
     orderBy: { purchaseDate: "desc" },
@@ -41,9 +51,7 @@ export default async function AdminPurchasesPage() {
   const totalUnits = committedRows.reduce((sum, r) => sum + r.quantity, 0);
   const totalUsdRaw = committedRows.reduce((sum, r) => sum + r.quantity * r.unitPriceUsd, 0);
   const totalCostPesos = committedRows.reduce((sum, r) => sum + r.costPesos, 0);
-  // El envío es un gasto por compra, no por línea — sumarlo por línea
-  // (como antes) lo contaba una vez por cada producto de la misma compra.
-  const totalShippingUsd = committed.reduce((sum, p) => sum + (p.items[0]?.shippingCostUsd ?? 0), 0);
+  const totalShippingUsd = committed.reduce((sum, p) => sum + purchaseShippingUsd(p.items), 0);
 
   // purchases ya viene ordenado por fecha desc, así que las compras de una
   // misma fecha quedan contiguas — alcanza con agrupar de a tramos
@@ -133,9 +141,9 @@ export default async function AdminPurchasesPage() {
                           {purchase.supplier?.name ?? "Sin proveedor"}
                         </span>
                         <div className="flex items-center gap-3">
-                          {purchase.items[0]?.shippingCostUsd != null && (
+                          {purchaseShippingUsd(purchase.items) > 0 && (
                             <span className="text-xs text-ink-faint">
-                              Envío del lote: {usd(purchase.items[0].shippingCostUsd)}
+                              Envío: {usd(purchaseShippingUsd(purchase.items))}
                             </span>
                           )}
                           <span
@@ -163,6 +171,9 @@ export default async function AdminPurchasesPage() {
                             <th className="px-4 py-2 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
                               Costo (pesos)
                             </th>
+                            <th className="px-4 py-2 text-right text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                              Envío caja (USD)
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -185,6 +196,9 @@ export default async function AdminPurchasesPage() {
                               </td>
                               <td className="px-4 py-2.5 text-right font-heading font-bold text-navy">
                                 {formatPrice(item.unitCostPesos * item.quantity)}
+                              </td>
+                              <td className="px-4 py-2.5 text-right text-ink-soft">
+                                {usd(item.boxShippingCostUsd)}
                               </td>
                             </PurchaseRow>
                           ))}

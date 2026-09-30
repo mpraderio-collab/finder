@@ -26,8 +26,11 @@ type ItemLine = {
   unitPriceUsd: number;
   exchangeRate: number;
   taxesPesos?: number;
-  shippingCostUsd?: number;
   cardFeePercent?: number;
+  costPerCubicMeterUsd?: number;
+  boxWidthM?: number;
+  boxLengthM?: number;
+  boxHeightM?: number;
   suggestedPrice?: number;
 };
 
@@ -82,8 +85,8 @@ export function PurchaseForm({
   // cargada, se toman del primer ítem (todos comparten el mismo valor).
   const [exchangeRate, setExchangeRate] = useState(initial?.items[0]?.exchangeRate ?? 0);
   const [taxesPesos, setTaxesPesos] = useState<number | "">(initial?.items[0]?.taxesPesos ?? "");
-  const [shippingCostUsd, setShippingCostUsd] = useState<number | "">(
-    initial?.items[0]?.shippingCostUsd ?? "",
+  const [costPerCubicMeterUsd, setCostPerCubicMeterUsd] = useState<number | "">(
+    initial?.items[0]?.costPerCubicMeterUsd ?? "",
   );
   // El % de recargo por pago con tarjeta no se guardaba antes de este
   // campo, así que no hay forma de recuperarlo para compras viejas — se
@@ -98,6 +101,9 @@ export function PurchaseForm({
     lastPrices?.[products[0]?.id ?? ""] ?? 0,
   );
   const [suggestedPrice, setSuggestedPrice] = useState<number | "">("");
+  const [boxWidthM, setBoxWidthM] = useState<number | "">("");
+  const [boxLengthM, setBoxLengthM] = useState<number | "">("");
+  const [boxHeightM, setBoxHeightM] = useState<number | "">("");
   const [addError, setAddError] = useState<string | null>(null);
 
   const isNewProduct = productChoice === NEW_PRODUCT;
@@ -117,7 +123,7 @@ export function PurchaseForm({
   }
 
   // Cantidad total del lote hasta ahora (líneas ya agregadas) — se usa para
-  // prorratear impuestos/envío/tarjeta, que son del lote completo.
+  // prorratear impuestos/tarjeta, que son del lote completo.
   const addedLotQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const draftCosts = useMemo(
@@ -127,11 +133,25 @@ export function PurchaseForm({
         unitPriceUsd: unitPriceUsd || 0,
         exchangeRate: exchangeRate || 0,
         taxesPesos: taxesPesos === "" ? undefined : taxesPesos,
-        shippingCostUsd: shippingCostUsd === "" ? undefined : shippingCostUsd,
         cardFeePercent: cardFeePercent === "" ? undefined : cardFeePercent,
         totalLotQuantity: addedLotQuantity + (quantity || 0),
+        boxWidthM: boxWidthM === "" ? undefined : boxWidthM,
+        boxLengthM: boxLengthM === "" ? undefined : boxLengthM,
+        boxHeightM: boxHeightM === "" ? undefined : boxHeightM,
+        costPerCubicMeterUsd: costPerCubicMeterUsd === "" ? undefined : costPerCubicMeterUsd,
       }),
-    [quantity, unitPriceUsd, exchangeRate, taxesPesos, shippingCostUsd, cardFeePercent, addedLotQuantity],
+    [
+      quantity,
+      unitPriceUsd,
+      exchangeRate,
+      taxesPesos,
+      cardFeePercent,
+      addedLotQuantity,
+      boxWidthM,
+      boxLengthM,
+      boxHeightM,
+      costPerCubicMeterUsd,
+    ],
   );
 
   function addItem() {
@@ -167,16 +187,23 @@ export function PurchaseForm({
         unitPriceUsd,
         exchangeRate,
         taxesPesos: taxesPesos === "" ? undefined : taxesPesos,
-        shippingCostUsd: shippingCostUsd === "" ? undefined : shippingCostUsd,
         cardFeePercent: cardFeePercent === "" ? undefined : cardFeePercent,
+        costPerCubicMeterUsd: costPerCubicMeterUsd === "" ? undefined : costPerCubicMeterUsd,
+        boxWidthM: boxWidthM === "" ? undefined : boxWidthM,
+        boxLengthM: boxLengthM === "" ? undefined : boxLengthM,
+        boxHeightM: boxHeightM === "" ? undefined : boxHeightM,
         suggestedPrice: suggestedPrice === "" ? undefined : suggestedPrice,
       },
     ]);
-    // Cotización/impuestos/envío/tarjeta son del lote — quedan cargados
-    // para la próxima línea; solo se resetea lo propio de este producto.
+    // Cotización/impuestos/tarjeta/costo por m³ son del lote — quedan
+    // cargados para la próxima línea; solo se resetea lo propio de este
+    // producto (incluidas las medidas de la caja, que son de esta línea).
     setQuantity(1);
     setUnitPriceUsd(0);
     setSuggestedPrice("");
+    setBoxWidthM("");
+    setBoxLengthM("");
+    setBoxHeightM("");
   }
 
   function removeItem(index: number) {
@@ -202,17 +229,21 @@ export function PurchaseForm({
 
   // Costo de una línea usando los datos del lote vigentes ahora mismo (no
   // lo que tenía guardado esa línea al agregarla) — así, si se corrige la
-  // cotización o el envío del lote, se refleja en todas las líneas ya
-  // cargadas, no solo en las nuevas.
+  // cotización o el costo por m³ del lote, se refleja en todas las líneas
+  // ya cargadas, no solo en las nuevas. Las medidas de la caja sí son
+  // propias de cada línea.
   function costsFor(item: ItemLine) {
     return calcPurchaseCosts({
       quantity: item.quantity,
       unitPriceUsd: item.unitPriceUsd,
       exchangeRate: exchangeRate || 0,
       taxesPesos: taxesPesos === "" ? undefined : taxesPesos,
-      shippingCostUsd: shippingCostUsd === "" ? undefined : shippingCostUsd,
       cardFeePercent: cardFeePercent === "" ? undefined : cardFeePercent,
       totalLotQuantity: addedLotQuantity,
+      boxWidthM: item.boxWidthM,
+      boxLengthM: item.boxLengthM,
+      boxHeightM: item.boxHeightM,
+      costPerCubicMeterUsd: costPerCubicMeterUsd === "" ? undefined : costPerCubicMeterUsd,
     });
   }
 
@@ -237,8 +268,8 @@ export function PurchaseForm({
       if (av > bv) return 1 * dir;
       return 0;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- costsFor lee exchangeRate/taxesPesos/shippingCostUsd/cardFeePercent/addedLotQuantity, ya listados abajo
-  }, [items, sortKey, sortDir, exchangeRate, taxesPesos, shippingCostUsd, cardFeePercent, addedLotQuantity]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- costsFor lee exchangeRate/taxesPesos/cardFeePercent/costPerCubicMeterUsd/addedLotQuantity, ya listados abajo
+  }, [items, sortKey, sortDir, exchangeRate, taxesPesos, cardFeePercent, costPerCubicMeterUsd, addedLotQuantity]);
 
   function sortIndicator(key: SortKey) {
     if (sortKey !== key) return null;
@@ -253,17 +284,16 @@ export function PurchaseForm({
         // Costo de la mercadería + impuestos + tarjeta, SIN envío — es lo
         // que termina siendo el costo/margen de cada producto.
         acc.totalGoodsUsd += costs.unitCostUsdFinal * item.quantity;
+        // Envío: volumen de la caja de esta línea × costo por m³ del lote.
+        acc.totalShippingUsd += costs.boxShippingCostUsd ?? 0;
         acc.units += item.quantity;
         return acc;
       },
-      { totalUsdRaw: 0, totalGoodsUsd: 0, units: 0 },
+      { totalUsdRaw: 0, totalGoodsUsd: 0, totalShippingUsd: 0, units: 0 },
     );
-    // El envío se suma una sola vez acá, como gasto de toda la compra, no
-    // prorrateado por producto.
-    const shippingTotalUsd = shippingCostUsd === "" ? 0 : shippingCostUsd;
-    return { ...base, totalNetUsd: base.totalGoodsUsd + shippingTotalUsd };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- costsFor lee exchangeRate/taxesPesos/shippingCostUsd/cardFeePercent/addedLotQuantity, ya listados abajo
-  }, [items, exchangeRate, taxesPesos, shippingCostUsd, cardFeePercent, addedLotQuantity]);
+    return { ...base, totalNetUsd: base.totalGoodsUsd + base.totalShippingUsd };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- costsFor lee exchangeRate/taxesPesos/cardFeePercent/costPerCubicMeterUsd/addedLotQuantity, ya listados abajo
+  }, [items, exchangeRate, taxesPesos, cardFeePercent, costPerCubicMeterUsd, addedLotQuantity]);
 
   useEffect(() => {
     if (state.purchaseId && !purchaseId) router.push("/admin/purchases");
@@ -327,19 +357,19 @@ export function PurchaseForm({
             </label>
 
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-ink-soft">Costo de envío del lote (USD)</span>
+              <span className="text-xs text-ink-soft">Costo por m³ (USD)</span>
               <input
                 type="number"
                 step="0.01"
                 min={0}
-                value={shippingCostUsd}
+                value={costPerCubicMeterUsd}
                 onChange={(e) =>
-                  setShippingCostUsd(e.target.value === "" ? "" : Number(e.target.value))
+                  setCostPerCubicMeterUsd(e.target.value === "" ? "" : Number(e.target.value))
                 }
                 className="input"
               />
               <span className="text-[11px] text-ink-faint">
-                Gasto de la compra, no se suma al costo de cada producto.
+                Se multiplica por el volumen de la caja de cada producto — gasto de la compra, no se suma al costo de cada producto.
               </span>
             </label>
 
@@ -361,6 +391,8 @@ export function PurchaseForm({
           <p className="mt-4 text-sm text-ink-soft">
             Total neto (Total + impuestos + envío + tarjeta):{" "}
             <strong className="text-ink">{usd(totals.totalNetUsd)}</strong>
+            {" · "}
+            Envío: <strong className="text-ink">{usd(totals.totalShippingUsd)}</strong>
           </p>
         </div>
       )}
@@ -437,10 +469,50 @@ export function PurchaseForm({
                 className="input"
               />
             </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Ancho de la caja (m)</span>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={boxWidthM}
+                onChange={(e) => setBoxWidthM(e.target.value === "" ? "" : Number(e.target.value))}
+                className="input"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Largo de la caja (m)</span>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={boxLengthM}
+                onChange={(e) => setBoxLengthM(e.target.value === "" ? "" : Number(e.target.value))}
+                className="input"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Alto de la caja (m)</span>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={boxHeightM}
+                onChange={(e) => setBoxHeightM(e.target.value === "" ? "" : Number(e.target.value))}
+                className="input"
+              />
+              <span className="text-[11px] text-ink-faint">
+                Una caja por línea — no se multiplica por la cantidad.
+              </span>
+            </label>
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-ink-soft">
             <span>Costo unitario en pesos: <strong className="text-ink">{formatPrice(draftCosts.unitCostPesos)}</strong></span>
+            <span>Envío de esta caja: <strong className="text-ink">{usd(draftCosts.boxShippingCostUsd)}</strong></span>
             <button
               type="button"
               onClick={addItem}
@@ -483,6 +555,7 @@ export function PurchaseForm({
                     Subtotal (USD){sortIndicator("subtotalUsd")}
                   </button>
                 </th>
+                <th className="px-4 py-2 font-medium">Envío caja (USD)</th>
                 {!readOnly && <th className="px-4 py-2" />}
               </tr>
             </thead>
@@ -526,6 +599,7 @@ export function PurchaseForm({
                   <td className="px-4 py-2 font-medium text-ink">
                     {usd(item.unitPriceUsd * item.quantity)}
                   </td>
+                  <td className="px-4 py-2 text-ink-soft">{usd(costsFor(item).boxShippingCostUsd)}</td>
                   {!readOnly && (
                     <td className="px-4 py-2 text-right">
                       <button
@@ -547,6 +621,7 @@ export function PurchaseForm({
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2 text-ink">{usd(totals.totalUsdRaw)}</td>
+                <td className="px-4 py-2 text-ink">{usd(totals.totalShippingUsd)}</td>
                 {!readOnly && <td className="px-4 py-2" />}
               </tr>
             </tfoot>
@@ -566,8 +641,8 @@ export function PurchaseForm({
               ...item,
               exchangeRate,
               taxesPesos: taxesPesos === "" ? undefined : taxesPesos,
-              shippingCostUsd: shippingCostUsd === "" ? undefined : shippingCostUsd,
               cardFeePercent: cardFeePercent === "" ? undefined : cardFeePercent,
+              costPerCubicMeterUsd: costPerCubicMeterUsd === "" ? undefined : costPerCubicMeterUsd,
             })),
           )}
         />

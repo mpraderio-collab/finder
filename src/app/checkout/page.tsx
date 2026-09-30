@@ -9,6 +9,7 @@ import { useCart, cartItemKey } from "@/lib/cart-context";
 import { trackEvent, getSessionId } from "@/lib/analytics";
 import { formatPrice } from "@/lib/products";
 import { shippingMethods, type ShippingMethod } from "@/lib/shipping";
+import { PROVINCES, getShippingCostForProvince } from "@/lib/shipping-zones";
 
 type FormState = {
   customerName: string;
@@ -45,7 +46,9 @@ export default function CheckoutPage() {
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponChecking, setCouponChecking] = useState(false);
 
-  const shippingCost = shippingMethods[shippingMethod].cost;
+  const shippingCost = form.shippingProvince
+    ? getShippingCostForProvince(form.shippingProvince)
+    : 0;
   const couponDiscount = appliedCoupon
     ? Math.round((subtotal * appliedCoupon.percentOff) / 100)
     : 0;
@@ -234,14 +237,23 @@ export default function CheckoutPage() {
                   />
                 </Field>
                 <Field label="Provincia">
-                  <input
+                  <select
                     required
                     value={form.shippingProvince}
                     onChange={(e) =>
                       setForm({ ...form, shippingProvince: e.target.value })
                     }
                     className="input"
-                  />
+                  >
+                    <option value="" disabled>
+                      Elegí tu provincia
+                    </option>
+                    {PROVINCES.map((province) => (
+                      <option key={province} value={province}>
+                        {province}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
                 <Field label="Código postal">
                   <input
@@ -401,7 +413,7 @@ export default function CheckoutPage() {
             <div className="mt-1.5 flex justify-between text-sm text-ink-soft">
               <span>Envío</span>
               <span className="font-semibold text-ink">
-                {shippingCost > 0 ? formatPrice(shippingCost) : "Gratis"}
+                {form.shippingProvince ? formatPrice(shippingCost) : "Elegí tu provincia"}
               </span>
             </div>
             <div className="mt-3 flex justify-between border-t border-line pt-3 text-sm">

@@ -48,10 +48,11 @@ function revalidatePurchasePaths(productIds: (string | null | undefined)[] = [])
 }
 
 function buildItemsData(items: ReturnType<typeof purchaseSchema.parse>["items"]) {
-  // Cotización, impuestos, envío y recargo por tarjeta son datos del lote
-  // completo (se cargan una sola vez en el form) — impuestos y envío se
+  // Cotización, impuestos, costo por m³ y recargo por tarjeta son datos del
+  // lote completo (se cargan una sola vez en el form) — los impuestos se
   // prorratean entre TODAS las unidades de la compra, no solo las de cada
-  // línea, ver calcPurchaseCosts.
+  // línea; el envío se calcula por línea (una caja por línea, ver
+  // calcPurchaseCosts) y nunca se prorratea entre unidades.
   const totalLotQuantity = items.reduce((sum, line) => sum + line.quantity, 0);
   return items.map((line) => {
     const costs = calcPurchaseCosts({ ...line, totalLotQuantity });
@@ -66,10 +67,13 @@ function buildItemsData(items: ReturnType<typeof purchaseSchema.parse>["items"])
       netUsd: costs.netUsd,
       totalUsd: costs.totalUsd,
       unitCostUsd: costs.unitCostUsd,
-      shippingCostUsd: line.shippingCostUsd ?? null,
-      unitShippingCostUsd: costs.unitShippingCostUsd ?? null,
       unitCostUsdFinal: costs.unitCostUsdFinal,
       unitCostPesos: costs.unitCostPesos,
+      boxWidthM: line.boxWidthM ?? null,
+      boxLengthM: line.boxLengthM ?? null,
+      boxHeightM: line.boxHeightM ?? null,
+      costPerCubicMeterUsd: line.costPerCubicMeterUsd ?? null,
+      boxShippingCostUsd: costs.boxShippingCostUsd ?? null,
       suggestedPrice: line.suggestedPrice ?? null,
     };
   });

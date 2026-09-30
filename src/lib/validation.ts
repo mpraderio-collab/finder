@@ -215,8 +215,11 @@ const purchaseItemSchema = z.object({
     .number({ message: "La cotización tiene que ser un número" })
     .positive("La cotización tiene que ser mayor a cero"),
   taxesPesos: z.coerce.number().min(0).optional(),
-  shippingCostUsd: z.coerce.number().min(0).optional(),
   cardFeePercent: z.coerce.number().min(0).optional(),
+  boxWidthM: z.coerce.number().min(0).optional(),
+  boxLengthM: z.coerce.number().min(0).optional(),
+  boxHeightM: z.coerce.number().min(0).optional(),
+  costPerCubicMeterUsd: z.coerce.number().min(0).optional(),
   suggestedPrice: z.coerce.number().int().positive().optional(),
 });
 
