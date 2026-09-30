@@ -5,16 +5,14 @@
 //
 // Cotización, impuestos, costo por m³ e impuesto por pago con tarjeta se
 // cargan una sola vez por compra (referencian a todo el lote, no a una
-// línea puntual). Los impuestos sí se prorratean por `totalLotQuantity` y
-// pasan a formar parte del costo unitario de cada producto (van dentro del
-// paquete que llega, ARCA los cobra por eso). El envío en cambio nunca se
-// suma al costo del producto — es un gasto de la compra en su conjunto
-// (como el flete de un pedido a proveedor): el costo de envío de una línea
-// es el volumen de UNA de sus cajas por el costo por m³ del lote, por la
-// cantidad de cajas de esa línea (`boxCount`); la suma de todas las líneas
-// da el costo de envío total de la compra, que se suma una sola vez al
-// final y no afecta el costo/margen de cada producto individual.
+// línea puntual). Los impuestos se prorratean por `totalLotQuantity` (todo
+// el lote) y el envío de la caja se prorratea por `quantity` (las unidades
+// de esta línea nada más, porque la caja es de esta línea) — ambos pasan a
+// formar parte del costo unitario de cada producto (`unitCostUsdFinal` /
+// `unitCostPesos`, lo que termina siendo el costPrice del producto).
 //
+// El costo de envío de una línea es el volumen de UNA de sus cajas por el
+// costo por m³ del lote, por la cantidad de cajas de esa línea (`boxCount`).
 // Si la caja no viene completa (`boxCapacityUnits` = cuántas unidades entran
 // llena, `quantity` = cuántas trae esta compra), el volumen de esa caja se
 // prorratea por ese porcentaje: una caja para 100 unidades de la que solo
@@ -63,8 +61,6 @@ export function calcPurchaseCosts(input: {
   const unitTaxesUsd = taxesUsd !== undefined && lotQuantity > 0 ? taxesUsd / lotQuantity : undefined;
   const totalUsd = netUsd + (unitTaxesUsd ?? 0) * quantity;
   const unitCostUsd = quantity > 0 ? totalUsd / quantity : 0;
-  const unitCostUsdFinal = unitCostUsd;
-  const unitCostPesos = Math.round(unitCostUsdFinal * exchangeRate);
 
   const hasBoxDims = boxWidthM !== undefined && boxLengthM !== undefined && boxHeightM !== undefined;
   // Si la caja no viene completa, el volumen se prorratea por cuánto trae
@@ -84,6 +80,14 @@ export function calcPurchaseCosts(input: {
     boxVolumeM3 !== undefined && costPerCubicMeterUsd !== undefined
       ? boxVolumeM3 * costPerCubicMeterUsd
       : undefined;
+
+  // El envío de la caja se reparte entre las unidades de esta línea (no del
+  // lote entero, la caja es de esta línea) y ahí sí pasa a integrar el
+  // costo unitario del producto.
+  const unitBoxShippingCostUsd =
+    boxShippingCostUsd !== undefined && quantity > 0 ? boxShippingCostUsd / quantity : 0;
+  const unitCostUsdFinal = unitCostUsd + unitBoxShippingCostUsd;
+  const unitCostPesos = Math.round(unitCostUsdFinal * exchangeRate);
 
   return {
     taxesUsd,

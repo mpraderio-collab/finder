@@ -365,9 +365,10 @@ export function PurchaseForm({
       (acc, item) => {
         const costs = costsFor(item);
         acc.totalUsdRaw += item.quantity * item.unitPriceUsd;
-        // Costo de la mercadería + impuestos + tarjeta, SIN envío — es lo
-        // que termina siendo el costo/margen de cada producto.
-        acc.totalGoodsUsd += costs.unitCostUsdFinal * item.quantity;
+        // Costo de la mercadería + impuestos + tarjeta, SIN envío — unitCostUsdFinal
+        // ya incluye el envío prorrateado (ver calcPurchaseCosts), así que si se
+        // sumara acá el envío quedaría contado dos veces junto con totalShippingUsd.
+        acc.totalGoodsUsd += costs.unitCostUsd * item.quantity;
         // Envío: volumen de la caja de esta línea × costo por m³ del lote.
         acc.totalShippingUsd += costs.boxShippingCostUsd ?? 0;
         acc.units += item.quantity;
@@ -453,7 +454,7 @@ export function PurchaseForm({
                 className="input"
               />
               <span className="text-[11px] text-ink-faint">
-                Se multiplica por el volumen de la caja de cada producto — gasto de la compra, no se suma al costo de cada producto.
+                Se multiplica por el volumen de la caja de cada producto y se suma al costo unitario de ese producto.
               </span>
             </label>
 

@@ -144,7 +144,7 @@ model PurchaseItem {
   unitCostUsd         Float? // "Costo Unitario" (USD, sin envío)
   shippingCostUsd      Float? // legado: "Costo Envío" total del lote, cargado a mano — reemplazado por el cálculo volumétrico (ver boxShippingCostUsd). Se conserva solo para compras viejas.
   unitShippingCostUsd Float? // legado — ver shippingCostUsd
-  unitCostUsdFinal    Float? // "Costo Neto Unitario" (USD, sin envío — el envío ya no se suma acá, es gasto de toda la compra)
+  unitCostUsdFinal    Float? // "Costo Neto Unitario" (USD) = unitCostUsd + (boxShippingCostUsd ÷ quantity) — el envío de la caja de ESTA línea sí se prorratea por unidad acá (a diferencia del total de la compra, que lo suma una sola vez)
 
   // Envío por volumen: costo de envío de la línea = volumen de UNA caja
   // (ancho × largo × alto) × costo por m³ del lote (costPerCubicMeterUsd,
