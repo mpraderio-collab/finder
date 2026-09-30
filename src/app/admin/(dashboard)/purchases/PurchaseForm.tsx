@@ -119,6 +119,7 @@ export function PurchaseForm({
   const [uploadingImage, setUploadingImage] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [addError, setAddError] = useState<string | null>(null);
+  const [uploadingRowIndex, setUploadingRowIndex] = useState<number | null>(null);
 
   const isNewProduct = productChoice === NEW_PRODUCT;
   const selectedProductImage = !isNewProduct
@@ -163,6 +164,31 @@ export function PurchaseForm({
     } finally {
       setUploadingImage(false);
       if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  }
+
+  // Igual que handleImageUpload pero para una línea ya agregada a la
+  // tabla — solo tiene sentido en líneas sin producto vinculado.
+  async function handleRowImageUpload(index: number, e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_LINE_IMAGE_SIZE) {
+      setAddError("La imagen pesa más de 5MB.");
+      e.target.value = "";
+      return;
+    }
+    setUploadingRowIndex(index);
+    try {
+      const blob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/upload-token",
+      });
+      updateItem(index, { imageUrl: blob.url });
+    } catch {
+      setAddError("No se pudo subir la imagen. Probá de nuevo.");
+    } finally {
+      setUploadingRowIndex(null);
+      e.target.value = "";
     }
   }
 
@@ -371,7 +397,7 @@ export function PurchaseForm({
   }
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       {initial && (
         <div className="flex items-center gap-2">
           <span className="text-sm text-ink-soft">Estado:</span>
@@ -458,7 +484,7 @@ export function PurchaseForm({
       {!readOnly && (
         <div className="rounded-xl border border-line bg-bg p-5">
           <p className="text-sm font-semibold text-ink">Agregar producto</p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
             <label className="flex flex-col gap-1.5">
               <span className="text-xs text-ink-soft">Producto</span>
               <select
@@ -662,9 +688,10 @@ export function PurchaseForm({
 
       {items.length > 0 && (
         <div className="overflow-x-auto rounded-xl border border-line bg-bg">
-          <table className="w-full min-w-[720px] text-left text-sm">
+          <table className="w-full min-w-[1400px] text-left text-sm">
             <thead className="border-b border-line text-ink-soft">
               <tr>
+                <th className="px-4 py-2 font-medium">Foto</th>
                 <th className="px-4 py-2 font-medium">
                   <button type="button" onClick={() => toggleSort("productName")} className="hover:text-ink">
                     Producto{sortIndicator("productName")}
@@ -680,6 +707,7 @@ export function PurchaseForm({
                     P. unitario{sortIndicator("unitPriceUsd")}
                   </button>
                 </th>
+                <th className="px-4 py-2 font-medium">Precio venta sug.</th>
                 <th className="px-4 py-2 font-medium">
                   <button type="button" onClick={() => toggleSort("unitCostPesos")} className="hover:text-ink">
                     Costo unit. (pesos){sortIndicator("unitCostPesos")}
@@ -690,39 +718,49 @@ export function PurchaseForm({
                     Subtotal (USD){sortIndicator("subtotalUsd")}
                   </button>
                 </th>
+                <th className="px-4 py-2 font-medium">Ancho (m)</th>
+                <th className="px-4 py-2 font-medium">Largo (m)</th>
+                <th className="px-4 py-2 font-medium">Alto (m)</th>
+                <th className="px-4 py-2 font-medium">Capacidad (u.)</th>
+                <th className="px-4 py-2 font-medium">Cant. cajas</th>
                 <th className="px-4 py-2 font-medium">Envío caja (USD)</th>
+                <th className="px-4 py-2 font-medium">Link</th>
                 {!readOnly && <th className="px-4 py-2" />}
               </tr>
             </thead>
             <tbody>
-              {sortedItems.map(({ item, index, unitCostPesos }) => (
+              {sortedItems.map(({ item, index, unitCostPesos }) => {
+                const linkedHeroImage = item.productId
+                  ? products.find((p) => p.id === item.productId)?.heroImageUrl
+                  : undefined;
+                const thumb = linkedHeroImage ?? item.imageUrl;
+                return (
                 <tr key={index} className="border-b border-line last:border-0">
+                  <td className="px-4 py-2">
+                    {thumb ? (
+                      <span className="relative inline-block h-10 w-10 shrink-0 overflow-hidden rounded-md border border-line bg-surface align-middle">
+                        <Image src={thumb} alt="" fill className="object-cover" sizes="40px" />
+                      </span>
+                    ) : (
+                      <span className="inline-block h-10 w-10 shrink-0 rounded-md border border-dashed border-line" />
+                    )}
+                    {!readOnly && !item.productId && (
+                      <label className="mt-1 block w-fit cursor-pointer text-[11px] font-semibold text-blue hover:underline">
+                        {uploadingRowIndex === index ? "Subiendo…" : thumb ? "Cambiar" : "+ Subir"}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={(e) => handleRowImageUpload(index, e)}
+                          disabled={uploadingRowIndex === index}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </td>
                   <td className="px-4 py-2 text-ink">
-                    <span className="inline-flex items-center gap-2">
-                      {(() => {
-                        const thumb = item.productId
-                          ? products.find((p) => p.id === item.productId)?.heroImageUrl
-                          : item.imageUrl;
-                        return thumb ? (
-                          <span className="relative inline-block h-8 w-8 shrink-0 overflow-hidden rounded-md border border-line bg-surface align-middle">
-                            <Image src={thumb} alt="" fill className="object-cover" sizes="32px" />
-                          </span>
-                        ) : null;
-                      })()}
-                      <span>{item.productName}</span>
-                    </span>
+                    {item.productName}
                     {!item.productId && (
                       <span className="ml-1 text-xs text-ink-faint">(sin vincular)</span>
-                    )}
-                    {item.referenceUrl && (
-                      <a
-                        href={item.referenceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-1 text-xs font-semibold text-blue hover:underline"
-                      >
-                        Ver ↗
-                      </a>
                     )}
                   </td>
                   <td className="px-4 py-2 text-ink-soft">
@@ -752,11 +790,156 @@ export function PurchaseForm({
                       />
                     )}
                   </td>
+                  <td className="px-4 py-2 text-ink-soft">
+                    {readOnly ? (
+                      item.suggestedPrice != null ? formatPrice(item.suggestedPrice) : "—"
+                    ) : (
+                      <input
+                        type="number"
+                        min={0}
+                        value={item.suggestedPrice ?? ""}
+                        onChange={(e) =>
+                          updateItem(index, {
+                            suggestedPrice: e.target.value === "" ? undefined : Number(e.target.value),
+                          })
+                        }
+                        className="input w-24"
+                      />
+                    )}
+                  </td>
                   <td className="px-4 py-2 text-ink-soft">{formatPrice(unitCostPesos)}</td>
                   <td className="px-4 py-2 font-medium text-ink">
                     {usd(item.unitPriceUsd * item.quantity)}
                   </td>
+                  <td className="px-4 py-2 text-ink-soft">
+                    {readOnly ? (
+                      item.boxWidthM ?? "—"
+                    ) : (
+                      <input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={item.boxWidthM ?? ""}
+                        onChange={(e) =>
+                          updateItem(index, {
+                            boxWidthM: e.target.value === "" ? undefined : Number(e.target.value),
+                          })
+                        }
+                        className="input w-20"
+                      />
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-ink-soft">
+                    {readOnly ? (
+                      item.boxLengthM ?? "—"
+                    ) : (
+                      <input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={item.boxLengthM ?? ""}
+                        onChange={(e) =>
+                          updateItem(index, {
+                            boxLengthM: e.target.value === "" ? undefined : Number(e.target.value),
+                          })
+                        }
+                        className="input w-20"
+                      />
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-ink-soft">
+                    {readOnly ? (
+                      item.boxHeightM ?? "—"
+                    ) : (
+                      <input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={item.boxHeightM ?? ""}
+                        onChange={(e) =>
+                          updateItem(index, {
+                            boxHeightM: e.target.value === "" ? undefined : Number(e.target.value),
+                          })
+                        }
+                        className="input w-20"
+                      />
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-ink-soft">
+                    {readOnly ? (
+                      item.boxCapacityUnits ?? "—"
+                    ) : (
+                      <input
+                        type="number"
+                        min={1}
+                        value={item.boxCapacityUnits ?? ""}
+                        onChange={(e) =>
+                          updateItem(index, {
+                            boxCapacityUnits: e.target.value === "" ? undefined : Number(e.target.value),
+                          })
+                        }
+                        className="input w-20"
+                      />
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-ink-soft">
+                    {readOnly ? (
+                      item.boxCount ?? "—"
+                    ) : (
+                      <input
+                        type="number"
+                        min={1}
+                        value={item.boxCount ?? ""}
+                        onChange={(e) =>
+                          updateItem(index, {
+                            boxCount: e.target.value === "" ? undefined : Number(e.target.value),
+                          })
+                        }
+                        className="input w-20"
+                      />
+                    )}
+                  </td>
                   <td className="px-4 py-2 text-ink-soft">{usd(costsFor(item).boxShippingCostUsd)}</td>
+                  <td className="px-4 py-2 text-ink-soft">
+                    {readOnly ? (
+                      item.referenceUrl ? (
+                        <a
+                          href={item.referenceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-blue hover:underline"
+                        >
+                          Ver ↗
+                        </a>
+                      ) : (
+                        "—"
+                      )
+                    ) : (
+                      <div className="flex flex-col gap-1">
+                        <input
+                          type="url"
+                          value={item.referenceUrl ?? ""}
+                          onChange={(e) =>
+                            updateItem(index, {
+                              referenceUrl: e.target.value === "" ? undefined : e.target.value,
+                            })
+                          }
+                          placeholder="https://…"
+                          className="input w-40"
+                        />
+                        {item.referenceUrl && (
+                          <a
+                            href={item.referenceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] font-semibold text-blue hover:underline"
+                          >
+                            Ver ↗
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </td>
                   {!readOnly && (
                     <td className="px-4 py-2 text-right">
                       <button
@@ -769,16 +952,25 @@ export function PurchaseForm({
                     </td>
                   )}
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
             <tfoot>
               <tr className="border-t border-line font-medium">
+                <td className="px-4 py-2" />
                 <td className="px-4 py-2 text-ink">Total</td>
                 <td className="px-4 py-2 text-ink-soft">{totals.units}</td>
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
+                <td className="px-4 py-2" />
                 <td className="px-4 py-2 text-ink">{usd(totals.totalUsdRaw)}</td>
+                <td className="px-4 py-2" />
+                <td className="px-4 py-2" />
+                <td className="px-4 py-2" />
+                <td className="px-4 py-2" />
+                <td className="px-4 py-2" />
                 <td className="px-4 py-2 text-ink">{usd(totals.totalShippingUsd)}</td>
+                <td className="px-4 py-2" />
                 {!readOnly && <td className="px-4 py-2" />}
               </tr>
             </tfoot>
