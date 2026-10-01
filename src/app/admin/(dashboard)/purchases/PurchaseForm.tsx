@@ -62,6 +62,11 @@ function usd(value: number | undefined): string {
   return `US$ ${value.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function m3(value: number | undefined): string {
+  if (value === undefined) return "—";
+  return `${value.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 3 })} m³`;
+}
+
 export function PurchaseForm({
   products,
   suppliers,
@@ -734,6 +739,7 @@ export function PurchaseForm({
                 <th className="px-4 py-2 font-medium">Alto (m)</th>
                 <th className="px-4 py-2 font-medium">Capacidad (u.)</th>
                 <th className="px-4 py-2 font-medium">Cant. cajas</th>
+                <th className="px-4 py-2 font-medium">Volumen (m³)</th>
                 <th className="px-4 py-2 font-medium">Envío caja (USD)</th>
                 <th className="px-4 py-2 font-medium">Link</th>
                 {!readOnly && <th className="px-4 py-2" />}
@@ -910,6 +916,7 @@ export function PurchaseForm({
                       />
                     )}
                   </td>
+                  <td className="px-4 py-2 text-ink-soft">{m3(costsFor(item).boxVolumeM3)}</td>
                   <td className="px-4 py-2 text-ink-soft">{usd(costsFor(item).boxShippingCostUsd)}</td>
                   <td className="px-4 py-2 text-ink-soft">
                     {readOnly ? (
@@ -979,7 +986,7 @@ export function PurchaseForm({
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
-                <td className="px-4 py-2" />
+                <td className="px-4 py-2 text-ink">{m3(totals.totalVolumeM3)}</td>
                 <td className="px-4 py-2 text-ink">{usd(totals.totalShippingUsd)}</td>
                 <td className="px-4 py-2" />
                 {!readOnly && <td className="px-4 py-2" />}
