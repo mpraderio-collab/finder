@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/products";
-import { dateBuckets, endOfToday, startOfMonth, startOfToday, startOfYear, toDateInputValue } from "@/lib/reports";
+import { monthBuckets, endOfToday, startOfMonth, startOfToday, startOfYear, toDateInputValue } from "@/lib/reports";
 import { calculateCogs, calculateMargin } from "@/lib/margin";
 import { ExportCsvButton } from "@/components/ExportCsvButton";
 import { BarChart } from "@/components/charts/BarChart";
@@ -59,15 +59,34 @@ export default async function SalesReportPage(props: PageProps<"/admin/reports/s
     }
   }
   const productBreakdown = [...byProduct.values()].sort((a, b) => b.total - a.total);
-  const topProducts = productBreakdown.slice(0, 5).map((p) => ({ label: p.name, value: p.total }));
 
-  const buckets = dateBuckets(from, to);
+  const buckets = monthBuckets(from, to);
   const revenueByBucket = buckets.map((bucket) => ({
     label: bucket.label,
     value: sales
       .filter((s) => s.createdAt >= bucket.start && s.createdAt < bucket.end)
       .reduce((sum, s) => sum + s.total, 0),
   }));
+
+  // Top 5 por facturación de cada mes (solo meses con ventas).
+  const topProductsByMonth = buckets
+    .map((bucket) => {
+      const monthTotals = new Map<string, { name: string; total: number }>();
+      for (const sale of sales) {
+        if (sale.createdAt < bucket.start || sale.createdAt >= bucket.end) continue;
+        for (const item of sale.items) {
+          const entry = monthTotals.get(item.productId) ?? { name: item.product.name, total: 0 };
+          entry.total += item.lineTotal ?? item.unitPrice * item.quantity;
+          monthTotals.set(item.productId, entry);
+        }
+      }
+      const top = [...monthTotals.values()]
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 5)
+        .map((p) => ({ label: p.name, value: p.total }));
+      return { label: bucket.label, top };
+    })
+    .filter((m) => m.top.length > 0);
 
   const quickRanges = [
     { label: "Hoy", from: startOfToday(), to: endOfToday() },
@@ -220,25 +239,31 @@ export default async function SalesReportPage(props: PageProps<"/admin/reports/s
         </div>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-line bg-bg p-5">
-          <p className="text-sm font-semibold text-navy">Ventas en el período</p>
-          {revenueByBucket.every((b) => b.value === 0) ? (
-            <p className="mt-3 text-sm text-ink-soft">No hay ventas en este período.</p>
-          ) : (
-            <BarChart data={revenueByBucket} formatValue={formatPrice} />
-          )}
-        </div>
-        <div className="rounded-xl border border-line bg-bg p-5">
-          <p className="text-sm font-semibold text-navy">Top 5 productos por facturación</p>
-          {topProducts.length === 0 ? (
-            <p className="mt-3 text-sm text-ink-soft">No hay ventas en este período.</p>
-          ) : (
-            <div className="mt-4">
-              <DonutChart data={topProducts} formatValue={formatPrice} />
-            </div>
-          )}
-        </div>
+      <div className="mt-6 rounded-xl border border-line bg-bg p-5">
+        <p className="text-sm font-semibold text-navy">Ventas por mes</p>
+        {revenueByBucket.every((b) => b.value === 0) ? (
+          <p className="mt-3 text-sm text-ink-soft">No hay ventas en este período.</p>
+        ) : (
+          <BarChart data={revenueByBucket} formatValue={formatPrice} />
+        )}
+      </div>
+
+      <div className="mt-6">
+        <p className="text-sm font-semibold text-navy">Top 5 productos por facturación, por mes</p>
+        {topProductsByMonth.length === 0 ? (
+          <p className="mt-2 text-sm text-ink-soft">No hay ventas en este período.</p>
+        ) : (
+          <div className="mt-3 grid gap-6 lg:grid-cols-2">
+            {topProductsByMonth.map((month) => (
+              <div key={month.label} className="rounded-xl border border-line bg-bg p-5">
+                <p className="text-sm font-semibold capitalize text-navy">{month.label}</p>
+                <div className="mt-4">
+                  <DonutChart data={month.top} formatValue={formatPrice} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mt-8">

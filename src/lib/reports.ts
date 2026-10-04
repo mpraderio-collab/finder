@@ -30,27 +30,22 @@ export function toDateInputValue(d: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-// Divide un rango [from, to] en como máximo `maxBuckets` intervalos iguales
-// — de a un día si el rango es corto, agrupando de a más días si es largo —
-// para graficar la evolución de un informe sin importar qué rango se eligió.
-export function dateBuckets(
-  from: Date,
-  to: Date,
-  maxBuckets = 10,
-): { start: Date; end: Date; label: string }[] {
-  const totalDays = Math.max(1, Math.floor((to.getTime() - from.getTime()) / 86_400_000) + 1);
-  const daysPerBucket = Math.max(1, Math.ceil(totalDays / maxBuckets));
+const MONTH_NAMES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+// Un intervalo por cada mes calendario que toca el rango [from, to], de
+// punta a punta del mes (el filtro del rango ya recorta los extremos en la
+// consulta, no hace falta recortarlos acá).
+export function monthBuckets(from: Date, to: Date): { start: Date; end: Date; label: string }[] {
   const buckets: { start: Date; end: Date; label: string }[] = [];
-  let cursor = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  let cursor = new Date(from.getFullYear(), from.getMonth(), 1);
   while (cursor <= to) {
     const start = new Date(cursor);
-    const end = new Date(cursor);
-    end.setDate(end.getDate() + daysPerBucket);
-    const label =
-      daysPerBucket === 1
-        ? `${start.getDate()}/${start.getMonth() + 1}`
-        : `${start.getDate()}/${start.getMonth() + 1}–${new Date(end.getTime() - 86_400_000).getDate()}/${new Date(end.getTime() - 86_400_000).getMonth() + 1}`;
-    buckets.push({ start, end, label });
+    const end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+    buckets.push({
+      start,
+      end,
+      label: `${MONTH_NAMES[start.getMonth()]} ${String(start.getFullYear()).slice(2)}`,
+    });
     cursor = end;
   }
   return buckets;
