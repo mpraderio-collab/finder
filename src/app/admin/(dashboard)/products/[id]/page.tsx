@@ -19,6 +19,7 @@ export default async function EditProductPage(
         include: { images: { orderBy: { position: "asc" } } },
       },
       features: { orderBy: { position: "asc" } },
+      specs: { orderBy: { position: "asc" } },
       promotions: { where: { active: true }, select: { id: true, name: true } },
     },
   });
@@ -66,6 +67,7 @@ export default async function EditProductPage(
             stock: product.stock,
             status: product.status,
             features: product.features.map((f) => f.text).join("\n"),
+            specs: product.specs.map((s) => `${s.label}: ${s.value}`).join("\n"),
           }}
         />
       </div>

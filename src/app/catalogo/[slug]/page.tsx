@@ -6,9 +6,9 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Stars } from "@/components/Stars";
 import { ProductPurchase } from "@/components/ProductPurchase";
-import { ProductCard } from "@/components/ProductCard";
+import { ProductPhotoWall } from "@/components/ProductPhotoWall";
 import { ReviewForm } from "@/components/ReviewForm";
-import { averageRating, getActiveProducts, getProductBySlug } from "@/lib/products";
+import { averageRating, getProductBySlug } from "@/lib/products";
 import { getSiteSettings } from "@/lib/settings";
 import { activePromotion } from "@/lib/promotions";
 import { db } from "@/lib/db";
@@ -45,8 +45,10 @@ export default async function ProductPage(
   );
   const avgRating = averageRating(product.reviews);
 
-  const [allProducts, settings] = await Promise.all([getActiveProducts(), getSiteSettings()]);
-  const otherProducts = allProducts.filter((p) => p.slug !== product.slug);
+  const settings = await getSiteSettings();
+  const media = orderedImages.map(({ id, url, type }) => ({ id, url, type }));
+  const photoCount = media.filter((m) => m.type !== "video").length;
+  const videoCount = media.length - photoCount;
 
   return (
     <>
@@ -90,29 +92,104 @@ export default async function ProductPage(
                 )}
               </>
             }
-            belowActions={
-              <>
-                <p className="text-[15px]/[1.7] text-ink-soft">
-                  {product.description}
-                </p>
-
-                <ul className="space-y-2">
-                  {product.features.map((feature) => (
-                    <li
-                      key={feature.id}
-                      className="flex gap-2 text-sm text-ink-soft"
-                    >
-                      <span className="text-amber-ink">✓</span>
-                      {feature.text}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            }
           />
         </section>
 
         <section className="border-t border-line bg-surface">
+          <div className="mx-auto grid max-w-6xl gap-12 px-6 py-14 lg:grid-cols-[1.1fr_0.9fr]">
+            <div>
+              <h2 className="font-heading text-[28px] font-extrabold tracking-[-0.02em] text-navy">
+                Conocé {product.name}
+              </h2>
+              <span className="mt-3 block h-1 w-14 rounded-full bg-amber" />
+              <p className="mt-6 whitespace-pre-line text-[16px]/[1.8] text-ink-soft">
+                {product.description}
+              </p>
+            </div>
+            {product.features.length > 0 && (
+              <div>
+                <h3 className="font-heading text-lg font-bold text-navy">Características</h3>
+                <ul className="mt-4 grid gap-3">
+                  {product.features.map((feature) => (
+                    <li
+                      key={feature.id}
+                      className="flex gap-3 rounded-xl border border-line bg-bg px-4 py-3.5 text-[15px]/[1.5] text-ink"
+                    >
+                      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-amber-soft text-[11px] font-bold text-amber-ink">
+                        ✓
+                      </span>
+                      {feature.text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {product.specs.length > 0 && (
+          <section className="mx-auto max-w-6xl px-6 py-14">
+            <h2 className="font-heading text-[28px] font-extrabold tracking-[-0.02em] text-navy">
+              Especificaciones
+            </h2>
+            <dl className="mt-8 overflow-hidden rounded-xl border border-line bg-bg">
+              {product.specs.map((spec, i) => (
+                <div
+                  key={spec.id}
+                  className={`grid gap-1 px-5 py-3.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-6 ${
+                    i % 2 === 0 ? "bg-surface" : "bg-bg"
+                  }`}
+                >
+                  <dt className="text-sm font-semibold text-navy">{spec.label}</dt>
+                  <dd className="text-sm text-ink-soft">{spec.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        )}
+
+        {media.length > 1 && (
+          <ProductPhotoWall
+            name={product.name}
+            media={media}
+            photoCount={photoCount}
+            videoCount={videoCount}
+          />
+        )}
+
+        <section className="border-t border-line bg-surface">
+          <div className="mx-auto max-w-6xl px-6 py-12">
+            <h2 className="font-heading text-[22px] font-extrabold text-navy">
+              Envío, pagos y cambios
+            </h2>
+            <div className="mt-6 grid gap-4 sm:grid-cols-3">
+              {[
+                {
+                  title: "Envío a todo el país",
+                  text: "Despachamos con Correo Argentino y llega en 3 a 5 días hábiles. El costo se calcula en el pago según tu provincia.",
+                },
+                {
+                  title: "Pagá como quieras",
+                  text:
+                    settings.installments > 1
+                      ? `Con Mercado Pago: tarjeta, dinero en cuenta y hasta ${settings.installments} cuotas sin interés.`
+                      : "Con Mercado Pago: tarjeta o dinero en cuenta.",
+                },
+                {
+                  title: "Cambios en 30 días",
+                  text: "Si el producto no es lo que esperabas, escribinos y lo resolvemos.",
+                },
+              ].map((item) => (
+                <div key={item.title} className="rounded-xl border border-line bg-bg p-5">
+                  <p className="font-heading text-[15px] font-bold text-navy">{item.title}</p>
+                  <p className="mt-2 text-sm/[1.6] text-ink-soft">{item.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="border-t border-line">
           <div className="mx-auto max-w-6xl px-6 py-11">
             <h2 className="font-heading text-[26px] font-extrabold text-navy">
               Lo que dicen nuestros clientes
@@ -152,18 +229,11 @@ export default async function ProductPage(
           </div>
         </section>
 
-        {otherProducts.length > 0 && (
-          <section className="mx-auto max-w-6xl px-6 py-11">
-            <h2 className="font-heading text-[26px] font-extrabold text-navy">
-              También te puede interesar
-            </h2>
-            <div className="mt-6 grid gap-[22px] sm:grid-cols-2 lg:grid-cols-3">
-              {otherProducts.map((p) => (
-                <ProductCard key={p.slug} product={p} />
-              ))}
-            </div>
-          </section>
-        )}
+        <div className="mx-auto max-w-6xl px-6 pb-12">
+          <Link href="/catalogo" className="font-heading text-sm font-bold text-blue hover:text-navy">
+            ← Volver al catálogo
+          </Link>
+        </div>
       </main>
       <Footer />
     </>

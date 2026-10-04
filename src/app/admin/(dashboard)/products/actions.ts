@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { featuresTextSchema, productSchema, type ProductFormValues } from "@/lib/validation";
+import { featuresTextSchema, productSchema, specsTextSchema, type ProductFormValues } from "@/lib/validation";
 
 async function requireAdmin() {
   const session = await auth();
@@ -34,6 +34,10 @@ function parseFeatures(formData: FormData) {
   return featuresTextSchema.parse(formData.get("features") ?? "");
 }
 
+function parseSpecs(formData: FormData) {
+  return specsTextSchema.parse(formData.get("specs") ?? "");
+}
+
 function toFieldErrors(result: ReturnType<typeof parseForm>) {
   if (result.success) return {};
   const fieldErrors: Record<string, string> = {};
@@ -57,6 +61,7 @@ export async function createProduct(
     return { error: "Revisá los campos marcados.", fieldErrors: toFieldErrors(result) };
   }
   const features = parseFeatures(formData);
+  const specs = parseSpecs(formData);
 
   try {
     const product = await db.product.create({
@@ -64,6 +69,9 @@ export async function createProduct(
         ...result.data,
         features: {
           create: features.map((text, position) => ({ text, position })),
+        },
+        specs: {
+          create: specs.map((spec, position) => ({ ...spec, position })),
         },
       },
     });
@@ -94,6 +102,7 @@ export async function updateProduct(
     return { error: "Revisá los campos marcados.", fieldErrors: toFieldErrors(result) };
   }
   const features = parseFeatures(formData);
+  const specs = parseSpecs(formData);
 
   try {
     // Se borran y se recrean todas las características en vez de tratar de
@@ -104,6 +113,10 @@ export async function updateProduct(
       db.productFeature.deleteMany({ where: { productId: id } }),
       db.productFeature.createMany({
         data: features.map((text, position) => ({ productId: id, text, position })),
+      }),
+      db.productSpec.deleteMany({ where: { productId: id } }),
+      db.productSpec.createMany({
+        data: specs.map((spec, position) => ({ productId: id, ...spec, position })),
       }),
     ]);
   } catch (err) {

@@ -19,6 +19,7 @@ type Props = {
     stock: number;
     status: string;
     features?: string;
+    specs?: string;
   };
   submitLabel: string;
 };
@@ -342,6 +343,22 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
           rows={5}
           placeholder={
             "Sensor de movimiento PIR: se activa a 0-3 m y se apaga a los ~25 segundos\n16 colores RGB con control remoto incluido"
+          }
+          className="input"
+        />
+      </Field>
+
+      <Field
+        label="Especificaciones"
+        name="specs"
+        hint='Una por línea con formato "Etiqueta: valor" — se muestran como tabla de ficha técnica en la página del producto'
+      >
+        <textarea
+          name="specs"
+          defaultValue={defaultValues?.specs ?? ""}
+          rows={6}
+          placeholder={
+            "Batería: 1200 mAh\nAutonomía: hasta 35 horas\nCarga: USB-C, 3 horas\nTemperatura de color: 3000K / 4000K / 6500K"
           }
           className="input"
         />

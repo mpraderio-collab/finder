@@ -130,6 +130,27 @@ export const featuresTextSchema = z
       .slice(0, 20),
   );
 
+// Una especificación por línea con formato "Etiqueta: valor" (se corta en el
+// primer ":"); se descartan las líneas vacías o sin valor.
+export const specsTextSchema = z
+  .string()
+  .max(6000)
+  .optional()
+  .or(z.literal(""))
+  .transform((v) =>
+    (v ?? "")
+      .split("\n")
+      .map((line) => {
+        const i = line.indexOf(":");
+        if (i === -1) return null;
+        const label = line.slice(0, i).trim().slice(0, 60);
+        const value = line.slice(i + 1).trim().slice(0, 200);
+        return label && value ? { label, value } : null;
+      })
+      .filter((s): s is { label: string; value: string } => s !== null)
+      .slice(0, 30),
+  );
+
 export const siteSettingsSchema = z.object({
   installments: z.coerce
     .number({ message: "Ingresá un número de cuotas" })
