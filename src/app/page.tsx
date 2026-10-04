@@ -92,17 +92,17 @@ export default async function Home() {
           )}
         </section>
 
-        <section className="bg-[#061f33] px-6 py-20"><div className="mx-auto max-w-6xl">
+        <section className="mx-auto max-w-6xl px-6 py-20">
           <div className="flex items-end justify-between gap-4">
-            <h2 className="font-heading text-[36px] font-extrabold tracking-[-0.03em] text-[#fff4dc]">
+            <h2 className="font-heading text-[36px] font-extrabold tracking-[-0.03em] text-navy">
               Nuestros productos
             </h2>
-            <Link href="/catalogo" className="font-heading text-sm font-bold text-amber hover:text-[#ffc04d]">
+            <Link href="/catalogo" className="font-heading text-sm font-bold text-blue hover:text-navy">
               Ver todos →
             </Link>
           </div>
           {products.length === 0 ? (
-            <p className="mt-8 text-[#fff4dc]/60">Estamos cargando el catálogo, volvé pronto.</p>
+            <p className="mt-8 text-ink-soft">Estamos cargando el catálogo, volvé pronto.</p>
           ) : (
             <div className="mt-10 grid gap-[22px] sm:grid-cols-2 lg:grid-cols-3">
               {products.map((product) => (
@@ -110,7 +110,7 @@ export default async function Home() {
               ))}
             </div>
           )}
-        </div></section>
+        </section>
       </main>
       <Footer />
     </>
