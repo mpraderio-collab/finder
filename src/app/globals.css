@@ -5,7 +5,7 @@
   --color-navy: #0f4368; /* títulos, botón primario, bordes activos */
   --color-navy-deep: #0a3350; /* pie de página, sidebar del admin */
   --color-blue: #1b5d8a; /* enlaces, acciones en tablas */
-  --color-amber: #f6a81c; /* acento: CTA secundario, foco, dato clave */
+  --color-amber: #F0A01C; /* acento: CTA secundario, foco, dato clave */
   --color-amber-ink: #8a5b00; /* texto sobre ámbar claro */
   --color-amber-soft: #fff8eb; /* fondo de avisos y badges */
   --color-amber-line: #f3dcae;
@@ -82,7 +82,7 @@ body {
 .focus-amber:focus {
   outline: none;
   border-color: var(--color-amber);
-  box-shadow: 0 0 0 3px rgba(246, 168, 28, 0.15);
+  box-shadow: 0 0 0 3px rgba(240,160,28, 0.15);
 }
 
 /* El reset de Tailwind deja los <button> en cursor:default (comportamiento

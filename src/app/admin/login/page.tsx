@@ -70,7 +70,7 @@ export default async function AdminLoginPage(
                 name="email"
                 type="email"
                 required
-                className="rounded-lg border border-border-input bg-bg px-3.5 py-3 text-sm outline-none focus:border-amber focus:shadow-[0_0_0_3px_rgba(246,168,28,0.15)]"
+                className="rounded-lg border border-border-input bg-bg px-3.5 py-3 text-sm outline-none focus:border-amber focus:shadow-[0_0_0_3px_rgba(240,160,28,0.15)]"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -85,7 +85,7 @@ export default async function AdminLoginPage(
                 name="password"
                 type="password"
                 required
-                className="rounded-lg border border-border-input bg-bg px-3.5 py-3 text-sm outline-none focus:border-amber focus:shadow-[0_0_0_3px_rgba(246,168,28,0.15)]"
+                className="rounded-lg border border-border-input bg-bg px-3.5 py-3 text-sm outline-none focus:border-amber focus:shadow-[0_0_0_3px_rgba(240,160,28,0.15)]"
               />
             </div>
             <button

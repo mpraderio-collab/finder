@@ -365,7 +365,7 @@ export function PromotionForm({ action, products, defaultValues, submitLabel }: 
         }
         .input:focus {
           border-color: var(--color-amber);
-          box-shadow: 0 0 0 3px rgba(246, 168, 28, 0.15);
+          box-shadow: 0 0 0 3px rgba(240,160,28, 0.15);
         }
       `}</style>
     </form>

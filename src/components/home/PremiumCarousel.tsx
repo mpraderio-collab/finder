@@ -174,7 +174,7 @@ export function PremiumCarousel({ slides }: { slides: CarouselSlide[] }) {
 
       <style>{`
         .pc-lamp {
-          background: radial-gradient(closest-side, rgba(246,168,28,.5), rgba(246,168,28,.12) 55%, transparent 75%);
+          background: radial-gradient(closest-side, rgba(240,160,28,.5), rgba(240,160,28,.12) 55%, transparent 75%);
           mix-blend-mode: screen;
           animation: pc-lamp-on 1400ms cubic-bezier(.2,.7,.2,1) both;
         }
