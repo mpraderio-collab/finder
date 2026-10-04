@@ -180,6 +180,14 @@ model ProductImage {
   alt       String  @default("")
   position  Int     @default(0)
   isHero    Boolean @default(false)
+  // Fotos que se muestran en el carrusel del home (las de ambiente quedan
+  // bien de fondo; las infografías con texto no).
+  showInCarousel Boolean @default(false)
+  // Dónde está la luz en la foto, en % (0-100) desde la esquina superior
+  // izquierda — el carrusel del home la centra. Se calcula al marcar la
+  // foto para el carrusel; sin dato, se centra la foto entera.
+  focusX    Float?
+  focusY    Float?
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId String
 

@@ -4,7 +4,7 @@ import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/ProductCard";
 import { Stars } from "@/components/Stars";
 import { PremiumCarousel, type CarouselSlide } from "@/components/home/PremiumCarousel";
-import { averageRating, formatPrice, getActiveProducts, getHeroImageUrl } from "@/lib/products";
+import { averageRating, formatPrice, getActiveProducts } from "@/lib/products";
 import { getSiteSettings } from "@/lib/settings";
 
 const valueProps = [
@@ -22,6 +22,9 @@ const valueProps = [
   },
 ];
 
+const PHOTOS_PER_PRODUCT = 4;
+const PRODUCTS_IN_CAROUSEL = 4;
+
 const EYEBROWS = [
   "Para leer sin cansar la vista",
   "Para trabajar con foco",
@@ -38,18 +41,36 @@ function shortTitle(name: string) {
 export default async function Home() {
   const [products, settings] = await Promise.all([getActiveProducts(), getSiteSettings()]);
 
+  // Hasta PHOTOS_PER_PRODUCT fotos por producto (la principal primero) en los
+  // primeros PRODUCTS_IN_CAROUSEL productos que tengan fotos.
   const slides: CarouselSlide[] = products
-    .map((p) => ({ p, imageUrl: getHeroImageUrl(p) }))
-    .filter((x): x is { p: (typeof products)[number]; imageUrl: string } => Boolean(x.imageUrl))
-    .slice(0, 4)
-    .map(({ p, imageUrl }, i) => ({
-      slug: p.slug,
-      eyebrow: EYEBROWS[i % EYEBROWS.length],
-      title: shortTitle(p.name),
-      text: p.tagline,
-      imageUrl,
-      price: formatPrice(p.price),
-    }));
+    .map((p) => ({
+      p,
+      // Solo las fotos marcadas "Mostrar en el carrusel" desde el admin; si
+      // un producto no tiene ninguna, entra con su foto principal.
+      photos: (() => {
+        const photos = p.images.filter((img) => img.type !== "video");
+        const marked = photos.filter((img) => img.showInCarousel);
+        const chosen = marked.length > 0 ? marked : [photos.find((img) => img.isHero) ?? photos[0]].filter(Boolean);
+        return chosen
+          .sort((x, y) => Number(y.isHero) - Number(x.isHero) || x.position - y.position)
+          .slice(0, PHOTOS_PER_PRODUCT);
+      })(),
+    }))
+    .filter((x) => x.photos.length > 0)
+    .slice(0, PRODUCTS_IN_CAROUSEL)
+    .flatMap(({ p, photos }, i) =>
+      photos.map((photo) => ({
+        slug: p.slug,
+        eyebrow: EYEBROWS[i % EYEBROWS.length],
+        title: shortTitle(p.name),
+        text: p.tagline,
+        imageUrl: photo.url,
+        focusX: photo.focusX,
+        focusY: photo.focusY,
+        price: formatPrice(p.price),
+      })),
+    );
 
   const allReviews = products.flatMap((p) => p.reviews);
   const overallRating = averageRating(allReviews);

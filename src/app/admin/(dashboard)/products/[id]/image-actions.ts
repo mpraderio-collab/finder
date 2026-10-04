@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { detectLightFocus } from "@/lib/image-focus";
 
 async function requireAdmin() {
   const session = await auth();
@@ -235,6 +236,37 @@ export async function setHeroImage(
   revalidatePath(`/admin/products/${productId}`);
   revalidatePath("/catalogo");
   if (product) revalidatePath(`/catalogo/${product.slug}`);
+  revalidatePath("/");
+  return {};
+}
+
+export async function toggleCarouselImage(
+  productId: string,
+  imageId: string,
+): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const image = await db.productImage.findUnique({ where: { id: imageId } });
+  if (!image || image.productId !== productId) {
+    return { error: "La imagen ya no existe." };
+  }
+  if (image.type === "video") {
+    return { error: "Un video no puede ir en el carrusel." };
+  }
+
+  const turningOn = !image.showInCarousel;
+  // Al sumarla al carrusel se detecta dónde está la luz para centrarla.
+  const focus = turningOn && image.focusX === null ? await detectLightFocus(image.url) : null;
+
+  await db.productImage.update({
+    where: { id: imageId },
+    data: {
+      showInCarousel: turningOn,
+      ...(focus ? { focusX: focus.x, focusY: focus.y } : {}),
+    },
+  });
+
+  revalidatePath(`/admin/products/${productId}`);
   revalidatePath("/");
   return {};
 }

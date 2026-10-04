@@ -9,9 +9,10 @@ import {
   deleteProductImage,
   reorderProductImages,
   setHeroImage,
+  toggleCarouselImage,
 } from "./image-actions";
 
-type ProductImage = { id: string; url: string; type: string; isHero: boolean };
+type ProductImage = { id: string; url: string; type: string; isHero: boolean; showInCarousel: boolean };
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
@@ -184,6 +185,26 @@ export function ImageManager({
                     className="text-amber-ink hover:underline disabled:opacity-50"
                   >
                     Usar como principal
+                  </button>
+                )}
+                {img.type !== "video" && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      startTransition(async () => {
+                        const res = await toggleCarouselImage(productId, img.id);
+                        if (res.error) setError(res.error);
+                        router.refresh();
+                      })
+                    }
+                    className={`rounded-full border px-1.5 py-0.5 text-[10px] font-semibold disabled:opacity-50 ${
+                      img.showInCarousel
+                        ? "border-amber bg-amber-soft text-amber-ink"
+                        : "border-line text-ink-faint hover:text-ink"
+                    }`}
+                  >
+                    {img.showInCarousel ? "En el carrusel" : "Al carrusel"}
                   </button>
                 )}
                 <button
