@@ -61,6 +61,14 @@ export function ProductPurchase({
   const buyPanelRef = useRef<HTMLDivElement>(null);
   const [showStickyBar, setShowStickyBar] = useState(false);
 
+  // Avisa al botón flotante de WhatsApp que hay una barra de compra fija
+  // abajo, para que se suba y no tape el botón Comprar.
+  useEffect(() => {
+    if (!showStickyBar) return;
+    document.body.setAttribute("data-sticky-bar", "");
+    return () => document.body.removeAttribute("data-sticky-bar");
+  }, [showStickyBar]);
+
   useEffect(() => {
     trackEvent("view_content", { productId, productName: name, value: price });
     // Solo al montar: no queremos re-disparar el evento si el usuario

@@ -261,3 +261,8 @@ button:not(:disabled) {
     stroke-dashoffset: 0 !important;
   }
 }
+
+/* El botón flotante de WhatsApp se sube sobre la barra de compra fija de la ficha de producto. */
+body[data-sticky-bar] .wa-float {
+  bottom: 5.75rem;
+}
