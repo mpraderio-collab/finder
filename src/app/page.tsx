@@ -25,12 +25,14 @@ const valueProps = [
 const PHOTOS_PER_PRODUCT = 4;
 const PRODUCTS_IN_CAROUSEL = 4;
 
-const EYEBROWS = [
-  "Para leer sin cansar la vista",
-  "Para trabajar con foco",
-  "Para ambientar cada rincón",
-  "Para tu mesa de luz",
-];
+// Frase corta sobre el uso de cada producto, por slug. Si se suma un producto
+// nuevo sin frase propia, usa la genérica en vez de heredar la de otro.
+const EYEBROWS: Record<string, string> = {
+  "lampara-lectura-led": "Para leer sin cansar la vista",
+  "luz-gradiente-rgb-sensor-movimiento": "Para ambientar tu habitación",
+  "luz-escritorio-magnetica": "Para trabajar con foco",
+};
+const DEFAULT_EYEBROW = "Luz para cada momento";
 
 // El nombre completo del producto no entra en un título de 68px: se corta
 // antes de "con"/"carga" (el nombre completo sigue en la ficha).
@@ -59,10 +61,10 @@ export default async function Home() {
     }))
     .filter((x) => x.photos.length > 0)
     .slice(0, PRODUCTS_IN_CAROUSEL)
-    .flatMap(({ p, photos }, i) =>
+    .flatMap(({ p, photos }) =>
       photos.map((photo) => ({
         slug: p.slug,
-        eyebrow: EYEBROWS[i % EYEBROWS.length],
+        eyebrow: EYEBROWS[p.slug] ?? DEFAULT_EYEBROW,
         title: shortTitle(p.name),
         text: p.tagline,
         imageUrl: photo.url,
