@@ -39,15 +39,27 @@ export function ProductCard({
     >
       <div className="e-tile-media relative aspect-[340/420] w-full overflow-hidden bg-e-tile">
         {heroUrl && (
-          <ViewTransition name={productImageTransitionName(product.slug)} share="e-morph" default="none">
+          <>
+            {/* La portada puede ser una infografía con texto: se muestra
+                entera sobre una versión desenfocada que llena el tile. */}
             <Image
               src={heroUrl}
-              alt={product.name}
+              alt=""
+              aria-hidden
               fill
-              className="e-tile-primary object-cover"
-              sizes={sizes}
+              className="e-tile-backdrop scale-125 object-cover opacity-40 blur-2xl"
+              sizes="120px"
             />
-          </ViewTransition>
+            <ViewTransition name={productImageTransitionName(product.slug)} share="e-morph" default="none">
+              <Image
+                src={heroUrl}
+                alt={product.name}
+                fill
+                className="e-tile-primary object-contain"
+                sizes={sizes}
+              />
+            </ViewTransition>
+          </>
         )}
         {secondaryUrl && (
           <Image

@@ -594,8 +594,20 @@ function GalleryTile({
       alt={name}
       fill
       priority={priority}
-      className="object-cover"
+      className="object-contain"
       sizes={fill ? "(max-width: 767px) 100vw, 30vw" : wide ? "(min-width: 768px) 60vw, 100vw" : "(min-width: 768px) 30vw, 100vw"}
+    />
+  );
+  // Fotos e infografías se muestran enteras (sin recortar el texto) sobre
+  // una versión desenfocada que llena el tile.
+  const backdrop = (
+    <Image
+      src={img.url}
+      alt=""
+      aria-hidden
+      fill
+      className="scale-125 object-cover opacity-40 blur-2xl"
+      sizes="120px"
     />
   );
   return (
@@ -605,6 +617,7 @@ function GalleryTile({
       aria-label="Ver foto en pantalla completa"
       className={`${box} cursor-zoom-in overflow-hidden bg-e-tile`}
     >
+      {backdrop}
       {transitionName ? (
         <ViewTransition name={transitionName} share="e-morph" default="none">
           {image}

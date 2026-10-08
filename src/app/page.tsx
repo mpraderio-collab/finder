@@ -206,7 +206,7 @@ export default async function Home() {
                       return (
                         <span key={p.slug} className="relative aspect-[3/4] overflow-hidden bg-e-tile">
                           {hero && (
-                            <Image src={hero} alt="" fill className="object-cover" sizes="(min-width: 768px) 15vw, 30vw" />
+                            <Image src={hero} alt="" fill className="object-contain" sizes="(min-width: 768px) 15vw, 30vw" />
                           )}
                         </span>
                       );
