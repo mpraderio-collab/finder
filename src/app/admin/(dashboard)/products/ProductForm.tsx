@@ -25,7 +25,6 @@ type Props = {
 };
 
 const initialState: ProductActionState = {};
-const DEFAULT_SHIPPING_COST = 10500;
 // Valores reales observados en la cuenta de Mercado Pago del negocio — se
 // usan como default para no tener que recordarlos cada vez, pero se pueden
 // editar si cambian.
@@ -34,7 +33,7 @@ const DEFAULT_IIBB_PERCENT = 5;
 
 // La comisión de MP y el IIBB se cobran como % del precio de venta (no del
 // costo), así que el costo "real" contra el que se mide el margen depende
-// del precio: costoReal = base fija (costo + envío) + precio × %fees.
+// del precio: costoReal = base fija (el costo) + precio × %fees.
 function feeFraction(mpPercent: number | "", iibbPercent: number | ""): number {
   return ((mpPercent === "" ? 0 : mpPercent) + (iibbPercent === "" ? 0 : iibbPercent)) / 100;
 }
@@ -92,33 +91,25 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
 
   const [cost, setCost] = useState<number | "">(defaultValues?.costPrice ?? "");
   const [price, setPrice] = useState<number | "">(defaultValues?.price ?? "");
-  // Costo de envío y comisiones — solo se usan acá para calcular el margen
-  // real, no son datos del producto y no se guardan (siempre arrancan en
-  // el default).
-  const [shippingCost, setShippingCost] = useState<number | "">(DEFAULT_SHIPPING_COST);
+  // Las comisiones solo se usan acá para calcular el margen real, no son
+  // datos del producto y no se guardan (siempre arrancan en el default). El
+  // envío no entra: se cobra al final de la venta, según la provincia.
   const [mpCommissionPercent, setMpCommissionPercent] = useState<number | "">(
     DEFAULT_MP_COMMISSION_PERCENT,
   );
   const [iibbPercent, setIibbPercent] = useState<number | "">(DEFAULT_IIBB_PERCENT);
   const fees = feeFraction(mpCommissionPercent, iibbPercent);
 
-  // Costo + envío: la parte fija del costo real de una unidad sola (las
-  // comisiones son la parte variable, se calculan sobre el precio).
-  function unitFixedBasis(c: number | "", s: number | ""): number | "" {
-    if (c === "") return "";
-    return c + (s === "" ? 0 : s);
-  }
-
   const [marginPercent, setMarginPercent] = useState<number | "">(() =>
     marginPercentOf(
-      unitFixedBasis(defaultValues?.costPrice ?? "", DEFAULT_SHIPPING_COST),
+      defaultValues?.costPrice ?? "",
       feeFraction(DEFAULT_MP_COMMISSION_PERCENT, DEFAULT_IIBB_PERCENT),
       defaultValues?.price ?? "",
     ),
   );
   const [marginAmount, setMarginAmount] = useState<number | "">(() =>
     marginAmountOf(
-      unitFixedBasis(defaultValues?.costPrice ?? "", DEFAULT_SHIPPING_COST),
+      defaultValues?.costPrice ?? "",
       feeFraction(DEFAULT_MP_COMMISSION_PERCENT, DEFAULT_IIBB_PERCENT),
       defaultValues?.price ?? "",
     ),
@@ -135,38 +126,33 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
   // margen queda con ese precio.
   function handleCostChange(value: number | "") {
     setCost(value);
-    recalcMargins(unitFixedBasis(value, shippingCost), fees);
+    recalcMargins(value, fees);
   }
 
-  // Igual que el costo: cambiar el envío o las comisiones solo recalcula el
-  // margen mostrado, no mueve el precio ya cargado.
-  function handleShippingCostChange(value: number | "") {
-    setShippingCost(value);
-    recalcMargins(unitFixedBasis(cost, value), fees);
-  }
-
+  // Igual que el costo: cambiar las comisiones solo recalcula el margen
+  // mostrado, no mueve el precio ya cargado.
   function handleMpCommissionChange(value: number | "") {
     setMpCommissionPercent(value);
     const ff = feeFraction(value, iibbPercent);
-    recalcMargins(unitFixedBasis(cost, shippingCost), ff);
+    recalcMargins(cost, ff);
   }
 
   function handleIibbChange(value: number | "") {
     setIibbPercent(value);
     const ff = feeFraction(mpCommissionPercent, value);
-    recalcMargins(unitFixedBasis(cost, shippingCost), ff);
+    recalcMargins(cost, ff);
   }
 
   function handlePriceChange(value: number | "") {
     setPrice(value);
-    const basis = unitFixedBasis(cost, shippingCost);
+    const basis = cost;
     setMarginPercent(marginPercentOf(basis, fees, value));
     setMarginAmount(marginAmountOf(basis, fees, value));
   }
 
   function handleMarginPercentChange(value: number | "") {
     setMarginPercent(value);
-    const basis = unitFixedBasis(cost, shippingCost);
+    const basis = cost;
     const newPrice = priceFromMarginPercent(basis, fees, value);
     if (newPrice === "") return;
     setPrice(newPrice);
@@ -175,7 +161,7 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
 
   function handleMarginAmountChange(value: number | "") {
     setMarginAmount(value);
-    const basis = unitFixedBasis(cost, shippingCost);
+    const basis = cost;
     const newPrice = priceFromMarginAmount(basis, fees, value);
     if (newPrice === "") return;
     setPrice(newPrice);
@@ -246,7 +232,7 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
         >
           <MoneyInput name="costPrice" value={cost} onChange={handleCostChange} className="input" />
         </Field>
-        <Field label="% de margen" name="marginPercent" hint="Sobre costo + envío + comisiones" labelClassName="min-h-10">
+        <Field label="% de margen" name="marginPercent" hint="Sobre costo + comisiones" labelClassName="min-h-10">
           <input
             type="number"
             step="any"
@@ -258,21 +244,13 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
             className="input disabled:opacity-50"
           />
         </Field>
-        <Field label="$ de margen" name="marginAmount" hint="Precio − costo − envío − comisiones" labelClassName="min-h-10">
+        <Field label="$ de margen" name="marginAmount" hint="Precio − costo − comisiones" labelClassName="min-h-10">
           <MoneyInput
             value={marginAmount}
             onChange={handleMarginAmountChange}
             disabled={cost === ""}
             className="input disabled:opacity-50"
           />
-        </Field>
-        <Field
-          label="Costo de envío (ARS)"
-          name="shippingCost"
-          hint="Solo para calcular el margen"
-          labelClassName="min-h-10"
-        >
-          <MoneyInput value={shippingCost} onChange={handleShippingCostChange} className="input" />
         </Field>
         <Field
           label="% comisión Mercado Pago"
