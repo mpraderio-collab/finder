@@ -1,5 +1,4 @@
 import { db } from "@/lib/db";
-import { isMockData, mockProducts } from "@/lib/mock-data";
 
 export function formatPrice(price: number): string {
   return new Intl.NumberFormat("es-AR", {
@@ -29,7 +28,7 @@ const productInclude = {
   },
 };
 
-function queryActiveProducts() {
+export async function getActiveProducts() {
   return db.product.findMany({
     where: { status: "active" },
     orderBy: { createdAt: "asc" },
@@ -37,7 +36,7 @@ function queryActiveProducts() {
   });
 }
 
-function queryProductBySlug(slug: string) {
+export async function getProductBySlug(slug: string) {
   return db.product.findUnique({
     where: { slug },
     include: productInclude,
@@ -45,21 +44,8 @@ function queryProductBySlug(slug: string) {
 }
 
 export type ProductWithRelations = NonNullable<
-  Awaited<ReturnType<typeof queryProductBySlug>>
+  Awaited<ReturnType<typeof getProductBySlug>>
 >;
-
-export async function getActiveProducts() {
-  if (isMockData()) return mockProducts as unknown as ProductWithRelations[];
-  return queryActiveProducts();
-}
-
-export async function getProductBySlug(slug: string) {
-  if (isMockData()) {
-    const all = mockProducts as unknown as ProductWithRelations[];
-    return all.find((p) => p.slug === slug) ?? null;
-  }
-  return queryProductBySlug(slug);
-}
 
 export function getHeroImageUrl(
   product: Pick<ProductWithRelations, "images">,
