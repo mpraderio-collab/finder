@@ -288,27 +288,29 @@ export default async function Home() {
           )}
 
           {topReviews.length > 0 && (
-            <section className="grid gap-8 py-16 pl-4 md:grid-cols-[360px_1fr] md:pl-8">
-              <div className="flex flex-col gap-4 pr-4 md:pr-0">
-                <span className="e-mono">Lo que dicen</span>
-                <h2 className="text-[40px] font-medium leading-[1.05] tracking-[-0.02em]">
-                  Las luces que eligen nuestros clientes
-                </h2>
-                <p className="text-[14px] text-e-muted">
-                  {overallRating.toFixed(1).replace(".", ",")} de 5 en {allReviews.length} reseñas ·{" "}
-                  {settings.installments} {settings.installments === 1 ? "cuota" : "cuotas"} sin interés
-                </p>
-                <Link href="/catalogo" className="e-pill e-pill--dark w-fit">
+            <section className="flex flex-col gap-10 px-4 py-16 md:px-8">
+              <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between md:gap-10">
+                <div className="flex max-w-[640px] flex-col gap-4">
+                  <span className="e-mono">Lo que dicen</span>
+                  <h2 className="text-[40px] font-medium leading-[1.05] tracking-[-0.02em]">
+                    Las luces que eligen nuestros clientes
+                  </h2>
+                  <p className="text-[14px] text-e-muted">
+                    {overallRating.toFixed(1).replace(".", ",")} de 5 en {allReviews.length} reseñas ·{" "}
+                    {settings.installments} {settings.installments === 1 ? "cuota" : "cuotas"} sin interés
+                  </p>
+                </div>
+                <Link href="/catalogo" className="e-pill e-pill--dark w-fit shrink-0">
                   Ver el catálogo
                 </Link>
               </div>
-              <div className="flex snap-x gap-2 overflow-x-auto pr-4 [scrollbar-width:none] md:pr-8 [&::-webkit-scrollbar]:hidden">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {topReviews.map(({ review, product }) => (
                   <Link
                     key={review.id}
                     href={`/catalogo/${product.slug}`}
                     transitionTypes={["nav-forward"]}
-                    className="flex aspect-[340/420] w-[72vw] shrink-0 snap-start flex-col justify-between bg-e-tile p-6 transition-colors hover:bg-e-line sm:w-[42vw] lg:w-[340px]"
+                    className="flex min-h-[280px] flex-col justify-between gap-8 bg-e-tile p-6 transition-colors hover:bg-e-line"
                   >
                     <span className="e-mono">{"★".repeat(review.rating)}</span>
                     <span className="text-[20px] font-medium leading-snug tracking-[-0.01em]">
