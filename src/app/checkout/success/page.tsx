@@ -82,7 +82,7 @@ export default async function CheckoutSuccessPage(
                       <li key={item.id} className="flex items-center gap-4 text-[14px]">
                         <div className="relative h-[72px] w-[60px] shrink-0 overflow-hidden bg-e-bg">
                           {hero && (
-                            <Image src={hero} alt={item.product.name} fill className="object-cover" sizes="60px" />
+                            <Image src={hero} alt={item.product.name} fill className="object-contain" sizes="60px" />
                           )}
                         </div>
                         <span className="flex-1">

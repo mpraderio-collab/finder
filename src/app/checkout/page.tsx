@@ -327,7 +327,7 @@ export default function CheckoutPage() {
                   <li key={cartItemKey(item.productId, item.variantName)} className="flex items-center gap-4">
                     <div className="relative h-[72px] w-[60px] shrink-0 overflow-hidden bg-e-bg">
                       {item.image && (
-                        <Image src={item.image} alt={item.name} fill className="object-cover" sizes="60px" />
+                        <Image src={item.image} alt={item.name} fill className="object-contain" sizes="60px" />
                       )}
                       <span className="e-mono absolute right-1 top-1 rounded-full bg-e-ink px-1.5 text-[10px] leading-4 text-white">
                         {item.quantity}

@@ -54,7 +54,7 @@ export default function CarritoPage() {
                             className="relative h-[150px] w-[122px] shrink-0 overflow-hidden bg-e-tile"
                           >
                             {item.image && (
-                              <Image src={item.image} alt={item.name} fill className="object-cover" sizes="122px" />
+                              <Image src={item.image} alt={item.name} fill className="object-contain" sizes="122px" />
                             )}
                           </Link>
                           <div className="flex min-w-0 flex-1 flex-col justify-between gap-4">
@@ -110,7 +110,7 @@ export default function CarritoPage() {
                   </div>
                   <div className="flex justify-between text-[14px]">
                     <span className="text-e-muted">Envío</span>
-                    <span>Gratis</span>
+                    <span>Se calcula al finalizar</span>
                   </div>
                   <div className="flex items-baseline justify-between border-t border-e-line pt-4">
                     <span className="e-mono">Total</span>

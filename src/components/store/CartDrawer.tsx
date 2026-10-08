@@ -73,7 +73,7 @@ export function CartDrawer() {
                       className="relative h-[112px] w-[96px] shrink-0 overflow-hidden bg-e-tile"
                     >
                       {item.image && (
-                        <Image src={item.image} alt={item.name} fill className="object-cover" sizes="96px" />
+                        <Image src={item.image} alt={item.name} fill className="object-contain" sizes="96px" />
                       )}
                     </Link>
                     <div className="flex min-w-0 flex-1 flex-col justify-between gap-3">
