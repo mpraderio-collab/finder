@@ -127,11 +127,13 @@ export default async function CatalogoPage() {
                       src={photo}
                       alt={`${product.name} en uso`}
                       fill
+                      priority={i === 0}
                       sizes="(min-width: 1024px) 60vw, 100vw"
                       className="object-cover"
                     />
                   )}
-                  <span className="absolute bottom-6 left-6 text-sm font-medium text-cream [text-shadow:0_1px_8px_rgba(31,24,19,0.6)]">
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-[linear-gradient(0deg,rgba(31,24,19,0.55),transparent)]" />
+                  <span className="absolute bottom-6 left-6 text-sm font-medium text-cream">
                     Así se ve en uso
                   </span>
                 </div>
