@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Manrope, DM_Sans } from "next/font/google";
+import { Manrope, DM_Sans, Geist, Geist_Mono } from "next/font/google";
 import { CartProvider } from "@/lib/cart-context";
 import { WhatsAppButtonGate } from "@/components/WhatsAppButtonGate";
 import { PageViewTracker } from "@/components/PageViewTracker";
@@ -19,6 +19,16 @@ const dmSans = DM_Sans({
   weight: ["400", "500", "700"],
 });
 
+const geist = Geist({
+  variable: "--font-geist",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
   title: "Finder — Iluminación moderna para tu casa",
   description:
@@ -29,7 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
-      className={`${manrope.variable} ${dmSans.variable} h-full antialiased`}
+      className={`${manrope.variable} ${dmSans.variable} ${geist.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-bg text-ink">
         <MetaPixel />
