@@ -59,7 +59,7 @@ export default async function AdminSalesPage(
             <thead className="border-b border-line">
               <tr>
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                  Venta
+                  Fecha
                 </th>
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
                   Cliente
@@ -76,17 +76,14 @@ export default async function AdminSalesPage(
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
                   Pago
                 </th>
-                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                  Fecha
-                </th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
               {sales.map((sale) => (
                 <tr key={sale.id} className="border-b border-line-soft last:border-0">
-                  <td className="px-4 py-3 font-heading font-bold text-navy">
-                    #{sale.id.slice(-6).toUpperCase()}
+                  <td className="px-4 py-3 text-ink-soft">
+                    {sale.createdAt.toLocaleDateString("es-AR")}
                   </td>
                   <td className="px-4 py-3">
                     <p className="font-medium text-ink">{sale.customerName}</p>
@@ -117,9 +114,6 @@ export default async function AdminSalesPage(
                         {sale.isPaid ? "Pagada" : "Sin pagar"}
                       </span>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-ink-soft">
-                    {sale.createdAt.toLocaleDateString("es-AR")}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Link
