@@ -16,9 +16,9 @@ export type CarouselSlide = {
   price: string;
 };
 
-// Punto de la pantalla donde se busca dejar la luz: a la derecha del
-// centro, porque el costado izquierdo queda bajo el degradé del texto.
-const TARGET_X = 0.6;
+// Punto de la pantalla donde se busca dejar la luz: el centro, porque la
+// foto va a sangre y el epígrafe queda abajo.
+const TARGET_X = 0.5;
 const TARGET_Y = 0.5;
 
 // object-position que lleva el punto (focus) de una foto "cover" lo más
@@ -86,13 +86,13 @@ function FocusedPhoto({
         alt={alt}
         fill
         priority={priority}
-        sizes="(min-width: 768px) 55vw, 100vw"
+        sizes="100vw"
         style={{ objectPosition }}
         onLoad={(e) =>
           setNatural({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })
         }
-        className={`object-cover transition-opacity duration-[900ms] ${
-          active ? "pc-photo opacity-100" : "opacity-0"
+        className={`object-cover transition-opacity duration-[var(--d-light-dur)] ease-[var(--d-light-ease)] ${
+          active ? "d-light-in opacity-100" : "opacity-0"
         }`}
         aria-hidden={!active}
       />
@@ -100,8 +100,11 @@ function FocusedPhoto({
   );
 }
 
-const SLIDE_MS = 5000;
+const SLIDE_MS = 6000;
 
+// Hero de la home: foto a sangre que cambia con el fundido "lighting" de la
+// referencia, epígrafe mínimo abajo al centro y una línea de progreso por
+// producto.
 export function PremiumCarousel({ slides }: { slides: CarouselSlide[] }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -133,7 +136,7 @@ export function PremiumCarousel({ slides }: { slides: CarouselSlide[] }) {
     <section
       aria-roledescription="carousel"
       aria-label="Productos destacados"
-      className="pc-root relative isolate overflow-hidden bg-[#061f33] text-[#fff4dc]"
+      className="relative isolate h-[min(88vh,900px)] min-h-[560px] overflow-hidden bg-d-surface font-d-sans text-d-ink"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
@@ -143,163 +146,103 @@ export function PremiumCarousel({ slides }: { slides: CarouselSlide[] }) {
         if (e.key === "ArrowLeft") go(index - 1);
       }}
     >
-      <div className="mx-auto grid min-h-[620px] max-w-[1400px] md:min-h-[min(86vh,760px)] ">
-        {/* Degradés a todo el ancho: la foto se disuelve en el fondo, sin corte */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 z-[5] max-md:bg-[#061f33]/65 md:bg-[linear-gradient(to_right,#061f33_0%,#061f33_36%,rgba(6,31,51,.6)_50%,rgba(6,31,51,0)_82%)]"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-1/3 bg-gradient-to-t from-[#061f33] to-transparent"
-        />
-
-        {/* Texto */}
-        <div className="relative z-10 flex flex-col justify-center gap-6 px-6 pb-40 pt-20 md:pb-32 md:pl-12 md:pr-4 lg:pl-20">
-          <p key={`e-${slide.slug}`} className="pc-rise text-xs font-bold uppercase tracking-[0.28em] text-amber">
-            {slide.eyebrow}
-          </p>
-          <h1
-            key={`t-${slide.slug}`}
-            className="pc-rise font-heading text-[44px] font-extrabold leading-[1.02] tracking-[-0.035em] md:text-[68px]"
-            style={{ animationDelay: "80ms" }}
-          >
-            {slide.title}
-          </h1>
-          <p
-            key={`p-${slide.slug}`}
-            className="pc-rise max-w-[440px] text-[17px]/[1.65] text-[#fff4dc]/70"
-            style={{ animationDelay: "160ms" }}
-          >
-            {slide.text}
-          </p>
-          <div
-            key={`c-${slide.slug}`}
-            className="pc-rise flex flex-wrap items-center gap-4"
-            style={{ animationDelay: "240ms" }}
-          >
-            <Link
-              href={`/catalogo/${slide.slug}`}
-              className="rounded-full bg-amber px-8 py-4 font-heading text-sm font-bold text-[#061f33] transition-colors hover:bg-[#ffc04d] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber"
-            >
-              Ver producto
-            </Link>
-            <Link
-              href="/catalogo"
-              className="font-heading text-sm font-bold text-[#fff4dc]/80 underline decoration-amber/60 decoration-2 underline-offset-8 transition-colors hover:text-white"
-            >
-              Ver todo el catálogo
-            </Link>
-            <span className="font-heading text-sm font-semibold text-[#fff4dc]/55">{slide.price}</span>
-          </div>
-        </div>
-
-        {/* Foto: la luz se enciende al entrar cada slide */}
-        <div className="absolute inset-0 md:left-[34%]">
-          <div
-            key={`g-${index}`}
-            aria-hidden
-            className="pc-lamp pointer-events-none absolute left-1/2 top-1/2 h-[120%] w-[120%] -translate-x-1/2 -translate-y-1/2"
+      {slides.map((s, i) =>
+        mounted.has(i) ? (
+          <FocusedPhoto
+            key={`${s.slug}-${i}`}
+            src={s.imageUrl}
+            alt={i === index ? s.title : ""}
+            focusX={s.focusX}
+            focusY={s.focusY}
+            priority={i === 0}
+            active={i === index}
           />
-          {slides.map((s, i) =>
-            mounted.has(i) ? (
-              <FocusedPhoto
-                key={`${s.slug}-${i}`}
-                src={s.imageUrl}
-                alt={i === index ? s.title : ""}
-                focusX={s.focusX}
-                focusY={s.focusY}
-                priority={i === 0}
-                active={i === index}
-              />
-            ) : null,
-          )}
-        </div>
+        ) : null,
+      )}
+
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-48 bg-gradient-to-t from-d-ink/50 to-transparent"
+      />
+
+      {/* Epígrafe mínimo abajo al centro, como en la referencia */}
+      <div className="absolute inset-x-0 bottom-20 z-10 flex justify-center px-5">
+        <p
+          key={`c-${slide.slug}`}
+          className="d-caption flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-d-bg px-4 py-2.5 text-center text-sm"
+        >
+          <span>
+            {slide.title} — {slide.text}
+          </span>
+          <Link href={`/catalogo/${slide.slug}`} className="d-cta">
+            Ver producto
+          </Link>
+        </p>
       </div>
 
-      {/* Navegación: una pestaña por producto, con filamento de progreso */}
-      <div className="absolute inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#061f33]/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1400px] items-stretch gap-2 px-6 md:px-12 lg:px-20">
-          <ol className="flex min-w-0 flex-1 items-stretch">
-            {groups.map((g) => {
-              const active = g.indices.includes(index);
-              return (
-                <li key={g.slug} className="min-w-0 flex-1">
-                  <button
-                    type="button"
-                    onClick={() => go(g.indices[0])}
-                    aria-label={`Ir a ${g.title}`}
-                    aria-current={active}
-                    className="group relative block w-full truncate py-5 pr-4 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amber"
+      {/* Navegación: una pestaña por producto, con línea de progreso */}
+      <div className="absolute inset-x-0 bottom-0 z-10 flex items-end gap-6 px-5 pb-5 md:px-10">
+        <ol className="flex min-w-0 flex-1 gap-6">
+          {groups.map((g) => {
+            const active = g.indices.includes(index);
+            return (
+              <li key={g.slug} className="min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={() => go(g.indices[0])}
+                  aria-label={`Ir a ${g.title}`}
+                  aria-current={active}
+                  className="group block w-full py-2 text-left"
+                >
+                  <span className="flex gap-1">
+                    {g.indices.map((i) => (
+                      <span key={i} className="relative h-px flex-1 bg-d-bg/40">
+                        {i < index && g.indices.includes(index) && (
+                          <span className="absolute inset-0 bg-d-bg" />
+                        )}
+                        {i === index && (
+                          <span
+                            key={`b-${index}`}
+                            className="pc-filament absolute left-0 top-0 h-px bg-d-bg"
+                            style={{
+                              animationDuration: `${SLIDE_MS}ms`,
+                              animationPlayState: paused ? "paused" : "running",
+                            }}
+                            onAnimationEnd={() => go(index + 1)}
+                          />
+                        )}
+                      </span>
+                    ))}
+                  </span>
+                  <span
+                    className={`mt-2 hidden truncate text-sm text-d-bg transition-opacity duration-[var(--d-dur)] ease-[var(--d-ease)] sm:block ${
+                      active ? "opacity-100" : "opacity-50 group-hover:opacity-100"
+                    }`}
                   >
-                    <span
-                      className={`block truncate font-heading text-[13px] font-bold transition-colors ${
-                        active ? "text-white" : "text-[#fff4dc]/45 group-hover:text-[#fff4dc]/80"
-                      }`}
-                    >
-                      {g.title}
-                    </span>
-                    <span className="absolute inset-x-0 top-0 flex gap-1 pr-4">
-                      {g.indices.map((i) => (
-                        <span key={i} className="relative h-[2px] flex-1 bg-white/10">
-                          {i < index && g.indices.includes(index) && (
-                            <span className="absolute inset-0 bg-amber" />
-                          )}
-                          {i === index && (
-                            <span
-                              key={`b-${index}`}
-                              className="pc-filament absolute left-0 top-0 h-[2px] bg-amber"
-                              style={{
-                                animationDuration: `${SLIDE_MS}ms`,
-                                animationPlayState: paused ? "paused" : "running",
-                              }}
-                              onAnimationEnd={() => go(index + 1)}
-                            />
-                          )}
-                        </span>
-                      ))}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-          <div className="hidden items-center gap-2 pl-6 sm:flex">
-            <button
-              type="button"
-              onClick={() => go(index - 1)}
-              aria-label="Anterior"
-              className="grid h-10 w-10 place-items-center rounded-full border border-white/20 text-white transition-colors hover:border-amber hover:text-amber focus-visible:outline-2 focus-visible:outline-amber"
-            >
-              ←
-            </button>
-            <button
-              type="button"
-              onClick={() => go(index + 1)}
-              aria-label="Siguiente"
-              className="grid h-10 w-10 place-items-center rounded-full border border-white/20 text-white transition-colors hover:border-amber hover:text-amber focus-visible:outline-2 focus-visible:outline-amber"
-            >
-              →
-            </button>
-          </div>
+                    {g.title}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+        <div className="hidden items-center gap-5 pb-2 text-sm text-d-bg sm:flex">
+          <button type="button" onClick={() => go(index - 1)} aria-label="Anterior" className="d-fade">
+            ←
+          </button>
+          <button type="button" onClick={() => go(index + 1)} aria-label="Siguiente" className="d-fade">
+            →
+          </button>
         </div>
       </div>
 
       <style>{`
-        .pc-lamp {
-          background: radial-gradient(closest-side, rgba(240,160,28,.5), rgba(240,160,28,.12) 55%, transparent 75%);
-          mix-blend-mode: screen;
-          animation: pc-lamp-on 1400ms cubic-bezier(.2,.7,.2,1) both;
-        }
-        .pc-photo { animation: pc-photo-on 1600ms cubic-bezier(.2,.7,.2,1) both; }
-        .pc-rise { animation: pc-rise 800ms cubic-bezier(.2,.7,.2,1) both; }
         .pc-filament { width: 0; animation-name: pc-fill; animation-timing-function: linear; animation-fill-mode: forwards; }
-        @keyframes pc-lamp-on { from { opacity: 0; transform: translate(-50%,-50%) scale(.6); } to { opacity: 1; transform: translate(-50%,-50%) scale(1); } }
-        @keyframes pc-photo-on { from { filter: brightness(.45) saturate(.8); transform: scale(1.06); } to { filter: brightness(1) saturate(1); transform: scale(1); } }
-        @keyframes pc-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+        .d-caption { animation: d-caption-in var(--d-dur) var(--d-ease) both; }
         @keyframes pc-fill { from { width: 0; } to { width: 100%; } }
+        @keyframes d-caption-in { from { opacity: 0; } to { opacity: 1; } }
         @media (prefers-reduced-motion: reduce) {
-          .pc-lamp, .pc-photo, .pc-rise { animation: none; }
+          .d-caption { animation: none; }
           .pc-filament { animation: none; width: 100%; }
         }
       `}</style>

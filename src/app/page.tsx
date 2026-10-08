@@ -1,26 +1,14 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { ProductCard } from "@/components/ProductCard";
-import { Stars } from "@/components/Stars";
 import { PremiumCarousel, type CarouselSlide } from "@/components/home/PremiumCarousel";
-import { averageRating, formatPrice, getActiveProducts } from "@/lib/products";
+import { PageTransition } from "@/components/d/PageTransition";
+import { Reveal } from "@/components/d/Reveal";
+import { CtaLink } from "@/components/d/CtaLink";
+import { averageRating, formatPrice, getActiveProducts, getHeroImageUrl } from "@/lib/products";
 import { getSiteSettings } from "@/lib/settings";
-
-const valueProps = [
-  {
-    title: "Envío a todo el país",
-    text: "Despachamos con Correo Argentino a donde estés.",
-  },
-  {
-    title: "Pagá con Mercado Pago",
-    text: "Tarjeta, cuotas o dinero en cuenta, como más te guste.",
-  },
-  {
-    title: "Diseño que dura",
-    text: "Materiales pensados para el uso diario, no para la primera semana.",
-  },
-];
+import { getSetOffer, SetPanel } from "@/components/d/SetOffer";
 
 const PHOTOS_PER_PRODUCT = 4;
 const PRODUCTS_IN_CAROUSEL = 4;
@@ -34,10 +22,44 @@ const EYEBROWS: Record<string, string> = {
 };
 const DEFAULT_EYEBROW = "Luz para cada momento";
 
-// El nombre completo del producto no entra en un título de 68px: se corta
-// antes de "con"/"carga" (el nombre completo sigue en la ficha).
+// Escena (momento de uso) de cada producto, para la sección Colección.
+const SCENES: Record<string, string> = {
+  "lampara-lectura-led": "Leer",
+  "luz-escritorio-magnetica": "Trabajar",
+  "luz-gradiente-rgb-sensor-movimiento": "Ambientar",
+};
+const SCENE_ORDER = ["Leer", "Trabajar", "Ambientar"];
+
+// El nombre completo del producto no entra en un título: se corta antes de
+// "con"/"carga" (el nombre completo sigue en la ficha).
 function shortTitle(name: string) {
   return name.split(/ con | carga /)[0];
+}
+
+function SectionHead({
+  label,
+  children,
+  id,
+}: {
+  label: string;
+  children?: React.ReactNode;
+  id?: string;
+}) {
+  return (
+    <Reveal
+      as="header"
+      className="grid gap-4 border-t border-d-ink px-5 pt-3 md:grid-cols-[330px_1fr] md:gap-0 md:px-10"
+    >
+      <p id={id} className="t-stagger-line text-sm">
+        {label}
+      </p>
+      {children && (
+        <p className="t-stagger-line t-stagger-line--2 max-w-[820px] text-[22px] leading-[1.25] md:text-[26px]">
+          {children}
+        </p>
+      )}
+    </Reveal>
+  );
 }
 
 export default async function Home() {
@@ -76,65 +98,188 @@ export default async function Home() {
 
   const allReviews = products.flatMap((p) => p.reviews);
   const overallRating = averageRating(allReviews);
+  const quote = allReviews.find((r) => r.rating === 5 && r.text.length > 40) ?? allReviews[0];
+
+  // Una foto "de ambiente" por producto: las marcadas para el carrusel desde
+  // el admin son las de ambiente (no infografías); si no hay, la principal.
+  const scenePhoto = (p: (typeof products)[number]) => {
+    const photos = p.images.filter((img) => img.type !== "video");
+    return (photos.find((img) => img.showInCarousel) ?? photos.find((img) => img.isHero) ?? photos[0])?.url;
+  };
+
+  const scenes = products
+    .map((p) => ({ p, scene: SCENES[p.slug] ?? DEFAULT_EYEBROW, photo: scenePhoto(p) }))
+    .filter((s) => s.photo)
+    .sort((a, b) => SCENE_ORDER.indexOf(a.scene) - SCENE_ORDER.indexOf(b.scene))
+    .slice(0, 3);
+
+  const featured = products[0];
+
+  const setOffer = getSetOffer(products);
+  const setPhoto = setOffer ? scenePhoto(setOffer.items[setOffer.items.length - 1]) : undefined;
 
   return (
     <>
       <Header />
-      <main className="flex-1">
-        {slides.length > 0 ? (
-          <PremiumCarousel slides={slides} />
-        ) : (
-          <section className="bg-[#061f33] px-6 py-24 text-[#fff4dc]">
-            <div className="mx-auto max-w-[1400px] md:px-12 lg:px-20">
-              <h1 className="font-heading text-[44px] font-extrabold leading-[1.05] tracking-[-0.035em] md:text-[68px]">
+      <PageTransition>
+        <main className="d-store flex-1">
+          {slides.length > 0 ? (
+            <PremiumCarousel slides={slides} />
+          ) : (
+            <section className="px-5 py-32 md:px-10">
+              <h1 className="max-w-[900px] font-d-serif text-[44px] leading-[1.1] md:text-[64px]">
                 La luz que hace que tu casa se sienta mejor
               </h1>
-            </div>
-          </section>
-        )}
+            </section>
+          )}
 
-        <section className="bg-[#061f33] text-[#fff4dc]">
-          <div className="mx-auto grid max-w-[1400px] gap-10 px-6 py-14 sm:grid-cols-3 md:px-12 lg:px-20">
-            {valueProps.map((item) => (
-              <div key={item.title} className="border-t border-amber/70 pt-5">
-                <p className="font-heading text-base font-bold">{item.title}</p>
-                <p className="mt-2 text-sm/[1.6] text-[#fff4dc]/60">{item.text}</p>
+          {scenes.length > 0 && (
+            <section className="pb-24 pt-10">
+              <SectionHead label="Colección" id="escenas">
+                Iluminación pensada para tres momentos de la casa: leer sin cansar la vista, trabajar
+                con foco y ambientar cuando cae el sol.
+              </SectionHead>
+              <div className="mt-14 grid gap-10 px-5 md:grid-cols-3 md:gap-5 md:px-10">
+                {scenes.map(({ p, scene, photo }) => (
+                  <Link key={p.slug} href={`/catalogo/${p.slug}`} className="group">
+                    <div className="relative aspect-[4/5] overflow-hidden bg-d-surface">
+                      <Image
+                        src={photo!}
+                        alt={`${scene}: ${p.name}`}
+                        fill
+                        className="d-zoom object-cover"
+                        sizes="(min-width: 768px) 33vw, 100vw"
+                      />
+                    </div>
+                    <p className="mt-4 text-[26px] leading-none">
+                      {scene}
+                      <sup className="ml-0.5 align-super text-xs">
+                        {products.filter((x) => (SCENES[x.slug] ?? DEFAULT_EYEBROW) === scene).length}
+                      </sup>
+                    </p>
+                    <p className="mt-2 text-sm text-d-muted">{shortTitle(p.name)}</p>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {featured && (
+            <section className="border-t border-d-ink px-5 pb-24 pt-3 md:px-10">
+              <div className="grid gap-10 md:grid-cols-[330px_minmax(0,640px)_1fr] md:gap-0">
+                <div className="text-sm">
+                  <p>Destacado</p>
+                  <p className="text-d-muted">01 / {String(products.length).padStart(2, "0")}</p>
+                </div>
+                <Link href={`/catalogo/${featured.slug}`} className="group relative block aspect-[8/11] overflow-hidden bg-d-surface md:mt-10">
+                  {scenePhoto(featured) && (
+                    <Image
+                      src={scenePhoto(featured)!}
+                      alt={featured.name}
+                      fill
+                      className="d-zoom object-cover"
+                      sizes="(min-width: 768px) 640px, 100vw"
+                    />
+                  )}
+                  <span className="absolute left-4 top-4 bg-d-bg px-2.5 py-1.5 text-sm">
+                    {shortTitle(featured.name)} — {featured.tagline}
+                  </span>
+                </Link>
+                <Reveal className="flex flex-col gap-6 md:mt-10 md:pl-10">
+                  <p className="t-stagger-line text-[18px] leading-[1.35]">{featured.description}</p>
+                  {getHeroImageUrl(featured) && (
+                    <div className="t-stagger-line t-stagger-line--2 relative aspect-square w-40 overflow-hidden bg-d-surface">
+                      <Image src={getHeroImageUrl(featured)!} alt="" fill className="object-cover" sizes="160px" />
+                    </div>
+                  )}
+                  <div className="t-stagger-line t-stagger-line--3">
+                    <h2 className="font-d-serif text-[28px] leading-[1.15]">{featured.name}</h2>
+                    <p className="mt-1 text-sm text-d-muted">
+                      {formatPrice(featured.price)} · {settings.installments}{" "}
+                      {settings.installments === 1 ? "cuota" : "cuotas"} sin interés
+                    </p>
+                  </div>
+                  {featured.specs.length > 0 && (
+                    <dl className="t-stagger-line t-stagger-line--4 text-sm">
+                      {featured.specs.slice(0, 4).map((spec) => (
+                        <div key={spec.id} className="flex justify-between gap-4 border-t border-d-line py-2.5">
+                          <dt className="text-d-muted">{spec.label}</dt>
+                          <dd className="text-right">{spec.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                  <div className="flex flex-col items-start gap-4">
+                    <Link href={`/catalogo/${featured.slug}`} className="d-btn w-full">
+                      Ver producto — {formatPrice(featured.price)}
+                    </Link>
+                    <CtaLink href="/catalogo">Ver todo el catálogo</CtaLink>
+                  </div>
+                </Reveal>
+              </div>
+            </section>
+          )}
+
+          {setOffer && (
+            <section className="pb-24 pt-0">
+              <SectionHead label="Sets" id="sets">
+                Combiná tres luces, la que quieras de cada una, y llevate el set con descuento.
+              </SectionHead>
+              <div className="mt-14 grid gap-10 px-5 md:grid-cols-[minmax(0,880px)_1fr] md:gap-10 md:px-10">
+                <div className="relative aspect-[4/3] overflow-hidden bg-d-surface md:aspect-auto md:min-h-[680px]">
+                  {setPhoto && (
+                    <Image
+                      src={setPhoto}
+                      alt="Las luces del set en uso"
+                      fill
+                      className="object-cover"
+                      sizes="(min-width: 768px) 60vw, 100vw"
+                    />
+                  )}
+                </div>
+                <SetPanel offer={setOffer} className="justify-end" />
+              </div>
+            </section>
+          )}
+
+          {quote && (
+            <section className="bg-d-surface px-5 py-24 md:px-10 md:py-32">
+              <Reveal className="mx-auto max-w-[920px] text-center">
+                <p className="t-stagger-line font-d-serif text-[28px] leading-[1.3] md:text-[40px]">
+                  &ldquo;{quote.text}&rdquo;
+                </p>
+                <p className="t-stagger-line t-stagger-line--2 mt-8 text-sm text-d-muted">
+                  {quote.author} — {overallRating.toFixed(1).replace(".", ",")} de 5 en {allReviews.length}{" "}
+                  reseñas
+                </p>
+              </Reveal>
+            </section>
+          )}
+
+          <section className="grid gap-8 border-t border-d-ink px-5 pb-16 pt-3 md:grid-cols-[330px_1fr_1fr_1fr] md:gap-10 md:px-10">
+            <p className="text-sm">Servicio</p>
+            {[
+              {
+                title: "Envío a todo el país",
+                text: "Despachamos con Correo Argentino a donde estés, en 3 a 5 días hábiles.",
+              },
+              {
+                title: "Pagá como quieras",
+                text: `Mercado Pago: tarjeta, dinero en cuenta y hasta ${settings.installments} cuotas sin interés.`,
+              },
+              {
+                title: "Cambios en 30 días",
+                text: "Si no es lo que esperabas, escribinos y lo resolvemos.",
+              },
+            ].map((item) => (
+              <div key={item.title} className="text-sm">
+                <p>{item.title}</p>
+                <p className="mt-1.5 text-d-muted">{item.text}</p>
               </div>
             ))}
-          </div>
-          {allReviews.length > 0 && (
-            <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-8 gap-y-2 border-t border-white/10 px-6 py-5 text-[13px] text-[#fff4dc]/70 md:px-12 lg:px-20">
-              <span className="flex items-center gap-1.5">
-                <Stars rating={overallRating} />
-                {overallRating.toFixed(1).replace(".", ",")} · {allReviews.length} reseñas
-              </span>
-              <span>
-                {settings.installments} {settings.installments === 1 ? "cuota" : "cuotas"} sin interés
-              </span>
-            </div>
-          )}
-        </section>
-
-        <section className="mx-auto max-w-6xl px-6 py-20">
-          <div className="flex items-end justify-between gap-4">
-            <h2 className="font-heading text-[36px] font-extrabold tracking-[-0.03em] text-navy">
-              Nuestros productos
-            </h2>
-            <Link href="/catalogo" className="font-heading text-sm font-bold text-blue hover:text-navy">
-              Ver todos →
-            </Link>
-          </div>
-          {products.length === 0 ? (
-            <p className="mt-8 text-ink-soft">Estamos cargando el catálogo, volvé pronto.</p>
-          ) : (
-            <div className="mt-10 grid gap-[22px] sm:grid-cols-2 lg:grid-cols-3">
-              {products.map((product) => (
-                <ProductCard key={product.slug} product={product} />
-              ))}
-            </div>
-          )}
-        </section>
-      </main>
+          </section>
+        </main>
+      </PageTransition>
       <Footer />
     </>
   );
