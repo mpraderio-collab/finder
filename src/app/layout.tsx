@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { Manrope, DM_Sans } from "next/font/google";
+import { Manrope, DM_Sans, Instrument_Sans, Libre_Caslon_Text } from "next/font/google";
 import { CartProvider } from "@/lib/cart-context";
 import { WhatsAppButtonGate } from "@/components/WhatsAppButtonGate";
 import { PageViewTracker } from "@/components/PageViewTracker";
 import { MetaPixel } from "@/components/MetaPixel";
 import { PromoBanner } from "@/components/PromoBanner";
+import { CartDrawer } from "@/components/CartDrawer";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -19,6 +20,21 @@ const dmSans = DM_Sans({
   weight: ["400", "500", "700"],
 });
 
+// Storefront (D · Galería) typefaces — stand-ins for the reference's Mier A
+// and Caslon Ionic, which are not on Google Fonts.
+const instrumentSans = Instrument_Sans({
+  variable: "--font-instrument",
+  subsets: ["latin"],
+  weight: ["400", "500"],
+});
+
+const libreCaslon = Libre_Caslon_Text({
+  variable: "--font-caslon",
+  subsets: ["latin"],
+  weight: ["400"],
+  style: ["normal", "italic"],
+});
+
 export const metadata: Metadata = {
   title: "Finder — Iluminación moderna para tu casa",
   description:
@@ -29,12 +45,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
-      className={`${manrope.variable} ${dmSans.variable} h-full antialiased`}
+      className={`${manrope.variable} ${dmSans.variable} ${instrumentSans.variable} ${libreCaslon.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-bg text-ink">
         <MetaPixel />
         <PromoBanner />
         <CartProvider>{children}</CartProvider>
+        <CartDrawer />
         <WhatsAppButtonGate />
         <PageViewTracker />
       </body>

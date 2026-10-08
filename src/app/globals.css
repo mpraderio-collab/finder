@@ -71,6 +71,362 @@
 
   --font-heading: var(--font-display);
   --font-sans: var(--font-body);
+
+  /* D · Galería — storefront tokens (Pencil d-*) */
+  --color-d-bg: #fafaf9;
+  --color-d-surface: #f2f0ea;
+  --color-d-ink: #4a0a05;
+  --color-d-muted: #7a4a44;
+  --color-d-line: rgb(74 10 5 / 0.2);
+  --color-d-taupe: #bcb6a6;
+  --color-d-on-ink: #f8f7f1;
+  --font-d-sans: var(--font-instrument);
+  --font-d-serif: var(--font-caslon);
+}
+
+/* D · Galería — motion tokens, measured on incommonwith.com
+   (--transition-std / --transition-lighting in its theme). */
+:root {
+  --d-dur: 400ms;
+  --d-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --d-light-dur: 1200ms;
+  --d-light-ease: cubic-bezier(0.42, 0, 0.58, 1);
+  --d-zoom-dur: 700ms;
+}
+
+/* The storefront opts into the D look; admin keeps the original theme. */
+body:has(main.d-store) {
+  background: var(--color-d-bg);
+  color: var(--color-d-ink);
+  font-family: var(--font-d-sans), Arial, Helvetica, sans-serif;
+}
+
+body:has(main.d-store) ::selection {
+  background: var(--color-d-ink);
+  color: var(--color-d-on-ink);
+}
+
+/* Links fade to half opacity on hover, like the reference nav/CTAs. */
+.d-fade {
+  transition: opacity var(--d-dur) var(--d-ease);
+}
+.d-fade:hover {
+  opacity: 0.5;
+}
+
+/* Underlined CTA with an arrow that grows in on hover (reference .cta.animate). */
+.d-cta {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: opacity var(--d-dur) var(--d-ease);
+}
+.d-cta-arrow {
+  display: inline-block;
+  width: 0;
+  overflow: hidden;
+  transition: width var(--d-dur) var(--d-ease);
+}
+.d-cta:hover .d-cta-arrow,
+.d-cta:focus-visible .d-cta-arrow {
+  width: 25px;
+}
+
+/* Image zoom on card hover (reference group-hover:scale-105). */
+.d-zoom {
+  transition: transform var(--d-zoom-dur) var(--d-ease);
+}
+.group:hover .d-zoom {
+  transform: scale(1.05);
+}
+
+/* Hero photo fades up like the reference "lighting" transition. */
+@keyframes d-light-in {
+  from {
+    opacity: 0;
+    filter: brightness(0.7);
+  }
+  to {
+    opacity: 1;
+    filter: brightness(1);
+  }
+}
+.d-light-in {
+  animation: d-light-in var(--d-light-dur) var(--d-light-ease) both;
+}
+
+/* Buttons: square, filled ink or 1px outline. */
+.d-btn,
+.d-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 24px;
+  font-size: 14px;
+  border: 1px solid var(--color-d-ink);
+  transition:
+    background-color var(--d-dur) var(--d-ease),
+    color var(--d-dur) var(--d-ease),
+    opacity var(--d-dur) var(--d-ease);
+}
+.d-btn {
+  background: var(--color-d-ink);
+  color: var(--color-d-on-ink);
+}
+.d-btn:hover:not(:disabled) {
+  background: transparent;
+  color: var(--color-d-ink);
+}
+.d-btn-outline {
+  background: transparent;
+  color: var(--color-d-ink);
+}
+.d-btn-outline:hover:not(:disabled) {
+  background: var(--color-d-ink);
+  color: var(--color-d-on-ink);
+}
+.d-btn:disabled,
+.d-btn-outline:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Inputs: bottom hairline only. */
+.d-input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--color-d-ink);
+  background: transparent;
+  padding: 10px 0;
+  font-size: 16px;
+  color: var(--color-d-ink);
+  border-radius: 0;
+  outline: none;
+  transition: border-color var(--d-dur) var(--d-ease);
+}
+.d-input::placeholder {
+  color: var(--color-d-muted);
+}
+.d-input:focus {
+  border-bottom-color: var(--color-d-ink);
+  box-shadow: 0 1px 0 0 var(--color-d-ink);
+}
+
+/* Accordion: rows grow from 0fr to 1fr; the plus bars rotate into a minus. */
+.d-acc-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--d-dur) var(--d-ease);
+}
+.d-acc-panel[data-open="true"] {
+  grid-template-rows: 1fr;
+}
+.d-acc-panel > div {
+  overflow: hidden;
+}
+.d-acc-icon {
+  position: relative;
+  width: 11px;
+  height: 11px;
+}
+.d-acc-icon::before,
+.d-acc-icon::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 5px;
+  width: 11px;
+  height: 1px;
+  background: currentColor;
+  transition: transform var(--d-dur) var(--d-ease);
+}
+.d-acc-icon::after {
+  transform: rotate(90deg);
+}
+[data-open="true"] > .d-acc-icon::after,
+.d-acc-trigger[aria-expanded="true"] .d-acc-icon::after {
+  transform: rotate(0deg);
+}
+
+/* transitions-dev — panel reveal, adapted to slide on X for the cart drawer. */
+:root {
+  --panel-open-dur: 400ms;
+  --panel-close-dur: 350ms;
+  --panel-translate-x: 100%;
+  --panel-blur: 2px;
+  --panel-ease: var(--d-ease);
+  --scrim-dur: 400ms;
+}
+.t-panel-slide {
+  transform: translateX(var(--panel-translate-x));
+  opacity: 0;
+  filter: blur(var(--panel-blur));
+  pointer-events: none;
+  transition:
+    transform var(--panel-close-dur) var(--panel-ease),
+    opacity var(--panel-close-dur) var(--panel-ease),
+    filter var(--panel-close-dur) var(--panel-ease);
+  will-change: transform, opacity, filter;
+}
+.t-panel-slide[data-open="true"] {
+  transform: translateX(0);
+  opacity: 1;
+  filter: blur(0);
+  pointer-events: auto;
+  transition:
+    transform var(--panel-open-dur) var(--panel-ease),
+    opacity var(--panel-open-dur) var(--panel-ease),
+    filter var(--panel-open-dur) var(--panel-ease);
+}
+.d-scrim {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--scrim-dur) var(--d-ease);
+}
+.d-scrim[data-open="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* transitions-dev — modal (search overlay). */
+:root {
+  --modal-open-dur: 250ms;
+  --modal-close-dur: 150ms;
+  --modal-scale: 0.96;
+  --modal-scale-close: 0.96;
+  --modal-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+.t-modal {
+  transform-origin: center;
+  transform: scale(var(--modal-scale));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--modal-open-dur) var(--modal-ease),
+    opacity var(--modal-open-dur) var(--modal-ease);
+  will-change: transform, opacity;
+}
+.t-modal.is-open {
+  transform: scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+.t-modal.is-closing {
+  transform: scale(var(--modal-scale-close));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--modal-close-dur) var(--modal-ease),
+    opacity var(--modal-close-dur) var(--modal-ease);
+}
+
+/* transitions-dev — texts reveal, triggered on scroll by <Reveal>. */
+:root {
+  --stagger-dur: 500ms;
+  --stagger-distance: 12px;
+  --stagger-stagger: 40ms;
+  --stagger-blur: 3px;
+  --stagger-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+.t-stagger-line {
+  display: block;
+  opacity: 0;
+  transform: translateY(var(--stagger-distance));
+  filter: blur(var(--stagger-blur));
+  transition:
+    opacity var(--stagger-dur) var(--stagger-ease),
+    transform var(--stagger-dur) var(--stagger-ease),
+    filter var(--stagger-dur) var(--stagger-ease);
+  will-change: transform, opacity, filter;
+}
+.t-stagger-line--2 {
+  transition-delay: var(--stagger-stagger);
+}
+.t-stagger-line--3 {
+  transition-delay: calc(var(--stagger-stagger) * 2);
+}
+.t-stagger-line--4 {
+  transition-delay: calc(var(--stagger-stagger) * 3);
+}
+.t-stagger.is-shown .t-stagger-line {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
+/* View transitions between pages: a quiet crossfade (the reference fades the
+   whole body), the header stays put, product photos morph card → detail. */
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-old(.d-page) {
+  animation: d-vt-out calc(var(--d-dur) / 2) var(--d-ease) both;
+}
+::view-transition-new(.d-page) {
+  animation: d-vt-in var(--d-dur) var(--d-ease) calc(var(--d-dur) / 4) both;
+}
+::view-transition-group(.d-morph) {
+  animation-duration: var(--d-dur);
+  animation-timing-function: var(--d-ease);
+}
+::view-transition-group(site-header) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(site-header) {
+  display: none;
+}
+::view-transition-new(site-header) {
+  animation: none;
+}
+@keyframes d-vt-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes d-vt-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .d-fade,
+  .d-cta,
+  .d-cta-arrow,
+  .d-zoom,
+  .d-btn,
+  .d-btn-outline,
+  .d-input,
+  .d-acc-panel,
+  .d-acc-icon::before,
+  .d-acc-icon::after,
+  .d-scrim {
+    transition: none !important;
+  }
+  .d-light-in {
+    animation: none !important;
+  }
+  .t-panel-slide {
+    transition: none !important;
+  }
+  .t-modal {
+    transition: none !important;
+  }
+  .t-stagger-line {
+    transition: none !important;
+  }
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
 }
 
 body {

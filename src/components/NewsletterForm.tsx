@@ -33,33 +33,26 @@ export function NewsletterForm() {
   }
 
   if (sent) {
-    return (
-      <p className="text-sm font-semibold text-amber">
-        ¡Listo! Ya estás suscripto.
-      </p>
-    );
+    return <p className="mt-3 text-sm">Listo, ya estás suscripto.</p>;
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-1.5">
-      <div className="flex gap-2">
+    <form onSubmit={handleSubmit} className="mt-2 flex flex-col gap-1.5">
+      <div className="flex items-center gap-4 border-b border-d-ink">
         <input
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="tu@email.com"
-          className="min-w-0 flex-1 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-white/40 focus:border-amber"
+          aria-label="Tu email"
+          className="min-w-0 flex-1 bg-transparent py-2.5 text-sm outline-none placeholder:text-d-muted"
         />
-        <button
-          type="submit"
-          disabled={submitting}
-          className="shrink-0 rounded-lg bg-amber px-4 py-2 font-heading text-sm font-bold text-[#3a2500] transition-colors hover:bg-amber-hover disabled:opacity-50"
-        >
-          {submitting ? "…" : "Sumarme"}
+        <button type="submit" disabled={submitting} className="d-fade shrink-0 text-sm disabled:opacity-50">
+          {submitting ? "Enviando…" : "Suscribirme"}
         </button>
       </div>
-      {error && <span className="text-xs text-red-300">{error}</span>}
+      {error && <span className="text-xs text-err-ink">{error}</span>}
     </form>
   );
 }

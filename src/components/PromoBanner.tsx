@@ -4,8 +4,8 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 const MESSAGES = [
-  "🚚 Envío a todo el país",
-  "🎁 10% OFF llevando 3 productos — combinalos como quieras",
+  "Envío a todo el país",
+  "10% off llevando 3 productos — combinalos como quieras",
 ];
 
 const INTERVAL_MS = 4000;
@@ -41,8 +41,8 @@ export function PromoBanner() {
   if (pathname.startsWith("/admin")) return null;
 
   return (
-    <div className="bg-navy py-2 text-center">
-      <p className="px-4 text-[13px] font-semibold tracking-wide text-white">
+    <div className="bg-d-ink py-2 text-center font-d-sans">
+      <p className="px-4 text-[13px] text-d-on-ink">
         <span ref={textRef} className="t-text-swap">
           {MESSAGES[index]}
         </span>
