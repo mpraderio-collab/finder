@@ -40,7 +40,7 @@ export function NotifyStockForm({
 
   if (sent) {
     return (
-      <p className="rounded-lg border border-amber-line bg-amber-soft px-3.5 py-2.5 text-[13px] font-semibold text-amber-ink">
+      <p className="border border-d-line px-4 py-3 text-sm">
         Listo, te avisamos por mail cuando vuelva a haber stock de {productName}.
       </p>
     );
@@ -48,22 +48,21 @@ export function NotifyStockForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-1.5">
-      <p className="text-[13px] font-semibold text-ink">
-        Avisame cuando haya stock
-      </p>
-      <div className="flex gap-2">
+      <p className="text-sm">Avisame cuando haya stock</p>
+      <div className="flex items-center gap-4 border-b border-d-ink">
         <input
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="tu@email.com"
-          className="focus-amber min-w-0 flex-1 rounded-lg border border-border-input bg-bg px-3 py-2 text-sm outline-none"
+          aria-label="Tu email"
+          className="min-w-0 flex-1 bg-transparent py-2.5 text-sm outline-none placeholder:text-d-muted"
         />
         <button
           type="submit"
           disabled={submitting}
-          className="shrink-0 rounded-lg bg-navy px-4 py-2 font-heading text-sm font-bold text-white transition-colors hover:bg-navy-deep disabled:opacity-50"
+          className="d-fade shrink-0 text-sm disabled:opacity-50"
         >
           {submitting ? "…" : "Avisame"}
         </button>

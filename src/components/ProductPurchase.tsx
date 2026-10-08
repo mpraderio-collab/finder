@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { addCartItem } from "@/lib/cart-context";
 import { trackEvent } from "@/lib/analytics";
 import { NotifyStockForm } from "@/components/NotifyStockForm";
+import { openCartDrawer } from "@/components/CartDrawer";
+import { ProductPhotoTransition } from "@/components/d/PageTransition";
 import { formatPrice } from "@/lib/products";
 import {
   calculateSingleLineTotal,
@@ -53,12 +55,13 @@ export function ProductPurchase({
     variants[0]?.name,
   );
   const [quantity, setQuantity] = useState(1);
-  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [mobileIndex, setMobileIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const addLabelRef = useRef<HTMLSpanElement>(null);
   const addLabelTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const buyPanelRef = useRef<HTMLDivElement>(null);
+  const mobileTrackRef = useRef<HTMLDivElement>(null);
   const [showStickyBar, setShowStickyBar] = useState(false);
 
   // Avisa al botón flotante de WhatsApp que hay una barra de compra fija
@@ -125,21 +128,13 @@ export function ProductPurchase({
     return () => observer.disconnect();
   }, []);
 
-  function openLightbox() {
-    const idx = imageGallery.findIndex(
-      (img) => img.id === gallery[carouselIndex]?.id,
-    );
-    setLightboxIndex(idx === -1 ? 0 : idx);
+  function openLightbox(index: number) {
+    setLightboxIndex(index);
     setLightboxOpen(true);
   }
 
   function closeLightbox() {
     setLightboxOpen(false);
-    // Al cerrar, la miniatura seleccionada abajo sigue a la última foto vista.
-    const shown = imageGallery[lightboxIndex];
-    if (!shown) return;
-    const galleryIdx = gallery.findIndex((img) => img.id === shown.id);
-    if (galleryIdx !== -1) setCarouselIndex(galleryIdx);
   }
 
   function showPrevLightbox() {
@@ -168,7 +163,8 @@ export function ProductPurchase({
   function selectVariant(name: string) {
     setSelectedVariant(name);
     setQuantity(1);
-    setCarouselIndex(0);
+    setMobileIndex(0);
+    mobileTrackRef.current?.scrollTo({ left: 0 });
   }
 
   // Swap the "Agregar al carrito" label to a confirmation and back, per
@@ -199,11 +195,18 @@ export function ProductPurchase({
     addCartItem(buildCartItem(), quantity);
     trackEvent("add_to_cart", { productId, productName: name, value: price });
     if (addLabelTimeoutRef.current) clearTimeout(addLabelTimeoutRef.current);
-    swapAddLabel("¡Agregado! ✓");
+    swapAddLabel("Agregado al carrito");
     addLabelTimeoutRef.current = setTimeout(
       () => swapAddLabel("Agregar al carrito"),
       2000,
     );
+    openCartDrawer();
+  }
+
+  function handleBuyNow() {
+    addCartItem(buildCartItem(), quantity);
+    trackEvent("add_to_cart", { productId, productName: name, value: price });
+    router.push("/checkout");
   }
 
   function buildCartItem() {
@@ -219,278 +222,213 @@ export function ProductPurchase({
     };
   }
 
+  function renderMedia(item: GalleryImage, i: number, sizes: string) {
+    if (item.type === "video") {
+      return (
+        <video
+          key={item.id}
+          src={item.url}
+          controls
+          controlsList="nofullscreen noremoteplayback"
+          disablePictureInPicture
+          playsInline
+          className="h-full w-full object-cover"
+        />
+      );
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => openLightbox(i)}
+        aria-label="Ver foto en pantalla completa"
+        className="absolute inset-0 h-full w-full cursor-zoom-in"
+      >
+        <Image
+          src={item.url}
+          alt={i === 0 ? name : ""}
+          fill
+          priority={i === 0}
+          className="object-cover"
+          sizes={sizes}
+        />
+      </button>
+    );
+  }
+
   return (
-    <div className="grid gap-11 md:grid-cols-2">
-      <div className="flex flex-col gap-3">
-        <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-line bg-surface">
-          {gallery[carouselIndex] &&
-            (gallery[carouselIndex].type === "video" ? (
-              <video
-                key={gallery[carouselIndex].id}
-                src={gallery[carouselIndex].url}
-                controls
-                controlsList="nofullscreen noremoteplayback"
-                disablePictureInPicture
-                playsInline
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={openLightbox}
-                aria-label="Ver foto en pantalla completa"
-                className="absolute inset-0 h-full w-full cursor-zoom-in"
-              >
-                <Image
-                  src={gallery[carouselIndex].url}
-                  alt={name}
-                  fill
-                  priority
-                  className="object-cover"
-                  sizes="(min-width: 768px) 50vw, 100vw"
-                />
-              </button>
-            ))}
-        </div>
-        {gallery.length > 1 && (
-          <div className="grid grid-cols-4 gap-3">
-            {gallery.map((img, i) => (
-              <button
-                key={img.id}
-                type="button"
-                onClick={() => setCarouselIndex(i)}
-                aria-label={
-                  img.type === "video" ? `Ver video ${i + 1}` : `Ver foto ${i + 1}`
-                }
-                className={`relative aspect-square overflow-hidden rounded-[10px] border-2 bg-surface transition-colors ${
-                  i === carouselIndex ? "border-navy" : "border-line"
-                }`}
-              >
-                {img.type === "video" ? (
-                  <>
-                    <video
-                      src={img.url}
-                      muted
-                      playsInline
-                      className="h-full w-full object-cover"
-                    />
-                    <span className="absolute inset-0 flex items-center justify-center bg-ink/20 text-lg text-white">
-                      ▶
-                    </span>
-                  </>
-                ) : (
-                  <Image
-                    src={img.url}
-                    alt=""
-                    fill
-                    className="object-cover"
-                    sizes="150px"
-                  />
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-5">
-        {aboveActions}
-
-        <div
-          ref={buyPanelRef}
-          className="flex flex-col gap-4 rounded-[14px] border border-line bg-surface p-[22px]"
-        >
-          <div className="flex items-baseline gap-3.5">
-            <span className="font-heading text-[34px] font-extrabold text-navy">
-              {formatPrice(price)}
-            </span>
-            <span className="text-[13px] text-ink-soft">
-              {installments} {installments === 1 ? "cuota" : "cuotas"} de{" "}
-              {formatPrice(installment)}
-            </span>
-          </div>
-
-          {promotion && (
-            <div className="flex w-fit flex-col gap-1 rounded-lg bg-amber-soft px-3 py-2 text-[13px] font-semibold text-amber-ink">
-              {promotion.tiers.map((tier) => (
-                <p key={tier.threshold}>{tierLabel(promotion, tier)}</p>
-              ))}
-              {promotion.products && promotion.products.length > 1 && (
-                <p className="font-normal">
-                  Se combina con:{" "}
-                  {promotion.products
-                    .filter((p) => p.id !== productId)
-                    .map((p) => p.name)
-                    .join(", ")}
-                </p>
-              )}
-            </div>
-          )}
-
-          {variants.length > 0 && (
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-ink">
-                Color — {activeVariant?.name ?? ""}
-              </p>
-              <div className="mt-2.5 flex gap-2.5">
-                {variants.map((variant) => (
-                  <button
-                    key={variant.name}
-                    type="button"
-                    title={
-                      variant.stock <= 0
-                        ? `${variant.name} — sin stock`
-                        : variant.name
-                    }
-                    onClick={() => selectVariant(variant.name)}
-                    disabled={variant.stock <= 0}
-                    className={`relative h-[46px] w-[46px] overflow-hidden rounded-full border-2 transition-all disabled:cursor-not-allowed disabled:opacity-30 ${
-                      selectedVariant === variant.name
-                        ? "border-amber"
-                        : "border-border-input"
-                    }`}
-                    style={{ backgroundColor: variant.swatch }}
-                  >
-                    {(() => {
-                      const avatarUrl = variant.images.find(
-                        (img) => img.type !== "video",
-                      )?.url;
-                      return (
-                        avatarUrl && (
-                          <Image
-                            src={avatarUrl}
-                            alt={variant.name}
-                            fill
-                            className="object-cover"
-                            sizes="56px"
-                          />
-                        )
-                      );
-                    })()}
-                  </button>
-                ))}
+    <div className="grid font-d-sans text-d-ink md:grid-cols-[minmax(0,860fr)_minmax(0,580fr)]">
+      {/* Galería: fotos apiladas a sangre en desktop, deslizable en mobile */}
+      <div className="relative">
+        <div className="hidden flex-col md:flex">
+          {gallery.map((item, i) => {
+            const media = (
+              <div key={item.id} className="relative aspect-[860/1100] w-full overflow-hidden bg-d-surface">
+                {renderMedia(item, i, "60vw")}
               </div>
-            </div>
-          )}
-
-          <div className="flex items-center gap-3">
-            <div className="flex items-center rounded-lg border border-border-input bg-bg">
-              <button
-                type="button"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                disabled={outOfStock}
-                className="px-3 py-2 text-ink-soft hover:text-navy disabled:opacity-30"
-                aria-label="Restar cantidad"
-              >
-                −
-              </button>
-              <span className="min-w-8 text-center font-heading text-sm font-bold text-ink">
-                {quantity}
-              </span>
-              <button
-                type="button"
-                onClick={() => setQuantity((q) => Math.min(maxStock, q + 1))}
-                disabled={outOfStock || quantity >= maxStock}
-                className="px-3 py-2 text-ink-soft hover:text-navy disabled:opacity-30"
-                aria-label="Sumar cantidad"
-              >
-                +
-              </button>
-            </div>
-            {!outOfStock && maxStock <= 5 && (
-              <span className="text-[13px] font-semibold text-amber-ink">
-                Quedan {maxStock} unidades
-              </span>
-            )}
+            );
+            return i === 0 ? (
+              <ProductPhotoTransition key={item.id} slug={slug}>
+                {media}
+              </ProductPhotoTransition>
+            ) : (
+              media
+            );
+          })}
+        </div>
+        <div className="md:hidden">
+          <div
+            ref={mobileTrackRef}
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              if (el.clientWidth > 0) setMobileIndex(Math.round(el.scrollLeft / el.clientWidth));
+            }}
+            className="flex aspect-[4/5] snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {gallery.map((item, i) => (
+              <div key={item.id} className="relative h-full w-full shrink-0 snap-center bg-d-surface">
+                {renderMedia(item, i, "(max-width: 767px) 100vw, 1px")}
+              </div>
+            ))}
           </div>
-
-          {promotion && currentPercentOff(promotion, price, quantity) > 0 && (
-            <p className="text-[13px] font-semibold text-navy">
-              Total: {formatPrice(calculateSingleLineTotal(price, quantity, promotion))}
+          {gallery.length > 1 && (
+            <p className="px-5 pt-2 text-sm text-d-muted">
+              {mobileIndex + 1} / {gallery.length}
             </p>
           )}
+        </div>
+      </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <button
-              type="button"
-              disabled={outOfStock}
-              onClick={handleAddToCart}
-              className="flex-1 rounded-lg border border-navy bg-bg px-6 py-3.5 font-heading text-sm font-bold text-navy transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:border-line disabled:text-ink-faint"
-            >
-              {outOfStock ? (
-                "Sin stock"
-              ) : (
-                <span ref={addLabelRef} className="t-text-swap">
-                  Agregar al carrito
-                </span>
+      {/* Columna de compra, fija mientras bajan las fotos */}
+      <div className="px-5 pb-12 pt-6 md:px-10 md:pt-8">
+        <div className="flex flex-col gap-6 md:sticky md:top-[96px]">
+          {aboveActions}
+
+          <div ref={buyPanelRef} className="flex flex-col gap-5">
+            <p className="text-sm">
+              {formatPrice(price)}
+              <span className="text-d-muted">
+                {" "}· {installments} {installments === 1 ? "cuota" : "cuotas"} de {formatPrice(installment)} sin
+                interés
+              </span>
+            </p>
+
+            {variants.length > 0 && (
+              <div className="flex items-baseline gap-6 border-t border-d-line pt-4 text-sm">
+                <span className="w-20 shrink-0 text-d-muted">Color</span>
+                <div className="flex flex-wrap gap-5">
+                  {variants.map((variant) => (
+                    <button
+                      key={variant.name}
+                      type="button"
+                      title={variant.stock <= 0 ? `${variant.name} — sin stock` : variant.name}
+                      onClick={() => selectVariant(variant.name)}
+                      disabled={variant.stock <= 0}
+                      aria-pressed={selectedVariant === variant.name}
+                      className={`flex items-center gap-2 underline-offset-4 transition-opacity duration-[var(--d-dur)] ease-[var(--d-ease)] disabled:cursor-not-allowed disabled:line-through disabled:opacity-30 ${
+                        selectedVariant === variant.name ? "underline" : "hover:opacity-50"
+                      }`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="h-2.5 w-2.5 rounded-full border border-d-line"
+                        style={{ backgroundColor: variant.swatch }}
+                      />
+                      {variant.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-baseline gap-6 border-t border-d-line pt-4 text-sm">
+              <span className="w-20 shrink-0 text-d-muted">Cantidad</span>
+              <div className="flex items-center gap-5">
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  disabled={outOfStock}
+                  className="d-fade disabled:opacity-30"
+                  aria-label="Restar cantidad"
+                >
+                  −
+                </button>
+                <span className="min-w-4 text-center">{quantity}</span>
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.min(maxStock, q + 1))}
+                  disabled={outOfStock || quantity >= maxStock}
+                  className="d-fade disabled:opacity-30"
+                  aria-label="Sumar cantidad"
+                >
+                  +
+                </button>
+              </div>
+              {!outOfStock && maxStock <= 5 && (
+                <span className="ml-auto text-d-muted">Quedan {maxStock} unidades</span>
               )}
-            </button>
-            <button
-              type="button"
-              disabled={outOfStock}
-              onClick={() => {
-                addCartItem(buildCartItem(), quantity);
-                trackEvent("add_to_cart", { productId, productName: name, value: price });
-                router.push("/checkout");
-              }}
-              className="flex-1 rounded-lg bg-navy px-6 py-3.5 font-heading text-sm font-bold text-white transition-colors hover:bg-navy-deep disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-faint"
-            >
-              Comprar ahora
-            </button>
+            </div>
+
+            {promotion && currentPercentOff(promotion, price, quantity) > 0 && (
+              <p className="text-sm">
+                Total: {formatPrice(calculateSingleLineTotal(price, quantity, promotion))}
+              </p>
+            )}
+
+            <div className="flex flex-col gap-2">
+              <button type="button" disabled={outOfStock} onClick={handleAddToCart} className="d-btn w-full">
+                {outOfStock ? (
+                  "Sin stock"
+                ) : (
+                  <span ref={addLabelRef} className="t-text-swap">
+                    Agregar al carrito
+                  </span>
+                )}
+              </button>
+              <button type="button" disabled={outOfStock} onClick={handleBuyNow} className="d-btn-outline w-full">
+                Comprar ahora con Mercado Pago
+              </button>
+            </div>
+
+            {outOfStock && <NotifyStockForm productId={productId} productName={name} />}
+
+            {promotion && (
+              <div className="border border-d-line px-4 py-3 text-sm">
+                {promotion.tiers.map((tier) => (
+                  <p key={tier.threshold}>{tierLabel(promotion, tier)}</p>
+                ))}
+                {promotion.products && promotion.products.length > 1 && (
+                  <p className="mt-1 text-d-muted">
+                    Se combina con:{" "}
+                    {promotion.products
+                      .filter((p) => p.id !== productId)
+                      .map((p) => p.name)
+                      .join(", ")}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <p className="text-sm text-d-muted">
+              Envío a todo el país · Pagos con Mercado Pago · Cambios en 30 días
+            </p>
           </div>
 
-          {outOfStock && (
-            <NotifyStockForm productId={productId} productName={name} />
-          )}
-
-          <p className="text-xs text-ink-faint">
-            Envío a todo el país · Pagos con Mercado Pago · Cambios
-            en 30 días
-          </p>
+          {belowActions}
         </div>
-
-        {belowActions}
       </div>
 
       {showStickyBar && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-bg/95 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl items-center gap-3 px-6 py-3">
-            <div className="relative hidden h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-surface sm:block">
-              {cartImage && (
-                <Image
-                  src={cartImage}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="44px"
-                />
-              )}
-            </div>
+        <div className="d-sticky-bar fixed inset-x-0 bottom-0 z-30 border-t border-d-ink bg-d-bg md:hidden">
+          <div className="flex items-center gap-3 px-5 py-3">
             <div className="min-w-0 flex-1">
-              <p className="truncate font-heading text-sm font-bold text-navy">
-                {name}
-              </p>
-              <p className="font-heading text-base font-extrabold text-navy">
-                {formatPrice(price)}
-              </p>
+              <p className="truncate text-sm">{name}</p>
+              <p className="text-sm text-d-muted">{formatPrice(price)}</p>
             </div>
             <button
               type="button"
               disabled={outOfStock}
-              onClick={handleAddToCart}
-              className="hidden shrink-0 rounded-lg border border-navy px-4 py-2.5 font-heading text-sm font-bold text-navy transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:border-line disabled:text-ink-faint sm:inline-block"
-            >
-              Agregar al carrito
-            </button>
-            <button
-              type="button"
-              disabled={outOfStock}
-              onClick={() => {
-                addCartItem(buildCartItem(), quantity);
-                trackEvent("add_to_cart", { productId, productName: name, value: price });
-                router.push("/checkout");
-              }}
-              className="shrink-0 rounded-lg bg-navy px-5 py-2.5 font-heading text-sm font-bold text-white transition-colors hover:bg-navy-deep disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-faint"
+              onClick={handleBuyNow}
+              className="d-btn shrink-0 px-5"
             >
               {outOfStock ? "Sin stock" : "Comprar ahora"}
             </button>
@@ -500,53 +438,48 @@ export function ProductPurchase({
 
       {lightboxOpen && imageGallery[lightboxIndex] && (
         <div
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-ink/90 p-4"
+          className="d-lightbox fixed inset-0 z-[80] flex flex-col items-center justify-center gap-4 bg-d-bg p-4 font-d-sans text-d-ink"
           onClick={closeLightbox}
         >
-          <button
-            type="button"
-            onClick={closeLightbox}
-            aria-label="Cerrar"
-            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-2xl leading-none text-white hover:bg-white/20"
-          >
-            ×
+          <button type="button" onClick={closeLightbox} className="d-fade absolute right-5 top-5 z-10 text-sm">
+            Cerrar
           </button>
 
           {imageGallery.length > 1 && (
-            <span className="absolute left-4 top-4 z-10 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">
+            <span className="absolute left-5 top-5 z-10 text-sm">
               {lightboxIndex + 1} / {imageGallery.length}
             </span>
           )}
 
           {imageGallery.length > 1 && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                showPrevLightbox();
-              }}
-              aria-label="Foto anterior"
-              className="absolute left-4 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-2xl leading-none text-white hover:bg-white/20"
-            >
-              ‹
-            </button>
-          )}
-          {imageGallery.length > 1 && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                showNextLightbox();
-              }}
-              aria-label="Foto siguiente"
-              className="absolute right-4 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-2xl leading-none text-white hover:bg-white/20"
-            >
-              ›
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  showPrevLightbox();
+                }}
+                aria-label="Foto anterior"
+                className="d-fade absolute left-5 top-1/2 z-10 -translate-y-1/2 text-sm"
+              >
+                ←
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  showNextLightbox();
+                }}
+                aria-label="Foto siguiente"
+                className="d-fade absolute right-5 top-1/2 z-10 -translate-y-1/2 text-sm"
+              >
+                →
+              </button>
+            </>
           )}
 
           <div
-            className="relative h-full max-h-[75vh] w-full max-w-5xl flex-1"
+            className="relative h-full max-h-[80vh] w-full max-w-5xl flex-1"
             onClick={(e) => e.stopPropagation()}
             onTouchStart={handleLightboxTouchStart}
             onTouchEnd={handleLightboxTouchEnd}
@@ -563,52 +496,27 @@ export function ProductPurchase({
               />
             ) : (
               <Image
+                key={imageGallery[lightboxIndex].id}
                 src={imageGallery[lightboxIndex].url}
                 alt={name}
                 fill
-                className="object-contain"
+                className="d-light-in object-contain"
                 sizes="100vw"
               />
             )}
           </div>
-
-          {imageGallery.length > 1 && (
-            <div
-              className="flex w-full max-w-xl shrink-0 justify-center gap-2 overflow-x-auto pb-1"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {imageGallery.map((img, i) => (
-                <button
-                  key={img.id}
-                  type="button"
-                  onClick={() => setLightboxIndex(i)}
-                  aria-label={img.type === "video" ? `Ver video ${i + 1}` : `Ver foto ${i + 1}`}
-                  className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 bg-surface transition-colors ${
-                    i === lightboxIndex ? "border-amber" : "border-white/20"
-                  }`}
-                >
-                  {img.type === "video" ? (
-                    <>
-                      <video src={img.url} muted playsInline className="h-full w-full object-cover" />
-                      <span className="absolute inset-0 flex items-center justify-center bg-ink/20 text-sm text-white">
-                        ▶
-                      </span>
-                    </>
-                  ) : (
-                    <Image
-                      src={img.url}
-                      alt=""
-                      fill
-                      className="object-cover"
-                      sizes="56px"
-                    />
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       )}
+
+      <style>{`
+        .d-sticky-bar { animation: d-bar-in var(--d-dur) var(--d-ease) both; }
+        .d-lightbox { animation: d-lightbox-in var(--d-dur) var(--d-ease) both; }
+        @keyframes d-bar-in { from { transform: translateY(100%); } }
+        @keyframes d-lightbox-in { from { opacity: 0; } }
+        @media (prefers-reduced-motion: reduce) {
+          .d-sticky-bar, .d-lightbox { animation: none; }
+        }
+      `}</style>
     </div>
   );
 }
