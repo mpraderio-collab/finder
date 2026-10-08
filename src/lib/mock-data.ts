@@ -81,10 +81,10 @@ export const mockProducts = [
     price: 35000,
     stock: 20,
     images: images("p-lampara", [
-      { url: "/products/lampara-led/hero.png", isHero: true, carousel: true },
-      { url: "/products/lampara-led/gallery-1.png", carousel: true },
+      { url: "/products/lampara-led/hero.png", isHero: true },
+      { url: "/products/lampara-led/gallery-1.png" },
       { url: "/products/lampara-led/gallery-2.png" },
-      { url: "/products/lampara-led/gallery-3.png" },
+      { url: "/products/lampara-led/gallery-3.png", carousel: true, focusX: 45, focusY: 50 },
     ]),
     variants: variants("p-lampara", [
       ["Blanco", "#F5F3EE", 8, "/products/lampara-led/hero.png"],
@@ -122,7 +122,7 @@ export const mockProducts = [
     stock: 15,
     images: images("p-rgb", [
       { url: "/products/luz-rgb-sensor/hero.jpg", isHero: true, carousel: true },
-      { url: "/products/luz-rgb-sensor/gallery-1.jpg", carousel: true },
+      { url: "/products/luz-rgb-sensor/gallery-1.jpg" },
       { url: "/products/luz-rgb-sensor/gallery-2.jpg" },
     ]),
     variants: [],
@@ -153,7 +153,7 @@ export const mockProducts = [
     price: 25000,
     stock: 6,
     images: images("p-escritorio", [
-      { url: "/products/luz-escritorio-magnetica/hero.jpg", isHero: true, carousel: true },
+      { url: "/products/luz-escritorio-magnetica/hero.jpg", isHero: true },
       { url: "/products/luz-escritorio-magnetica/gallery-1.jpg", carousel: true },
     ]),
     variants: [],
