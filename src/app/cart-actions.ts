@@ -2,6 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
+import { MOCK_DATA } from "@/lib/mock-data";
 import { calculateLineTotals, activePromotion } from "@/lib/promotions";
 
 export type CartSyncItem = {
@@ -15,7 +16,7 @@ export type CartSyncItem = {
 // precio nunca se confía del cliente: se recalcula acá con el producto
 // real, igual que en el checkout.
 export async function syncCartOrder(sessionId: string, items: CartSyncItem[]): Promise<void> {
-  if (!sessionId) return;
+  if (!sessionId || MOCK_DATA) return;
 
   const existing = await db.order.findFirst({
     where: { sessionId, status: "cart" },

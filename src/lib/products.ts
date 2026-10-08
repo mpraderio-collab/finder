@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { MOCK_DATA, mockProducts } from "@/lib/mock-data";
 
 export function formatPrice(price: number): string {
   return new Intl.NumberFormat("es-AR", {
@@ -29,6 +30,7 @@ const productInclude = {
 };
 
 export async function getActiveProducts() {
+  if (MOCK_DATA) return mockProducts;
   return db.product.findMany({
     where: { status: "active" },
     orderBy: { createdAt: "asc" },
@@ -37,6 +39,7 @@ export async function getActiveProducts() {
 }
 
 export async function getProductBySlug(slug: string) {
+  if (MOCK_DATA) return mockProducts.find((p) => p.slug === slug) ?? null;
   return db.product.findUnique({
     where: { slug },
     include: productInclude,

@@ -12,8 +12,10 @@ import { averageRating, getProductBySlug } from "@/lib/products";
 import { getSiteSettings } from "@/lib/settings";
 import { activePromotion } from "@/lib/promotions";
 import { db } from "@/lib/db";
+import { MOCK_DATA, mockProducts } from "@/lib/mock-data";
 
 export async function generateStaticParams() {
+  if (MOCK_DATA) return mockProducts.map((p) => ({ slug: p.slug }));
   const products = await db.product.findMany({
     where: { status: "active" },
     select: { slug: true },
