@@ -23,6 +23,7 @@ import {
 } from "@/lib/products";
 import { activePromotion, maxPercentOff } from "@/lib/promotions";
 import { getSiteSettings } from "@/lib/settings";
+import { isAmbienceImage, productImageFit } from "@/components/store/productImage";
 
 export const metadata: Metadata = {
   title: "Catálogo — Finder",
@@ -207,7 +208,7 @@ function ProductPanel({
                 alt={product.name}
                 fill
                 sizes="(min-width: 1024px) 30vw, 100vw"
-                className="b-zoom object-cover"
+                className={`b-zoom ${productImageFit(isAmbienceImage(product.images, heroUrl))}`}
               />
             </ViewTransition>
           )}

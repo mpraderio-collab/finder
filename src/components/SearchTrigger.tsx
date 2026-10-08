@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import { formatPrice } from "@/lib/products";
 import { CloseIcon, SearchIcon } from "@/components/store/Icons";
 import { usePresence } from "@/components/store/usePresence";
+import { packshotThumbFit } from "@/components/store/productImage";
 
 type SearchProduct = {
   slug: string;
@@ -137,7 +138,7 @@ export function SearchTrigger({
                             src={p.image}
                             alt=""
                             fill
-                            className="object-cover"
+                            className={packshotThumbFit}
                             sizes="56px"
                           />
                         )}

@@ -11,13 +11,14 @@ import { formatPrice } from "@/lib/products";
 import { CloseIcon, PlayIcon } from "@/components/store/Icons";
 import { usePresence } from "@/components/store/usePresence";
 import { productTransitionName } from "@/components/store/scenes";
+import { packshotThumbFit, productImageFit } from "@/components/store/productImage";
 import {
   calculateSingleLineTotal,
   currentPercentOff,
   type PromotionInfo,
 } from "@/lib/promotions";
 
-type GalleryImage = { id: string; url: string; type: string };
+type GalleryImage = { id: string; url: string; type: string; showInCarousel?: boolean };
 
 type Variant = {
   name: string;
@@ -257,7 +258,7 @@ export function ProductPurchase({
               alt={isFirst ? name : `${name} — foto ${i + 1}`}
               fill
               priority={isFirst}
-              className="b-photo-fade b-zoom object-cover"
+              className={`b-photo-fade b-zoom ${productImageFit(img.showInCarousel)}`}
               sizes={isWide ? "(min-width: 1024px) 55vw, 85vw" : "(min-width: 1024px) 27vw, 85vw"}
             />
           );
@@ -408,7 +409,7 @@ export function ProductPurchase({
       >
         <div className="mx-auto flex max-w-[1440px] items-center gap-4 px-6 py-3 md:px-16">
           <div className="relative hidden h-12 w-12 shrink-0 overflow-hidden bg-sand sm:block">
-            {cartImage && <Image src={cartImage} alt="" fill className="object-cover" sizes="48px" />}
+            {cartImage && <Image src={cartImage} alt="" fill className={packshotThumbFit} sizes="48px" />}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate font-serif text-[17px]">{name}</p>

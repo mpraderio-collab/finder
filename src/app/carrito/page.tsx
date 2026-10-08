@@ -9,6 +9,7 @@ import { StoreMain } from "@/components/store/StoreMain";
 import { ArrowRight, CloseIcon, LockIcon } from "@/components/store/Icons";
 import { cartItemKey, useCart } from "@/lib/cart-context";
 import { formatPrice } from "@/lib/products";
+import { packshotThumbFit } from "@/components/store/productImage";
 
 export default function CarritoPage() {
   const { items, updateQuantity, removeItem, subtotal, lineTotals } = useCart();
@@ -55,7 +56,7 @@ export default function CarritoPage() {
                             src={item.image}
                             alt={item.name}
                             fill
-                            className="b-zoom object-cover"
+                            className={`b-zoom ${packshotThumbFit}`}
                             sizes="108px"
                           />
                         )}

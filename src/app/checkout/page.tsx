@@ -20,6 +20,7 @@ import { trackEvent, getSessionId } from "@/lib/analytics";
 import { formatPrice } from "@/lib/products";
 import { shippingMethods, type ShippingMethod } from "@/lib/shipping";
 import { PROVINCES, getShippingCostForProvince } from "@/lib/shipping-zones";
+import { packshotThumbFit } from "@/components/store/productImage";
 
 type FormState = {
   customerName: string;
@@ -422,7 +423,7 @@ export default function CheckoutPage() {
                 >
                   <div className="relative h-[60px] w-[52px] shrink-0 overflow-hidden bg-cream">
                     {item.image && (
-                      <Image src={item.image} alt={item.name} fill className="object-cover" sizes="52px" />
+                      <Image src={item.image} alt={item.name} fill className={packshotThumbFit} sizes="52px" />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">

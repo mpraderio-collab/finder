@@ -10,6 +10,7 @@ import { db } from "@/lib/db";
 import { formatPrice, getHeroImageUrl } from "@/lib/products";
 import { getWhatsAppUrl } from "@/lib/whatsapp";
 import { applyPaymentToOrder } from "@/lib/order-fulfillment";
+import { packshotThumbFit } from "@/components/store/productImage";
 
 export default async function CheckoutSuccessPage(
   props: PageProps<"/checkout/success">,
@@ -89,7 +90,7 @@ export default async function CheckoutSuccessPage(
                             src={hero}
                             alt={item.product.name}
                             fill
-                            className="object-cover"
+                            className={packshotThumbFit}
                             sizes="48px"
                           />
                         )}

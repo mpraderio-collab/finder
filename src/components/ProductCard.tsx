@@ -7,9 +7,11 @@ import type { ProductWithRelations } from "@/lib/products";
 import { activePromotion, maxPercentOff } from "@/lib/promotions";
 import { ArrowRight } from "@/components/store/Icons";
 import { productTransitionName } from "@/components/store/scenes";
+import { isAmbienceImage, productImageFit } from "@/components/store/productImage";
 
 export function ProductCard({ product }: { product: ProductWithRelations }) {
   const heroUrl = getHeroImageUrl(product);
+  const heroFit = productImageFit(isAmbienceImage(product.images, heroUrl));
   const totalStock =
     product.variants.length > 0
       ? product.variants.reduce((sum, v) => sum + v.stock, 0)
@@ -30,7 +32,7 @@ export function ProductCard({ product }: { product: ProductWithRelations }) {
               src={heroUrl}
               alt={product.name}
               fill
-              className="b-zoom object-cover"
+              className={`b-zoom ${heroFit}`}
               sizes="(min-width: 768px) 33vw, 100vw"
             />
           </ViewTransition>
