@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeftIcon, ArrowRightIcon } from "@/components/store/Icons";
 
 export type CarouselSlide = {
   slug: string;
@@ -16,10 +17,10 @@ export type CarouselSlide = {
   price: string;
 };
 
-// Punto de la pantalla donde se busca dejar la luz: a la derecha del
-// centro, porque el costado izquierdo queda bajo el degradé del texto.
-const TARGET_X = 0.6;
-const TARGET_Y = 0.5;
+// Punto de la pantalla donde se busca dejar la luz: centrado y algo arriba,
+// porque el texto del hero queda abajo a la izquierda.
+const TARGET_X = 0.55;
+const TARGET_Y = 0.42;
 
 // object-position que lleva el punto (focus) de una foto "cover" lo más
 // cerca posible del punto objetivo del contenedor.
@@ -86,14 +87,12 @@ function FocusedPhoto({
         alt={alt}
         fill
         priority={priority}
-        sizes="(min-width: 768px) 55vw, 100vw"
+        sizes="100vw"
         style={{ objectPosition }}
         onLoad={(e) =>
           setNatural({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })
         }
-        className={`object-cover transition-opacity duration-[900ms] ${
-          active ? "pc-photo opacity-100" : "opacity-0"
-        }`}
+        className={`e-hero-photo object-cover ${active ? "opacity-100" : "opacity-0"}`}
         aria-hidden={!active}
       />
     </div>
@@ -102,9 +101,14 @@ function FocusedPhoto({
 
 const SLIDE_MS = 5000;
 
+// Hero a sangre (maap.cc): foto oscura, texto abajo a la izquierda, pastillas
+// blancas a la derecha. Cada producto marcado para el carrusel rota con un
+// filamento de progreso; el texto entra con el reveal escalonado de
+// transitions-dev.
 export function PremiumCarousel({ slides }: { slides: CarouselSlide[] }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const copyRef = useRef<HTMLDivElement>(null);
 
   const go = useCallback(
     (next: number) => setIndex((next + slides.length) % slides.length),
@@ -125,6 +129,16 @@ export function PremiumCarousel({ slides }: { slides: CarouselSlide[] }) {
     return out;
   }, [slides]);
 
+  // transitions-dev texts reveal: replay the staggered entrance whenever the
+  // product (not just the photo) changes.
+  useEffect(() => {
+    const block = copyRef.current;
+    if (!block) return;
+    block.classList.remove("is-shown");
+    void block.offsetHeight;
+    block.classList.add("is-shown");
+  }, [slide.slug]);
+
   // Solo se montan la foto actual y sus vecinas: con muchas fotos no se
   // cargan todas de golpe.
   const mounted = new Set([index, (index + 1) % slides.length, (index - 1 + slides.length) % slides.length]);
@@ -133,7 +147,7 @@ export function PremiumCarousel({ slides }: { slides: CarouselSlide[] }) {
     <section
       aria-roledescription="carousel"
       aria-label="Productos destacados"
-      className="pc-root relative isolate overflow-hidden bg-[#061f33] text-[#fff4dc]"
+      className="relative isolate h-[min(88vh,850px)] min-h-[560px] overflow-hidden bg-black text-white"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
@@ -143,84 +157,54 @@ export function PremiumCarousel({ slides }: { slides: CarouselSlide[] }) {
         if (e.key === "ArrowLeft") go(index - 1);
       }}
     >
-      <div className="mx-auto grid min-h-[620px] max-w-[1400px] md:min-h-[min(86vh,760px)] ">
-        {/* Degradés a todo el ancho: la foto se disuelve en el fondo, sin corte */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 z-[5] max-md:bg-[#061f33]/65 md:bg-[linear-gradient(to_right,#061f33_0%,#061f33_36%,rgba(6,31,51,.6)_50%,rgba(6,31,51,0)_82%)]"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-1/3 bg-gradient-to-t from-[#061f33] to-transparent"
-        />
+      <div className="absolute inset-0">
+        {slides.map((s, i) =>
+          mounted.has(i) ? (
+            <FocusedPhoto
+              key={`${s.slug}-${i}`}
+              src={s.imageUrl}
+              alt={i === index ? s.title : ""}
+              focusX={s.focusX}
+              focusY={s.focusY}
+              priority={i === 0}
+              active={i === index}
+            />
+          ) : null,
+        )}
+      </div>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-[5] bg-black/25 bg-[linear-gradient(to_top,rgba(0,0,0,.86)_0%,rgba(0,0,0,.62)_30%,rgba(0,0,0,.18)_62%,rgba(0,0,0,0)_100%),linear-gradient(to_right,rgba(0,0,0,.45)_0%,rgba(0,0,0,0)_60%)]"
+      />
 
-        {/* Texto */}
-        <div className="relative z-10 flex flex-col justify-center gap-6 px-6 pb-40 pt-20 md:pb-32 md:pl-12 md:pr-4 lg:pl-20">
-          <p key={`e-${slide.slug}`} className="pc-rise text-xs font-bold uppercase tracking-[0.28em] text-amber">
-            {slide.eyebrow}
-          </p>
-          <h1
-            key={`t-${slide.slug}`}
-            className="pc-rise font-heading text-[44px] font-extrabold leading-[1.02] tracking-[-0.035em] md:text-[68px]"
-            style={{ animationDelay: "80ms" }}
-          >
-            {slide.title}
-          </h1>
-          <p
-            key={`p-${slide.slug}`}
-            className="pc-rise max-w-[440px] text-[17px]/[1.65] text-[#fff4dc]/70"
-            style={{ animationDelay: "160ms" }}
-          >
-            {slide.text}
-          </p>
-          <div
-            key={`c-${slide.slug}`}
-            className="pc-rise flex flex-wrap items-center gap-4"
-            style={{ animationDelay: "240ms" }}
-          >
+      <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-6 px-4 pb-8 md:px-8 md:pb-12">
+        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+          <div ref={copyRef} className="t-stagger flex max-w-[720px] flex-col gap-3">
+            <span className="t-stagger-line t-stagger-line--1 e-mono">{slide.eyebrow}</span>
+            <h1 className="t-stagger-line t-stagger-line--2 text-[44px] font-medium leading-[1.02] tracking-[-0.03em] md:text-[64px]">
+              {slide.title}
+            </h1>
+            <p className="t-stagger-line t-stagger-line--3 max-w-[520px] text-[16px]/[1.4] text-white/85">
+              {slide.text} · {slide.price}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5">
             <Link
               href={`/catalogo/${slide.slug}`}
-              className="rounded-full bg-amber px-8 py-4 font-heading text-sm font-bold text-[#061f33] transition-colors hover:bg-[#ffc04d] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber"
+              transitionTypes={["nav-forward"]}
+              className="e-pill e-pill--light"
             >
               Ver producto
             </Link>
-            <Link
-              href="/catalogo"
-              className="font-heading text-sm font-bold text-[#fff4dc]/80 underline decoration-amber/60 decoration-2 underline-offset-8 transition-colors hover:text-white"
-            >
-              Ver todo el catálogo
+            <Link href="/catalogo" className="e-pill e-pill--light">
+              Ver todo
             </Link>
-            <span className="font-heading text-sm font-semibold text-[#fff4dc]/55">{slide.price}</span>
           </div>
         </div>
 
-        {/* Foto: la luz se enciende al entrar cada slide */}
-        <div className="absolute inset-0 md:left-[34%]">
-          <div
-            key={`g-${index}`}
-            aria-hidden
-            className="pc-lamp pointer-events-none absolute left-1/2 top-1/2 h-[120%] w-[120%] -translate-x-1/2 -translate-y-1/2"
-          />
-          {slides.map((s, i) =>
-            mounted.has(i) ? (
-              <FocusedPhoto
-                key={`${s.slug}-${i}`}
-                src={s.imageUrl}
-                alt={i === index ? s.title : ""}
-                focusX={s.focusX}
-                focusY={s.focusY}
-                priority={i === 0}
-                active={i === index}
-              />
-            ) : null,
-          )}
-        </div>
-      </div>
-
-      {/* Navegación: una pestaña por producto, con filamento de progreso */}
-      <div className="absolute inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#061f33]/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1400px] items-stretch gap-2 px-6 md:px-12 lg:px-20">
-          <ol className="flex min-w-0 flex-1 items-stretch">
+        {/* pr deja libre la esquina del botón flotante de WhatsApp. */}
+        <div className="flex items-center gap-4 pr-[72px] md:pr-[76px]">
+          <ol className="flex min-w-0 flex-1 items-stretch gap-3">
             {groups.map((g) => {
               const active = g.indices.includes(index);
               return (
@@ -230,25 +214,18 @@ export function PremiumCarousel({ slides }: { slides: CarouselSlide[] }) {
                     onClick={() => go(g.indices[0])}
                     aria-label={`Ir a ${g.title}`}
                     aria-current={active}
-                    className="group relative block w-full truncate py-5 pr-4 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amber"
+                    className="group flex w-full flex-col gap-2 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
                   >
-                    <span
-                      className={`block truncate font-heading text-[13px] font-bold transition-colors ${
-                        active ? "text-white" : "text-[#fff4dc]/45 group-hover:text-[#fff4dc]/80"
-                      }`}
-                    >
-                      {g.title}
-                    </span>
-                    <span className="absolute inset-x-0 top-0 flex gap-1 pr-4">
+                    <span className="flex w-full gap-1">
                       {g.indices.map((i) => (
-                        <span key={i} className="relative h-[2px] flex-1 bg-white/10">
+                        <span key={i} className="relative h-px flex-1 bg-white/25">
                           {i < index && g.indices.includes(index) && (
-                            <span className="absolute inset-0 bg-amber" />
+                            <span className="absolute inset-0 bg-white" />
                           )}
                           {i === index && (
                             <span
                               key={`b-${index}`}
-                              className="pc-filament absolute left-0 top-0 h-[2px] bg-amber"
+                              className="pc-filament absolute left-0 top-0 h-px bg-white"
                               style={{
                                 animationDuration: `${SLIDE_MS}ms`,
                                 animationPlayState: paused ? "paused" : "running",
@@ -259,47 +236,43 @@ export function PremiumCarousel({ slides }: { slides: CarouselSlide[] }) {
                         </span>
                       ))}
                     </span>
+                    <span
+                      className={`e-mono hidden truncate transition-opacity sm:block ${
+                        active ? "opacity-100" : "opacity-50 group-hover:opacity-80"
+                      }`}
+                    >
+                      {g.title}
+                    </span>
                   </button>
                 </li>
               );
             })}
           </ol>
-          <div className="hidden items-center gap-2 pl-6 sm:flex">
+          <div className="hidden items-center gap-1 sm:flex">
             <button
               type="button"
               onClick={() => go(index - 1)}
               aria-label="Anterior"
-              className="grid h-10 w-10 place-items-center rounded-full border border-white/20 text-white transition-colors hover:border-amber hover:text-amber focus-visible:outline-2 focus-visible:outline-amber"
+              className="grid h-11 w-11 place-items-center rounded-full transition-colors hover:bg-white/15"
             >
-              ←
+              <ArrowLeftIcon size={18} />
             </button>
             <button
               type="button"
               onClick={() => go(index + 1)}
               aria-label="Siguiente"
-              className="grid h-10 w-10 place-items-center rounded-full border border-white/20 text-white transition-colors hover:border-amber hover:text-amber focus-visible:outline-2 focus-visible:outline-amber"
+              className="grid h-11 w-11 place-items-center rounded-full transition-colors hover:bg-white/15"
             >
-              →
+              <ArrowRightIcon size={18} />
             </button>
           </div>
         </div>
       </div>
 
       <style>{`
-        .pc-lamp {
-          background: radial-gradient(closest-side, rgba(240,160,28,.5), rgba(240,160,28,.12) 55%, transparent 75%);
-          mix-blend-mode: screen;
-          animation: pc-lamp-on 1400ms cubic-bezier(.2,.7,.2,1) both;
-        }
-        .pc-photo { animation: pc-photo-on 1600ms cubic-bezier(.2,.7,.2,1) both; }
-        .pc-rise { animation: pc-rise 800ms cubic-bezier(.2,.7,.2,1) both; }
         .pc-filament { width: 0; animation-name: pc-fill; animation-timing-function: linear; animation-fill-mode: forwards; }
-        @keyframes pc-lamp-on { from { opacity: 0; transform: translate(-50%,-50%) scale(.6); } to { opacity: 1; transform: translate(-50%,-50%) scale(1); } }
-        @keyframes pc-photo-on { from { filter: brightness(.45) saturate(.8); transform: scale(1.06); } to { filter: brightness(1) saturate(1); transform: scale(1); } }
-        @keyframes pc-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
         @keyframes pc-fill { from { width: 0; } to { width: 100%; } }
         @media (prefers-reduced-motion: reduce) {
-          .pc-lamp, .pc-photo, .pc-rise { animation: none; }
           .pc-filament { animation: none; width: 100%; }
         }
       `}</style>

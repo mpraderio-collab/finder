@@ -73,7 +73,7 @@ export function ReviewForm({ productId }: { productId: string }) {
 
   if (sent) {
     return (
-      <p className="rounded-xl border border-amber-line bg-amber-soft px-4 py-3 text-sm font-semibold text-amber-ink">
+      <p className="rounded-[16px] bg-e-tile px-4 py-3 text-[14px] text-e-ink">
         ¡Gracias por tu reseña! Se va a publicar apenas la revisemos.
       </p>
     );
@@ -84,9 +84,9 @@ export function ReviewForm({ productId }: { productId: string }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex max-w-md flex-col gap-3 rounded-xl border border-line bg-bg p-5"
+      className="flex max-w-md flex-col gap-3"
     >
-      <p className="font-heading text-sm font-bold text-navy">Dejá tu reseña</p>
+      <p className="e-mono">Dejá tu reseña</p>
 
       {/* Campo señuelo, oculto para personas: si un bot lo completa, el
           endpoint descarta el envío en silencio. */}
@@ -111,9 +111,9 @@ export function ReviewForm({ productId }: { productId: string }) {
             onClick={() => setRating(n)}
             onMouseEnter={() => setHoverRating(n)}
             onMouseLeave={() => setHoverRating(0)}
-            className="text-2xl leading-none text-amber"
+            className="text-2xl leading-none text-e-ink transition-transform hover:scale-110"
           >
-            {(hoverRating || rating) >= n ? "★" : <span className="text-border-input">★</span>}
+            {(hoverRating || rating) >= n ? "★" : <span className="text-e-line">★</span>}
           </button>
         ))}
       </div>
@@ -125,7 +125,7 @@ export function ReviewForm({ productId }: { productId: string }) {
         onChange={(e) => setAuthor(e.target.value)}
         placeholder="Tu nombre"
         maxLength={80}
-        className="focus-amber rounded-lg border border-border-input bg-bg px-3 py-2 text-sm outline-none"
+        className="e-input"
       />
 
       <textarea
@@ -135,26 +135,26 @@ export function ReviewForm({ productId }: { productId: string }) {
         placeholder="Contanos qué te pareció el producto"
         maxLength={1000}
         rows={3}
-        className="focus-amber resize-none rounded-lg border border-border-input bg-bg px-3 py-2 text-sm outline-none"
+        className="e-input resize-none"
       />
 
       {photoUrl ? (
-        <div className="flex items-center gap-2 text-xs text-ink-soft">
-          <span className="text-amber-ink">✓ Foto adjuntada</span>
+        <div className="flex items-center gap-2 text-xs text-e-muted">
+          <span className="text-e-ink">Foto adjuntada</span>
           <button
             type="button"
             onClick={() => {
               setPhotoUrl(null);
               if (fileInputRef.current) fileInputRef.current.value = "";
             }}
-            className="text-err-ink hover:underline"
+            className="text-e-muted underline underline-offset-4 hover:text-e-ink"
           >
             Quitar
           </button>
         </div>
       ) : (
-        <label className="w-fit cursor-pointer text-xs font-semibold text-amber-ink hover:underline">
-          {uploadingPhoto ? "Subiendo foto…" : "+ Agregar una foto (opcional)"}
+        <label className="e-mono w-fit cursor-pointer underline underline-offset-4">
+          {uploadingPhoto ? "Subiendo foto…" : "Agregar una foto (opcional)"}
           <input
             ref={fileInputRef}
             type="file"
@@ -171,7 +171,7 @@ export function ReviewForm({ productId }: { productId: string }) {
       <button
         type="submit"
         disabled={busy}
-        className="w-fit rounded-lg bg-navy px-4 py-2 font-heading text-sm font-bold text-white transition-colors hover:bg-navy-deep disabled:opacity-50"
+        className="e-pill e-pill--dark w-fit"
       >
         {submitting ? "Enviando…" : "Enviar reseña"}
       </button>

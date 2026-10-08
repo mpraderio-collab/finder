@@ -1,8 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import { CartLink } from "@/components/CartLink";
 import { SearchTrigger } from "@/components/SearchTrigger";
 import { MobileNav } from "@/components/MobileNav";
+import { CartDrawer } from "@/components/store/CartDrawer";
+import { HeaderBar } from "@/components/store/HeaderBar";
 
 const links = [
   { href: "/catalogo", label: "Catálogo" },
@@ -12,35 +13,41 @@ const links = [
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-bg">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
-        <Link href="/" className="shrink-0">
-          <Image
-            src="/brand/finder-logo.png"
-            alt="Finder"
-            width={1463}
-            height={303}
-            className="h-[22px] w-auto"
-            priority
-          />
-        </Link>
-        <nav className="hidden items-center gap-8 md:flex">
-          {links.map((link) => (
+    <>
+      <HeaderBar>
+        <div className="grid h-16 grid-cols-[1fr_auto_1fr] items-center px-4 md:px-8">
+          <nav className="flex items-center gap-6">
+            <MobileNav />
+            {links.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="e-mono hidden text-e-ink transition-opacity hover:opacity-60 md:inline"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+          <Link
+            href="/"
+            transitionTypes={["nav-back"]}
+            className="text-[20px] font-bold tracking-[0.2em] text-e-ink"
+          >
+            FINDER
+          </Link>
+          <div className="flex items-center justify-end gap-2 md:gap-4">
             <Link
-              key={link.href}
-              href={link.href}
-              className="text-sm font-medium text-ink-soft transition-colors hover:text-navy"
+              href="/contacto"
+              className="e-mono hidden text-e-ink transition-opacity hover:opacity-60 lg:inline"
             >
-              {link.label}
+              Ayuda
             </Link>
-          ))}
-        </nav>
-        <div className="flex items-center gap-4 sm:gap-6">
-          <SearchTrigger />
-          <CartLink />
-          <MobileNav />
+            <SearchTrigger />
+            <CartLink />
+          </div>
         </div>
-      </div>
-    </header>
+      </HeaderBar>
+      <CartDrawer />
+    </>
   );
 }

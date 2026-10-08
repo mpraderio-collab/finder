@@ -34,27 +34,28 @@ export function NewsletterForm() {
 
   if (sent) {
     return (
-      <p className="text-sm font-semibold text-amber">
-        ¡Listo! Ya estás suscripto.
+      <p className="e-mono text-white">
+        Listo, ya estás suscripto.
       </p>
     );
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-1.5">
-      <div className="flex gap-2">
+      <div className="flex h-12 items-center rounded-[24px] border border-white pl-5 pr-1.5 transition-colors focus-within:border-white/60">
         <input
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="tu@email.com"
-          className="min-w-0 flex-1 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-white/40 focus:border-amber"
+          aria-label="Tu email"
+          className="min-w-0 flex-1 bg-transparent text-[14px] text-white outline-none placeholder:text-e-faint"
         />
         <button
           type="submit"
           disabled={submitting}
-          className="shrink-0 rounded-lg bg-amber px-4 py-2 font-heading text-sm font-bold text-[#3a2500] transition-colors hover:bg-amber-hover disabled:opacity-50"
+          className="e-mono h-9 shrink-0 rounded-[18px] bg-white px-[18px] text-e-ink transition-colors hover:bg-e-line disabled:opacity-50"
         >
           {submitting ? "…" : "Sumarme"}
         </button>

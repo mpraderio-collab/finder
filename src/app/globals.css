@@ -266,3 +266,429 @@ button:not(:disabled) {
 body[data-sticky-bar] .wa-float {
   bottom: 5.75rem;
 }
+
+/* ==========================================================================
+   E · Performance — storefront design system (inspired by maap.cc).
+   Admin keeps the original tokens above; the storefront uses the e-* ones.
+   ========================================================================== */
+:root {
+  --color-e-bg: #ffffff;
+  --color-e-tile: #f7f7f7;
+  --color-e-line: #e7e7e7;
+  --color-e-ink: #222222;
+  --color-e-muted: #6b6b6b;
+  --color-e-faint: #9a9a9a;
+
+  /* MAAP motion vocabulary (audited on maap.cc) */
+  --e-ease-accordion: cubic-bezier(0.87, 0, 0.13, 1);
+  --e-drawer-in: 300ms;
+  --e-drawer-out: 250ms;
+  --e-hover-dur: 200ms;
+  --e-image-swap-dur: 500ms;
+}
+
+@theme inline {
+  --color-e-bg: var(--color-e-bg);
+  --color-e-tile: var(--color-e-tile);
+  --color-e-line: var(--color-e-line);
+  --color-e-ink: var(--color-e-ink);
+  --color-e-muted: var(--color-e-muted);
+  --color-e-faint: var(--color-e-faint);
+  --font-e: var(--font-geist);
+  --font-e-mono: var(--font-geist-mono);
+}
+
+/* Storefront pages opt into Geist through the header marker; the admin keeps
+   its own typography. */
+body:has([data-store]) {
+  font-family: var(--font-geist), Arial, Helvetica, sans-serif;
+  color: var(--color-e-ink);
+}
+
+@layer components {
+  .e-mono {
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-size: 12px;
+    line-height: 16px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .e-pill {
+    display: inline-flex;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 24px;
+    padding: 0 20px;
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition:
+      background-color var(--e-hover-dur) ease,
+      color var(--e-hover-dur) ease,
+      border-color var(--e-hover-dur) ease;
+  }
+  .e-pill:disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+  }
+  .e-pill--light {
+    background: #ffffff;
+    color: var(--color-e-ink);
+  }
+  .e-pill--light:hover {
+    background: var(--color-e-line);
+  }
+  .e-pill--dark {
+    background: var(--color-e-ink);
+    color: #ffffff;
+  }
+  .e-pill--dark:hover:not(:disabled) {
+    background: #000000;
+  }
+  .e-pill--outline {
+    border: 1px solid var(--color-e-ink);
+    color: var(--color-e-ink);
+  }
+  .e-pill--outline:hover:not(:disabled) {
+    background: var(--color-e-ink);
+    color: #ffffff;
+  }
+
+  .e-input {
+    height: 48px;
+    width: 100%;
+    border-radius: 24px;
+    border: 1px solid var(--color-e-line);
+    background: #ffffff;
+    padding: 0 20px;
+    font-size: 14px;
+    color: var(--color-e-ink);
+    outline: none;
+    transition: border-color var(--e-hover-dur) ease;
+  }
+  .e-input::placeholder {
+    color: var(--color-e-faint);
+  }
+  .e-input:focus {
+    border-color: var(--color-e-ink);
+  }
+  textarea.e-input {
+    height: auto;
+    padding: 14px 20px;
+    border-radius: 20px;
+  }
+}
+
+/* Tile image swap on hover (maap.cc lookbook: opacity 0.5s). */
+.e-tile-media .e-tile-secondary {
+  opacity: 0;
+  transition: opacity var(--e-image-swap-dur) ease;
+}
+.e-tile-media .e-tile-primary {
+  transition:
+    opacity var(--e-image-swap-dur) ease,
+    transform 300ms ease;
+}
+@media (hover: hover) {
+  .e-tile:hover .e-tile-secondary {
+    opacity: 1;
+  }
+  .e-tile:hover .e-tile-media:has(.e-tile-secondary) .e-tile-primary {
+    opacity: 0;
+  }
+  .e-tile:hover .e-tile-media:not(:has(.e-tile-secondary)) .e-tile-primary {
+    transform: scale(1.04);
+  }
+}
+
+/* Accordion (maap.cc: height 300ms cubic-bezier(0.87, 0, 0.13, 1),
+   plus/minus crossfade 200ms). */
+.e-accordion-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 300ms var(--e-ease-accordion);
+}
+.e-accordion-panel > div {
+  overflow: hidden;
+}
+.e-accordion[data-open="true"] .e-accordion-panel {
+  grid-template-rows: 1fr;
+}
+.e-accordion-icon {
+  transition:
+    opacity 200ms var(--e-ease-accordion),
+    transform 300ms var(--e-ease-accordion);
+}
+.e-accordion[data-open="true"] .e-accordion-icon--plus {
+  opacity: 0;
+  transform: rotate(90deg);
+}
+.e-accordion:not([data-open="true"]) .e-accordion-icon--minus {
+  opacity: 0;
+  transform: rotate(-90deg);
+}
+
+/* Drawer (maap.cc: slide from right 300ms in / 250ms out, overlay fade
+   ease-in-out). data-state: open | closing. */
+.e-drawer-overlay {
+  animation: e-fade-in var(--e-drawer-in) ease-in-out both;
+}
+.e-drawer-overlay[data-state="closing"] {
+  animation: e-fade-out var(--e-drawer-out) ease-in-out both;
+}
+.e-drawer-panel {
+  animation: e-slide-in-right var(--e-drawer-in) cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.e-drawer-panel[data-state="closing"] {
+  animation: e-slide-out-right var(--e-drawer-out) ease-in both;
+}
+.e-drawer-panel--left {
+  animation-name: e-slide-in-left;
+}
+.e-drawer-panel--left[data-state="closing"] {
+  animation-name: e-slide-out-left;
+}
+@keyframes e-slide-in-left {
+  from { opacity: 0; transform: translateX(-100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes e-slide-out-left {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-100%); }
+}
+@keyframes e-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes e-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes e-slide-in-right {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes e-slide-out-right {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(100%); }
+}
+
+/* Header toolbar hide/show on scroll (maap.cc Toolbar: opacity 0.1s/0.3s,
+   transform 0.3s ease-in-out). */
+.e-toolbar {
+  transition:
+    opacity 300ms ease-in-out,
+    transform 300ms ease-in-out;
+}
+.e-toolbar[data-hidden="true"] {
+  opacity: 0;
+  transform: translateY(-100%);
+  transition:
+    opacity 100ms ease-in-out,
+    transform 300ms ease-in-out;
+}
+
+/* Carousel progress bar (swiper progressbar: scaleX fill). */
+.e-progress-fill {
+  transform-origin: left center;
+  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.e-carousel-arrow {
+  transition: opacity var(--e-hover-dur) ease;
+}
+.e-carousel-arrow:disabled {
+  opacity: 0.35;
+  cursor: auto;
+}
+
+/* Hero slide photos crossfade. */
+.e-hero-photo {
+  transition: opacity 900ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .e-pill,
+  .e-input,
+  .e-tile-media .e-tile-primary,
+  .e-tile-media .e-tile-secondary,
+  .e-accordion-panel,
+  .e-accordion-icon,
+  .e-toolbar,
+  .e-progress-fill,
+  .e-carousel-arrow,
+  .e-hero-photo {
+    transition: none !important;
+  }
+  .e-drawer-overlay,
+  .e-drawer-panel {
+    animation: none !important;
+  }
+}
+
+/* transitions-dev — modal (search dialog), panel reveal (sticky buy bar),
+   texts reveal (hero copy). */
+:root {
+  --modal-open-dur: 250ms;
+  --modal-close-dur: 150ms;
+  --modal-scale: 0.96;
+  --modal-scale-close: 0.96;
+  --modal-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --panel-open-dur: 400ms;
+  --panel-close-dur: 350ms;
+  --panel-translate-y: 100px;
+  --panel-blur: 2px;
+  --panel-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --stagger-dur: 500ms;
+  --stagger-distance: 12px;
+  --stagger-stagger: 40ms;
+  --stagger-blur: 3px;
+  --stagger-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.t-modal {
+  transform-origin: center;
+  transform: scale(var(--modal-scale));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--modal-open-dur) var(--modal-ease),
+    opacity   var(--modal-open-dur) var(--modal-ease);
+  will-change: transform, opacity;
+}
+.t-modal.is-open {
+  transform: scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+.t-modal.is-closing {
+  transform: scale(var(--modal-scale-close));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--modal-close-dur) var(--modal-ease),
+    opacity   var(--modal-close-dur) var(--modal-ease);
+}
+
+.t-panel-slide {
+  transform: translateY(var(--panel-translate-y));
+  opacity: 0;
+  filter: blur(var(--panel-blur));
+  pointer-events: none;
+  transition:
+    transform var(--panel-close-dur) var(--panel-ease),
+    opacity   var(--panel-close-dur) var(--panel-ease),
+    filter    var(--panel-close-dur) var(--panel-ease);
+  will-change: transform, opacity, filter;
+}
+.t-panel-slide[data-open="true"] {
+  transform: translateY(0);
+  opacity: 1;
+  filter: blur(0);
+  pointer-events: auto;
+  transition:
+    transform var(--panel-open-dur) var(--panel-ease),
+    opacity   var(--panel-open-dur) var(--panel-ease),
+    filter    var(--panel-open-dur) var(--panel-ease);
+}
+
+.t-stagger-line {
+  display: block;
+  opacity: 0;
+  transform: translateY(var(--stagger-distance));
+  filter: blur(var(--stagger-blur));
+  transition:
+    opacity   var(--stagger-dur) var(--stagger-ease),
+    transform var(--stagger-dur) var(--stagger-ease),
+    filter    var(--stagger-dur) var(--stagger-ease);
+  will-change: transform, opacity, filter;
+}
+.t-stagger-line--2 { transition-delay: var(--stagger-stagger); }
+.t-stagger-line--3 { transition-delay: calc(var(--stagger-stagger) * 2); }
+.t-stagger-line--4 { transition-delay: calc(var(--stagger-stagger) * 3); }
+.t-stagger.is-shown .t-stagger-line {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+.t-stagger.is-hiding .t-stagger-line {
+  opacity: 0;
+  transform: translateY(0);
+  filter: blur(0);
+  transition:
+    opacity 200ms ease,
+    transform 0s linear,
+    filter 0s linear;
+  transition-delay: 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-modal { transition: none !important; }
+  .t-panel-slide { transition: none !important; }
+  .t-stagger-line { transition: none !important; }
+}
+
+/* View Transitions between pages. maap.cc swaps routes with a plain cut and a
+   progress spinner; here the page content crossfades quickly (old leaves in
+   150ms, new arrives in 250ms with an 8px rise) while the header stays
+   anchored, and the product photo morphs from the card into the detail. */
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-old(.e-page) {
+  animation: 150ms ease-in both e-vt-fade reverse;
+}
+::view-transition-new(.e-page) {
+  animation:
+    250ms ease-out 100ms both e-vt-fade,
+    400ms cubic-bezier(0.22, 1, 0.36, 1) both e-vt-rise;
+}
+::view-transition-group(.e-morph) {
+  animation-duration: 400ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+::view-transition-image-pair(.e-morph) {
+  animation-name: e-vt-via-blur;
+}
+::view-transition-group(site-header) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(site-header) {
+  display: none;
+}
+::view-transition-new(site-header) {
+  animation: none;
+}
+@keyframes e-vt-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes e-vt-rise {
+  from { transform: translateY(8px); }
+  to { transform: translateY(0); }
+}
+@keyframes e-vt-via-blur {
+  30% { filter: blur(3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}
+
+/* El header es sticky (barra de promo + toolbar ≈ 104px): los saltos a
+   anchors y el scroll al primer campo inválido dejan el destino visible
+   debajo de él en lugar de taparlo. */
+html {
+  scroll-padding-top: 120px;
+}
