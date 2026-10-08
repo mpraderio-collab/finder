@@ -47,7 +47,7 @@ export function MobileNav() {
         onClick={() => setOpen(true)}
         aria-label="Abrir menú"
         aria-expanded={open}
-        className="flex h-9 w-9 items-center justify-center text-espresso"
+        className="flex h-11 w-11 items-center justify-center text-espresso"
       >
         <MenuIcon size={22} />
       </button>
@@ -74,7 +74,7 @@ export function MobileNav() {
                   type="button"
                   onClick={() => setOpen(false)}
                   aria-label="Cerrar menú"
-                  className="flex h-9 w-9 items-center justify-center text-espresso"
+                  className="flex h-11 w-11 items-center justify-center text-espresso"
                 >
                   <CloseIcon size={20} />
                 </button>
@@ -96,18 +96,18 @@ export function MobileNav() {
                   </Link>
                 ))}
               </nav>
-              <nav className="mt-6 flex flex-col gap-3" aria-label="Tienda">
+              <nav className="mt-4 flex flex-col" aria-label="Tienda">
                 {pages.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
                     onClick={() => setOpen(false)}
-                    className="text-base text-espresso"
+                    className="flex min-h-11 items-center text-base text-espresso"
                   >
                     {link.label}
                   </Link>
                 ))}
-                <SearchTrigger triggerClassName="flex items-center gap-2 text-left text-base text-espresso" />
+                <SearchTrigger triggerClassName="flex min-h-11 items-center gap-2 text-left text-base text-espresso" />
               </nav>
             </div>
           </div>,

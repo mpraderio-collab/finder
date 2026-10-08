@@ -187,8 +187,8 @@ export function SceneHero({ scenes }: { scenes: HeroScene[] }) {
                   i === active ? "text-cream" : "text-cream/55 hover:text-cream/85"
                 }`}
               >
-                <span className="font-serif text-lg md:text-[22px]">
-                  <span className="mr-2 text-[0.75em] tabular-nums">{s.number}</span>
+                <span className="flex flex-col font-serif text-[17px] leading-tight sm:block sm:text-lg md:text-[22px]">
+                  <span className="text-[12px] tabular-nums sm:mr-2 sm:text-[0.75em]">{s.number}</span>
                   {s.name}
                 </span>
                 <span className="hidden text-sm sm:block">{s.productName}</span>
