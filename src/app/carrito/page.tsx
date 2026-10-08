@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { PageTransition } from "@/components/d/PageTransition";
+import { CtaLink } from "@/components/d/CtaLink";
 import { cartItemKey, useCart } from "@/lib/cart-context";
 import { formatPrice } from "@/lib/products";
 
@@ -15,152 +17,110 @@ export default function CarritoPage() {
   return (
     <>
       <Header />
-      <main className="flex-1">
-        <section className="mx-auto max-w-[960px] px-6 py-14">
-          <h1 className="font-heading text-[30px] font-extrabold text-navy">
-            Tu carrito
-          </h1>
+      <PageTransition>
+        <main className="d-store flex-1">
+          <header className="px-5 pb-8 pt-14 md:px-10 md:pt-20">
+            <h1 className="font-d-serif text-[44px] leading-none md:text-[56px]">
+              Tu carrito
+              {items.length > 0 && (
+                <sup className="ml-1 align-super font-d-sans text-base">{items.length}</sup>
+              )}
+            </h1>
+          </header>
 
           {items.length === 0 ? (
-            <div className="mt-10 rounded-[14px] border border-dashed border-border-btn p-[34px] text-center">
-              <p className="font-heading text-xl font-extrabold text-navy">
-                Todavía no agregaste productos
-              </p>
-              <p className="mt-1 text-[15px] text-ink-soft">
-                Explorá el catálogo y encontrá tu próxima luz.
-              </p>
-              <Link
-                href="/catalogo"
-                className="mt-5 inline-block rounded-lg bg-navy px-6 py-3 font-heading text-sm font-bold text-white hover:bg-navy-deep"
-              >
+            <section className="border-t border-d-ink px-5 pb-24 pt-6 md:px-10">
+              <p className="text-[22px] leading-[1.25] md:text-[26px]">Todavía no agregaste productos.</p>
+              <p className="mt-2 text-sm text-d-muted">Explorá el catálogo y encontrá tu próxima luz.</p>
+              <CtaLink href="/catalogo" className="mt-6">
                 Ver catálogo
-              </Link>
-            </div>
+              </CtaLink>
+            </section>
           ) : (
-            <div className="mt-6 grid gap-6 lg:grid-cols-[1.7fr_1fr]">
-              <div className="flex flex-col gap-4">
+            <section className="grid border-t border-d-ink md:grid-cols-[minmax(0,1fr)_480px]">
+              <ul className="px-5 md:border-r md:border-d-ink md:px-10">
                 {items.map((item) => {
                   const key = cartItemKey(item.productId, item.variantName);
                   const lineTotal = lineTotals.get(key) ?? item.price * item.quantity;
                   const rawTotal = item.price * item.quantity;
                   const discount = rawTotal - lineTotal;
                   return (
-                    <div
-                      key={key}
-                      className="flex gap-4 rounded-[14px] border border-line p-4"
-                    >
-                      <div className="relative h-[92px] w-[92px] shrink-0 overflow-hidden rounded-[10px] bg-surface">
+                    <li key={key} className="flex gap-5 border-b border-d-line py-6">
+                      <div className="relative h-28 w-28 shrink-0 overflow-hidden bg-d-surface">
                         {item.image && (
-                          <Image
-                            src={item.image}
-                            alt={item.name}
-                            fill
-                            className="object-cover"
-                            sizes="92px"
-                          />
+                          <Image src={item.image} alt={item.name} fill className="object-cover" sizes="112px" />
                         )}
                       </div>
-                      <div className="flex flex-1 flex-col justify-between">
-                        <div>
-                          <Link
-                            href={`/catalogo/${item.slug}`}
-                            className="font-heading text-base font-bold text-navy hover:underline"
-                          >
+                      <div className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
+                        <div className="flex justify-between gap-4">
+                          <Link href={`/catalogo/${item.slug}`} className="d-fade font-d-serif text-[20px] leading-tight">
                             {item.name}
                           </Link>
-                          {item.variantName && (
-                            <p className="text-[13px] text-ink-soft">
-                              {item.variantName}
-                            </p>
-                          )}
+                          <span className="shrink-0">{formatPrice(lineTotal)}</span>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center rounded-lg border border-border-input">
+                        {item.variantName && <p className="text-d-muted">{item.variantName}</p>}
+                        {discount > 0 && (
+                          <p className="text-d-muted">Promo aplicada (ahorrás {formatPrice(discount)})</p>
+                        )}
+                        <div className="mt-auto flex items-center justify-between pt-3">
+                          <div className="flex items-center gap-5">
                             <button
                               type="button"
-                              onClick={() =>
-                                updateQuantity(key, item.quantity - 1)
-                              }
-                              className="px-3 py-1.5 text-ink-soft hover:text-navy"
+                              onClick={() => updateQuantity(key, item.quantity - 1)}
+                              className="d-fade"
                               aria-label="Restar cantidad"
                             >
                               −
                             </button>
-                            <span className="min-w-8 text-center font-heading text-sm font-bold text-ink">
-                              {item.quantity}
-                            </span>
+                            <span className="min-w-4 text-center">{item.quantity}</span>
                             <button
                               type="button"
-                              onClick={() =>
-                                updateQuantity(key, item.quantity + 1)
-                              }
+                              onClick={() => updateQuantity(key, item.quantity + 1)}
                               disabled={item.quantity >= item.maxStock}
-                              className="px-3 py-1.5 text-ink-soft hover:text-navy disabled:opacity-30"
+                              className="d-fade disabled:opacity-30"
                               aria-label="Sumar cantidad"
                             >
                               +
                             </button>
                           </div>
-                          <span className="font-heading text-[17px] font-extrabold text-navy">
-                            {formatPrice(lineTotal)}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeItem(key)}
+                            className="d-fade text-d-muted underline underline-offset-2"
+                            aria-label={`Quitar ${item.name} del carrito`}
+                          >
+                            Quitar
+                          </button>
                         </div>
-                        {discount > 0 && (
-                          <p className="text-right text-[12px] font-semibold text-amber-ink">
-                            Promo aplicada (ahorrás {formatPrice(discount)})
-                          </p>
-                        )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => removeItem(key)}
-                        className="self-start text-ink-faint hover:text-err-ink"
-                        aria-label={`Quitar ${item.name} del carrito`}
-                      >
-                        ✕
-                      </button>
-                    </div>
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
 
-              <div className="h-fit rounded-[14px] border border-line bg-surface p-[22px]">
-                <p className="font-heading text-lg font-bold text-navy">
-                  Resumen
-                </p>
-                <div className="mt-4 flex justify-between text-sm text-ink-soft">
+              <div className="bg-d-surface px-5 py-8 md:px-10">
+                <p className="text-sm">Resumen</p>
+                <div className="mt-6 flex justify-between border-t border-d-line pt-3 text-sm">
                   <span>Subtotal</span>
-                  <span className="font-semibold text-ink">
-                    {formatPrice(subtotal)}
-                  </span>
+                  <span>{formatPrice(subtotal)}</span>
                 </div>
-                <div className="mt-2 flex justify-between text-sm text-ink-soft">
+                <div className="mt-2 flex justify-between text-sm">
                   <span>Envío</span>
-                  <span className="font-bold text-amber-ink">Gratis</span>
+                  <span>Gratis</span>
                 </div>
-                <div className="mt-4 flex items-baseline justify-between border-t border-line pt-4">
-                  <span className="text-[15px] font-semibold text-ink">
-                    Total
-                  </span>
-                  <span className="font-heading text-[26px] font-extrabold text-navy">
-                    {formatPrice(subtotal)}
-                  </span>
+                <div className="mt-6 flex items-baseline justify-between border-t border-d-ink pt-4">
+                  <span className="text-sm">Total</span>
+                  <span className="font-d-serif text-[40px] leading-none">{formatPrice(subtotal)}</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => router.push("/checkout")}
-                  className="mt-5 w-full rounded-lg bg-navy px-6 py-3 font-heading text-sm font-bold text-white transition-colors hover:bg-navy-deep"
-                >
+                <button type="button" onClick={() => router.push("/checkout")} className="d-btn mt-6 w-full">
                   Continuar al pago
                 </button>
-                <p className="mt-2 text-center text-xs text-ink-faint">
-                  Pagás con Mercado Pago
-                </p>
+                <p className="mt-3 text-center text-sm text-d-muted">Pagás con Mercado Pago</p>
               </div>
-            </div>
+            </section>
           )}
-        </section>
-      </main>
+        </main>
+      </PageTransition>
       <Footer />
     </>
   );

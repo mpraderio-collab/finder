@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { PageTransition } from "@/components/d/PageTransition";
+import { Reveal } from "@/components/d/Reveal";
 
 export const metadata: Metadata = {
   title: "Nosotros — Finder",
@@ -17,24 +19,28 @@ export default function NosotrosPage() {
   return (
     <>
       <Header />
-      <main className="flex-1">
-        <section className="mx-auto max-w-[960px] px-6 pb-9 pt-[52px]">
-          <span className="text-xs font-bold uppercase tracking-[0.18em] text-amber-ink">
-            Nosotros
-          </span>
-          <h1 className="mt-2 max-w-[760px] font-heading text-[44px] font-extrabold leading-[1.1] text-navy">
-            La luz correcta cambia cómo vivís tu casa
-          </h1>
-          <span className="mt-[22px] block h-1 w-16 rounded-full bg-amber" />
-          <div className="mt-8 grid gap-7 sm:grid-cols-3">
-            {paragraphs.map((text) => (
-              <p key={text} className="text-[15px]/[1.7] text-ink-soft">
-                {text}
-              </p>
-            ))}
-          </div>
-        </section>
-      </main>
+      <PageTransition>
+        <main className="d-store flex-1">
+          <Reveal as="header" className="px-5 pb-16 pt-16 md:px-10 md:pt-24">
+            <h1 className="t-stagger-line max-w-[1000px] font-d-serif text-[40px] leading-[1.1] md:text-[64px]">
+              La luz correcta cambia cómo vivís tu casa
+            </h1>
+          </Reveal>
+          <section className="grid gap-8 border-t border-d-ink px-5 pb-24 pt-3 md:grid-cols-[330px_1fr] md:px-10">
+            <p className="text-sm">Nosotros</p>
+            <Reveal className="flex max-w-[820px] flex-col gap-6">
+              {paragraphs.map((text, i) => (
+                <p
+                  key={text}
+                  className={`t-stagger-line t-stagger-line--${Math.min(i + 1, 4)} text-[20px] leading-[1.35] md:text-[24px]`}
+                >
+                  {text}
+                </p>
+              ))}
+            </Reveal>
+          </section>
+        </main>
+      </PageTransition>
       <Footer />
     </>
   );
