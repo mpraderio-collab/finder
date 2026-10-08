@@ -4,13 +4,23 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { Stars } from "@/components/Stars";
 import { ProductPurchase } from "@/components/ProductPurchase";
-import { ProductPhotoWall } from "@/components/ProductPhotoWall";
-import { ReviewForm } from "@/components/ReviewForm";
-import { averageRating, getProductBySlug } from "@/lib/products";
+import { StoreMain } from "@/components/store/StoreMain";
+import { Reveal } from "@/components/store/Reveal";
+import { StarRating } from "@/components/store/StarRating";
+import { ReviewToggle } from "@/components/store/ReviewToggle";
+import {
+  ArrowLeft,
+  CardIcon,
+  CheckIcon,
+  ChevronRight,
+  ReturnIcon,
+  TruckIcon,
+} from "@/components/store/Icons";
+import { sceneFor } from "@/components/store/scenes";
+import { averageRating, formatPrice, getActiveProducts, getProductBySlug } from "@/lib/products";
 import { getSiteSettings } from "@/lib/settings";
-import { activePromotion } from "@/lib/promotions";
+import { activePromotion, tierLabel } from "@/lib/promotions";
 import { db } from "@/lib/db";
 import { MOCK_DATA, mockProducts } from "@/lib/mock-data";
 
@@ -46,24 +56,42 @@ export default async function ProductPage(
     (a, b) => Number(b.isHero) - Number(a.isHero),
   );
   const avgRating = averageRating(product.reviews);
+  const scene = sceneFor(product);
 
-  const settings = await getSiteSettings();
-  const media = orderedImages.map(({ id, url, type }) => ({ id, url, type }));
-  const photoCount = media.filter((m) => m.type !== "video").length;
-  const videoCount = media.length - photoCount;
+  const [settings, allProducts] = await Promise.all([getSiteSettings(), getActiveProducts()]);
+  const promotion = activePromotion(product);
+  // Los otros productos de la promo, con su precio, para el aviso del pack.
+  const packPartners = (promotion?.products ?? [])
+    .filter((p) => p.id !== product.id)
+    .map((p) => allProducts.find((ap) => ap.id === p.id))
+    .filter((p): p is NonNullable<typeof p> => Boolean(p));
+
+  const [storyLead, ...storyRest] = product.description.split(/(?<=\.)\s+/);
 
   return (
     <>
       <Header />
-      <main className="flex-1">
-        <p className="mx-auto max-w-6xl px-6 pt-[18px] text-[13px] text-ink-faint">
-          <Link href="/catalogo" className="hover:text-navy">
+      <StoreMain>
+        <nav
+          aria-label="Ruta"
+          className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-2 px-6 py-6 text-sm text-taupe md:px-16"
+        >
+          <Link href="/catalogo" transitionTypes={["nav-back"]} className="b-link">
             Catálogo
-          </Link>{" "}
-          / <span className="font-semibold text-navy">{product.name}</span>
-        </p>
+          </Link>
+          {scene && (
+            <>
+              <ChevronRight size={14} />
+              <Link href={`/catalogo#${scene.id}`} transitionTypes={["nav-back"]} className="b-link">
+                {scene.name}
+              </Link>
+            </>
+          )}
+          <ChevronRight size={14} />
+          <span className="text-espresso">{product.name}</span>
+        </nav>
 
-        <section className="mx-auto max-w-6xl px-6 pb-[52px] pt-[22px]">
+        <section className="mx-auto max-w-[1440px] px-6 pb-20 md:px-16 md:pb-24">
           <ProductPurchase
             productId={product.id}
             slug={product.slug}
@@ -73,170 +101,192 @@ export default async function ProductPage(
             variants={product.variants}
             images={orderedImages}
             installments={settings.installments}
-            promotion={activePromotion(product)}
+            promotion={promotion}
             aboveActions={
-              <>
-                <h1 className="font-heading text-[38px] font-extrabold leading-[1.1] tracking-[-0.025em] text-navy">
+              <div className="flex flex-col gap-3.5">
+                {scene && (
+                  <p className="flex items-center gap-2.5 text-clay-ink">
+                    <span className="font-serif text-[15px]">{scene.number}</span>
+                    <span className="h-px w-6 bg-clay" />
+                    <span className="text-[13px] font-semibold uppercase tracking-[0.16em]">
+                      {scene.name}
+                    </span>
+                  </p>
+                )}
+                <h1 className="font-serif text-[36px]/[1.08] font-medium tracking-[-0.02em] md:text-[44px]/[1.08]">
                   {product.name}
                 </h1>
-                <p className="text-[17px]/[1.6] text-ink-soft">
-                  {product.tagline}
-                </p>
-
+                <p className="text-[17px]/[1.55] text-taupe">{product.tagline}</p>
                 {product.reviews.length > 0 && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Stars rating={avgRating} />
-                    <span className="text-ink-soft">
-                      {avgRating.toFixed(1).replace(".", ",")} ·{" "}
-                      {product.reviews.length} reseñas
+                  <a href="#resenas" className="flex w-fit items-center gap-2 text-sm text-taupe">
+                    <StarRating rating={avgRating} />
+                    <span className="b-link">
+                      {avgRating.toFixed(1).replace(".", ",")} · {product.reviews.length} reseñas
                     </span>
+                  </a>
+                )}
+              </div>
+            }
+            belowActions={
+              <>
+                {promotion && promotion.tiers.length > 0 && (
+                  <div className="flex flex-col gap-3 bg-sand p-5">
+                    {promotion.tiers.map((tier) => (
+                      <p key={tier.threshold} className="text-[15px] font-semibold">
+                        {tierLabel(promotion, tier)} — combinalo como quieras
+                      </p>
+                    ))}
+                    {packPartners.map((p) => (
+                      <Link
+                        key={p.id}
+                        href={`/catalogo/${p.slug}`}
+                        transitionTypes={["nav-forward"]}
+                        className="group flex items-center justify-between gap-4 text-sm"
+                      >
+                        <span className="b-link text-espresso">+ {p.name}</span>
+                        <span className="shrink-0 tabular-nums text-taupe">{formatPrice(p.price)}</span>
+                      </Link>
+                    ))}
                   </div>
                 )}
+                <ul className="flex flex-col gap-3 border-t border-linen pt-5 text-sm text-espresso">
+                  <li className="flex items-center gap-3">
+                    <TruckIcon size={18} className="text-taupe" />
+                    Envío a todo el país con Correo Argentino · 3 a 5 días hábiles
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <CardIcon size={18} className="text-taupe" />
+                    {settings.installments > 1
+                      ? `Mercado Pago: tarjeta, dinero en cuenta y hasta ${settings.installments} cuotas sin interés`
+                      : "Mercado Pago: tarjeta o dinero en cuenta"}
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <ReturnIcon size={18} className="text-taupe" />
+                    Cambios en 30 días
+                  </li>
+                </ul>
               </>
             }
           />
         </section>
 
-        <section className="border-t border-line bg-surface">
-          <div className="mx-auto grid max-w-6xl gap-12 px-6 py-14 lg:grid-cols-[1.1fr_0.9fr]">
-            <div>
-              <h2 className="font-heading text-[28px] font-extrabold tracking-[-0.02em] text-navy">
-                Conocé {product.name}
-              </h2>
-              <span className="mt-3 block h-1 w-14 rounded-full bg-amber" />
-              <p className="mt-6 whitespace-pre-line text-[16px]/[1.8] text-ink-soft">
-                {product.description}
+        <section className="bg-night text-cream">
+          <Reveal className="mx-auto grid max-w-[1440px] gap-10 px-6 py-20 md:px-16 md:py-[120px] lg:grid-cols-[520px_1fr] lg:gap-24">
+            <div className="t-stagger-line t-stagger-line--1">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-clay-soft">
+                La historia
               </p>
+              <h2 className="mt-5 font-serif text-[34px]/[1.12] font-medium tracking-[-0.01em] md:text-[48px]/[1.1]">
+                {storyLead}
+              </h2>
             </div>
-            {product.features.length > 0 && (
-              <div>
-                <h3 className="font-heading text-lg font-bold text-navy">Características</h3>
-                <ul className="mt-4 grid gap-3">
-                  {product.features.map((feature) => (
-                    <li
-                      key={feature.id}
-                      className="flex gap-3 rounded-xl border border-line bg-bg px-4 py-3.5 text-[15px]/[1.5] text-ink"
-                    >
-                      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-amber-soft text-[11px] font-bold text-amber-ink">
-                        ✓
-                      </span>
-                      {feature.text}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+            <div className="t-stagger-line t-stagger-line--2 flex flex-col gap-6 lg:pt-10">
+              {storyRest.length > 0 ? (
+                <p className="whitespace-pre-line text-lg/[1.65] text-cream/85">{storyRest.join(" ")}</p>
+              ) : (
+                <p className="text-lg/[1.65] text-cream/85">{product.tagline}</p>
+              )}
+            </div>
+          </Reveal>
         </section>
 
-        {product.specs.length > 0 && (
-          <section className="mx-auto max-w-6xl px-6 py-14">
-            <h2 className="font-heading text-[28px] font-extrabold tracking-[-0.02em] text-navy">
-              Especificaciones
-            </h2>
-            <dl className="mt-8 overflow-hidden rounded-xl border border-line bg-bg">
-              {product.specs.map((spec, i) => (
+        {(product.features.length > 0 || product.specs.length > 0) && (
+          <section className="mx-auto grid max-w-[1440px] gap-10 px-6 py-20 md:px-16 md:py-[120px] lg:grid-cols-[520px_1fr] lg:gap-24">
+            <Reveal>
+              <h2 className="t-stagger-line t-stagger-line--1 font-serif text-[36px] font-medium md:text-[44px]">
+                Lo que trae
+              </h2>
+              <p className="t-stagger-line t-stagger-line--2 mt-4 max-w-[520px] text-base/[1.6] text-taupe">
+                Todo lo que necesitás saber antes de elegirla.
+              </p>
+            </Reveal>
+            <dl className="border-t border-linen">
+              {product.features.map((feature) => (
+                <div key={feature.id} className="flex gap-3 border-b border-linen py-5 text-[15px]/[1.5]">
+                  <dt className="sr-only">Característica</dt>
+                  <CheckIcon size={18} className="mt-0.5 shrink-0 text-clay" />
+                  <dd>{feature.text}</dd>
+                </div>
+              ))}
+              {product.specs.map((spec) => (
                 <div
                   key={spec.id}
-                  className={`grid gap-1 px-5 py-3.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-6 ${
-                    i % 2 === 0 ? "bg-surface" : "bg-bg"
-                  }`}
+                  className="grid grid-cols-1 gap-1 border-b border-linen py-5 text-[15px] sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-6"
                 >
-                  <dt className="text-sm font-semibold text-navy">{spec.label}</dt>
-                  <dd className="text-sm text-ink-soft">{spec.value}</dd>
+                  <dt className="font-medium">{spec.label}</dt>
+                  <dd className="text-taupe">{spec.value}</dd>
                 </div>
               ))}
             </dl>
           </section>
         )}
 
-        {media.length > 1 && (
-          <ProductPhotoWall
-            name={product.name}
-            media={media}
-            photoCount={photoCount}
-            videoCount={videoCount}
-          />
-        )}
-
-        <section className="border-t border-line bg-surface">
-          <div className="mx-auto max-w-6xl px-6 py-12">
-            <h2 className="font-heading text-[22px] font-extrabold text-navy">
-              Envío, pagos y cambios
-            </h2>
-            <div className="mt-6 grid gap-4 sm:grid-cols-3">
-              {[
-                {
-                  title: "Envío a todo el país",
-                  text: "Despachamos con Correo Argentino y llega en 3 a 5 días hábiles. El costo se calcula en el pago según tu provincia.",
-                },
-                {
-                  title: "Pagá como quieras",
-                  text:
-                    settings.installments > 1
-                      ? `Con Mercado Pago: tarjeta, dinero en cuenta y hasta ${settings.installments} cuotas sin interés.`
-                      : "Con Mercado Pago: tarjeta o dinero en cuenta.",
-                },
-                {
-                  title: "Cambios en 30 días",
-                  text: "Si el producto no es lo que esperabas, escribinos y lo resolvemos.",
-                },
-              ].map((item) => (
-                <div key={item.title} className="rounded-xl border border-line bg-bg p-5">
-                  <p className="font-heading text-[15px] font-bold text-navy">{item.title}</p>
-                  <p className="mt-2 text-sm/[1.6] text-ink-soft">{item.text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="border-t border-line">
-          <div className="mx-auto max-w-6xl px-6 py-11">
-            <h2 className="font-heading text-[26px] font-extrabold text-navy">
-              Lo que dicen nuestros clientes
-            </h2>
-            {product.reviews.length > 0 && (
-              <div className="mt-8 grid gap-6 sm:grid-cols-3">
-                {product.reviews.map((review) => (
-                  <div
-                    key={review.id}
-                    className="flex flex-col gap-3 rounded-xl border border-line bg-bg p-5"
-                  >
-                    <Stars rating={review.rating} />
-                    <p className="text-sm/[1.6] text-ink-soft">
-                      &ldquo;{review.text}&rdquo;
+        <section id="resenas" className="scroll-mt-28 bg-sand">
+          <div className="mx-auto max-w-[1440px] px-6 py-20 md:px-16 md:pb-[120px] md:pt-24">
+            <div className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
+              {product.reviews.length > 0 ? (
+                <div className="flex items-end gap-5">
+                  <p className="font-serif text-[80px] leading-[0.85] md:text-[96px]">
+                    {avgRating.toFixed(1).replace(".", ",")}
+                  </p>
+                  <div className="flex flex-col gap-1.5 pb-1">
+                    <StarRating rating={avgRating} />
+                    <p className="text-sm text-taupe">
+                      {product.reviews.length} {product.reviews.length === 1 ? "reseña" : "reseñas"}
                     </p>
+                  </div>
+                </div>
+              ) : (
+                <h2 className="font-serif text-[36px] font-medium">Todavía no hay reseñas</h2>
+              )}
+            </div>
+
+            {product.reviews.length > 0 && (
+              <Reveal className="mt-12 grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-12">
+                {product.reviews.map((review, i) => (
+                  <figure
+                    key={review.id}
+                    className={`t-stagger-line t-stagger-line--${Math.min(i + 1, 4)} flex flex-col gap-4 border-t border-espresso pt-6`}
+                  >
+                    <StarRating rating={review.rating} size={13} />
+                    <blockquote className="font-serif text-[22px]/[1.35]">&ldquo;{review.text}&rdquo;</blockquote>
                     {review.photoUrl && (
-                      <div className="relative h-48 w-full overflow-hidden rounded-lg">
+                      <div className="relative h-48 w-full overflow-hidden">
                         <Image
                           src={review.photoUrl}
                           alt={`Foto de ${review.author}`}
                           fill
                           className="object-cover"
-                          sizes="(min-width: 640px) 33vw, 100vw"
+                          sizes="(min-width: 768px) 33vw, 100vw"
                         />
                       </div>
                     )}
-                    <p className="font-heading text-sm font-bold text-navy">
-                      {review.author}
-                    </p>
-                  </div>
+                    <figcaption className="text-sm">
+                      <span className="font-semibold">{review.author}</span>
+                      <span className="text-taupe"> · Compra verificada</span>
+                    </figcaption>
+                  </figure>
                 ))}
-              </div>
+              </Reveal>
             )}
-            <div className="mt-8">
-              <ReviewForm productId={product.id} />
+
+            <div className="mt-14">
+              <ReviewToggle productId={product.id} />
             </div>
           </div>
         </section>
 
-        <div className="mx-auto max-w-6xl px-6 pb-12">
-          <Link href="/catalogo" className="font-heading text-sm font-bold text-blue hover:text-navy">
-            ← Volver al catálogo
+        <div className="mx-auto max-w-[1440px] px-6 py-12 md:px-16">
+          <Link
+            href="/catalogo"
+            transitionTypes={["nav-back"]}
+            className="group inline-flex items-center gap-2 text-sm font-semibold"
+          >
+            <ArrowLeft size={16} className="transition-transform duration-[400ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:-translate-x-1" />
+            <span className="b-link">Volver al catálogo</span>
           </Link>
         </div>
-      </main>
+      </StoreMain>
       <Footer />
     </>
   );

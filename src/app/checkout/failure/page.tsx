@@ -1,31 +1,32 @@
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { StoreMain } from "@/components/store/StoreMain";
 
 export default function CheckoutFailurePage() {
   return (
     <>
       <Header />
-      <main className="flex flex-1 items-center justify-center px-6 py-20">
-        <div className="max-w-[420px] rounded-[14px] border border-err-line bg-err-bg p-8 text-center">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-err-ink">
+      <StoreMain className="flex items-center justify-center px-6 py-24">
+        <div className="max-w-[520px] border-t border-espresso pt-10 text-center">
+          <p className="b-eyebrow">
             Pago rechazado
           </p>
-          <h1 className="mt-2 font-heading text-2xl font-extrabold text-navy">
+          <h1 className="mt-4 font-serif text-[36px]/[1.1] font-medium tracking-[-0.01em]">
             No pudimos cobrar el pedido
           </h1>
-          <p className="mt-3 text-sm/[1.6] text-ink-soft">
+          <p className="mt-4 text-[17px]/[1.6] text-taupe">
             Guardamos tu carrito. Probá con otro medio de pago o escribinos y
             lo resolvemos.
           </p>
           <Link
             href="/carrito"
-            className="mt-6 inline-block rounded-lg bg-navy px-6 py-3 font-heading text-sm font-bold text-white hover:bg-navy-deep"
+            className="b-btn b-btn-clay mt-8"
           >
             Reintentar el pago
           </Link>
         </div>
-      </main>
+      </StoreMain>
       <Footer />
     </>
   );

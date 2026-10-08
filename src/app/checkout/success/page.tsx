@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { StoreMain } from "@/components/store/StoreMain";
 import { ClearCartOnMount } from "@/components/ClearCartOnMount";
 import { SuccessCheck } from "@/components/SuccessCheck";
 import { PurchasePixel } from "@/components/PurchasePixel";
@@ -48,41 +49,41 @@ export default async function CheckoutSuccessPage(
       <Header />
       <ClearCartOnMount />
       {order && <PurchasePixel orderId={order.id} value={order.total} />}
-      <main className="flex-1 px-6 py-16">
+      <StoreMain className="px-6 py-16 md:py-24">
         <div className="mx-auto max-w-[820px] text-center">
-          <span className="mx-auto flex h-[62px] w-[62px] items-center justify-center rounded-full border border-amber-line bg-amber-soft text-amber-ink">
+          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-clay text-paper">
             <SuccessCheck />
           </span>
           {order && (
-            <p className="mt-4 text-xs font-bold uppercase tracking-[0.14em] text-amber-ink">
+            <p className="b-eyebrow mt-6">
               Pedido #{order.id.slice(-6).toUpperCase()} · Pago acreditado
             </p>
           )}
-          <h1 className="mt-2 font-heading text-4xl font-extrabold text-navy">
-            ¡Gracias por tu compra!
+          <h1 className="mt-3 font-serif text-[40px]/[1.05] font-medium tracking-[-0.02em] md:text-[56px]/[1.05]">
+            Gracias por tu compra
           </h1>
-          <p className="mt-3 text-base/[1.6] text-ink-soft">
+          <p className="mx-auto mt-4 max-w-[560px] text-[17px]/[1.6] text-taupe">
             {order
               ? `Confirmamos tu pedido por ${formatPrice(order.total)}. Te vamos a escribir a ${order.customerEmail} con los detalles del envío.`
               : "Confirmamos tu pago. En breve te contactamos con los detalles del envío."}
           </p>
 
           {order && (
-            <div className="mt-8 rounded-[14px] border border-line text-left">
-              <div className="flex items-center justify-between rounded-t-[14px] bg-surface px-5 py-3.5">
-                <span className="font-heading text-sm font-bold text-navy">
+            <div className="mt-12 border-t border-espresso text-left">
+              <div className="flex items-center justify-between py-4">
+                <span className="font-serif text-xl">
                   Pedido #{order.id.slice(-6).toUpperCase()}
                 </span>
-                <span className="text-xs text-ink-faint">
+                <span className="text-sm text-taupe">
                   {order.createdAt.toLocaleDateString("es-AR")}
                 </span>
               </div>
-              <div className="flex flex-col gap-3 px-5 py-4">
+              <div className="flex flex-col gap-4 border-t border-linen py-5">
                 {order.items.map((item) => {
                   const hero = getHeroImageUrl(item.product);
                   return (
                     <div key={item.id} className="flex items-center gap-3 text-sm">
-                      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-surface">
+                      <div className="relative h-14 w-12 shrink-0 overflow-hidden bg-sand">
                         {hero && (
                           <Image
                             src={hero}
@@ -93,18 +94,18 @@ export default async function CheckoutSuccessPage(
                           />
                         )}
                       </div>
-                      <span className="flex-1 text-ink-soft">
+                      <span className="flex-1 text-[15px]">
                         {item.quantity}× {item.product.name}
                         {item.variantName ? ` (${item.variantName})` : ""}
                       </span>
-                      <span className="font-heading font-bold text-ink">
+                      <span className="font-serif text-[17px] tabular-nums">
                         {formatPrice(item.lineTotal ?? item.unitPrice * item.quantity)}
                       </span>
                     </div>
                   );
                 })}
               </div>
-              <div className="grid grid-cols-3 divide-x divide-line border-t border-line">
+              <div className="grid grid-cols-3 border-y border-linen">
                 <TimelineStep label="Pago acreditado" detail="Hoy" done />
                 <TimelineStep
                   label="En preparación"
@@ -118,11 +119,8 @@ export default async function CheckoutSuccessPage(
             </div>
           )}
 
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/catalogo"
-              className="rounded-lg bg-navy px-6 py-3 font-heading text-sm font-bold text-white hover:bg-navy-deep"
-            >
+          <div className="mt-10 flex flex-wrap justify-center gap-3">
+            <Link href="/catalogo" className="b-btn b-btn-clay">
               Seguir comprando
             </Link>
             <a
@@ -133,13 +131,13 @@ export default async function CheckoutSuccessPage(
               )}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-lg border border-border-btn bg-bg px-6 py-3 font-heading text-sm font-bold text-navy hover:bg-surface"
+              className="b-btn b-btn-outline"
             >
               Escribinos por WhatsApp
             </a>
           </div>
         </div>
-      </main>
+      </StoreMain>
       <Footer />
     </>
   );
@@ -155,12 +153,15 @@ function TimelineStep({
   done?: boolean;
 }) {
   return (
-    <div className="px-4 py-4 text-center">
-      <p className={`text-sm ${done ? "text-navy" : "text-ink-faint"}`}>
-        {done ? "●" : "○"}{" "}
-        <span className="font-heading font-bold">{label}</span>
+    <div className="px-2 py-5 text-center">
+      <p className={`flex items-center justify-center gap-2 text-sm ${done ? "text-espresso" : "text-taupe"}`}>
+        <span
+          aria-hidden="true"
+          className={`h-2 w-2 rounded-full ${done ? "bg-clay" : "border border-taupe"}`}
+        />
+        <span className="font-semibold">{label}</span>
       </p>
-      <p className="mt-0.5 text-xs text-ink-faint">{detail}</p>
+      <p className="mt-1 text-[13px] text-taupe">{detail}</p>
     </div>
   );
 }

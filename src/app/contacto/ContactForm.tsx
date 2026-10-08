@@ -51,14 +51,12 @@ export function ContactForm() {
 
   if (sent) {
     return (
-      <div className="mt-6 flex flex-col items-center gap-3 rounded-[14px] border border-amber-line bg-amber-soft px-6 py-10 text-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-full border border-amber-line bg-bg text-amber-ink">
+      <div className="mt-8 flex flex-col items-start gap-4 border-t border-espresso py-10">
+        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-clay text-paper">
           <SuccessCheck />
         </span>
-        <p className="font-heading text-lg font-bold text-navy">
-          ¡Mensaje enviado!
-        </p>
-        <p className="max-w-xs text-sm text-ink-soft">
+        <p className="font-serif text-[28px]">Mensaje enviado</p>
+        <p className="max-w-sm text-[15px]/[1.6] text-taupe">
           Gracias por escribirnos, {form.name.split(" ")[0]}. Te respondemos a
           la brevedad.
         </p>
@@ -67,20 +65,20 @@ export function ContactForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
       {error && (
-        <p className="rounded-[10px] border border-err-line bg-err-bg px-3 py-2 text-[13px] text-err-ink">
+        <p role="alert" className="border-l-2 border-err-ink bg-err-bg px-4 py-3 text-sm text-err-ink">
           {error}
         </p>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Nombre">
           <input
             required
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="input"
+            className="b-input"
           />
         </Field>
         <Field label="Correo electrónico *">
@@ -89,7 +87,7 @@ export function ContactForm() {
             required
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
-            className="input"
+            className="b-input"
           />
         </Field>
       </div>
@@ -98,7 +96,7 @@ export function ContactForm() {
         <input
           value={form.phone}
           onChange={(e) => setForm({ ...form, phone: e.target.value })}
-          className="input"
+          className="b-input"
         />
       </Field>
 
@@ -108,7 +106,7 @@ export function ContactForm() {
           rows={5}
           value={form.message}
           onChange={(e) => setForm({ ...form, message: e.target.value })}
-          className="input resize-none"
+          className="b-input resize-none"
         />
       </Field>
 
@@ -127,25 +125,11 @@ export function ContactForm() {
       <button
         type="submit"
         disabled={submitting}
-        className="mt-1 w-fit rounded-lg bg-navy px-6 py-3.5 font-heading text-sm font-bold text-white transition-colors hover:bg-navy-deep disabled:opacity-50"
+        className="b-btn b-btn-clay mt-2 w-fit"
       >
-        {submitting ? "Enviando…" : "Enviar"}
+        {submitting ? "Enviando…" : "Enviar mensaje"}
       </button>
 
-      <style jsx global>{`
-        .input {
-          border-radius: 8px;
-          border: 1px solid var(--color-border-input);
-          background: var(--color-bg);
-          padding: 12px 14px;
-          font-size: 14px;
-          outline: none;
-        }
-        .input:focus {
-          border-color: var(--color-amber);
-          box-shadow: 0 0 0 3px rgba(240,160,28, 0.15);
-        }
-      `}</style>
     </form>
   );
 }
@@ -158,8 +142,8 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-[13px] font-semibold text-ink">{label}</span>
+    <label className="flex flex-col gap-2">
+      <span className="text-[13px] font-medium text-taupe">{label}</span>
       {children}
     </label>
   );

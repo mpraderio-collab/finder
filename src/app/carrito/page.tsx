@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { StoreMain } from "@/components/store/StoreMain";
+import { ArrowRight, CloseIcon, LockIcon } from "@/components/store/Icons";
 import { cartItemKey, useCart } from "@/lib/cart-context";
 import { formatPrice } from "@/lib/products";
 
@@ -15,152 +17,140 @@ export default function CarritoPage() {
   return (
     <>
       <Header />
-      <main className="flex-1">
-        <section className="mx-auto max-w-[960px] px-6 py-14">
-          <h1 className="font-heading text-[30px] font-extrabold text-navy">
+      <StoreMain>
+        <section className="mx-auto max-w-[1200px] px-6 pb-24 pt-12 md:px-16 md:pt-20">
+          <p className="b-eyebrow">Carrito</p>
+          <h1 className="mt-4 font-serif text-[40px]/[1.05] font-medium tracking-[-0.02em] md:text-[56px]/[1.05]">
             Tu carrito
           </h1>
 
           {items.length === 0 ? (
-            <div className="mt-10 rounded-[14px] border border-dashed border-border-btn p-[34px] text-center">
-              <p className="font-heading text-xl font-extrabold text-navy">
-                Todavía no agregaste productos
+            <div className="mt-12 border-y border-linen py-16 text-center">
+              <p className="font-serif text-[28px]">Todavía no agregaste productos</p>
+              <p className="mt-2 text-[15px] text-taupe">
+                Elegí una escena y encontrá tu próxima luz.
               </p>
-              <p className="mt-1 text-[15px] text-ink-soft">
-                Explorá el catálogo y encontrá tu próxima luz.
-              </p>
-              <Link
-                href="/catalogo"
-                className="mt-5 inline-block rounded-lg bg-navy px-6 py-3 font-heading text-sm font-bold text-white hover:bg-navy-deep"
-              >
+              <Link href="/catalogo" className="b-btn b-btn-clay mt-8">
                 Ver catálogo
+                <ArrowRight size={16} className="b-arrow" />
               </Link>
             </div>
           ) : (
-            <div className="mt-6 grid gap-6 lg:grid-cols-[1.7fr_1fr]">
-              <div className="flex flex-col gap-4">
+            <div className="mt-10 grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-16">
+              <ul className="border-t border-linen">
                 {items.map((item) => {
                   const key = cartItemKey(item.productId, item.variantName);
                   const lineTotal = lineTotals.get(key) ?? item.price * item.quantity;
                   const rawTotal = item.price * item.quantity;
                   const discount = rawTotal - lineTotal;
                   return (
-                    <div
-                      key={key}
-                      className="flex gap-4 rounded-[14px] border border-line p-4"
-                    >
-                      <div className="relative h-[92px] w-[92px] shrink-0 overflow-hidden rounded-[10px] bg-surface">
+                    <li key={key} className="flex gap-5 border-b border-linen py-6">
+                      <Link
+                        href={`/catalogo/${item.slug}`}
+                        transitionTypes={["nav-forward"]}
+                        className="group relative h-[104px] w-[88px] shrink-0 overflow-hidden bg-sand sm:h-[128px] sm:w-[108px]"
+                      >
                         {item.image && (
                           <Image
                             src={item.image}
                             alt={item.name}
                             fill
-                            className="object-cover"
-                            sizes="92px"
+                            className="b-zoom object-cover"
+                            sizes="108px"
                           />
                         )}
-                      </div>
-                      <div className="flex flex-1 flex-col justify-between">
-                        <div>
-                          <Link
-                            href={`/catalogo/${item.slug}`}
-                            className="font-heading text-base font-bold text-navy hover:underline"
+                      </Link>
+                      <div className="flex min-w-0 flex-1 flex-col justify-between gap-3">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <Link
+                              href={`/catalogo/${item.slug}`}
+                              transitionTypes={["nav-forward"]}
+                              className="b-link font-serif text-xl/[1.25]"
+                            >
+                              {item.name}
+                            </Link>
+                            {item.variantName && (
+                              <p className="mt-1 text-sm text-taupe">Color: {item.variantName}</p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeItem(key)}
+                            className="flex h-8 w-8 shrink-0 items-center justify-center text-taupe transition-colors hover:text-espresso"
+                            aria-label={`Quitar ${item.name} del carrito`}
                           >
-                            {item.name}
-                          </Link>
-                          {item.variantName && (
-                            <p className="text-[13px] text-ink-soft">
-                              {item.variantName}
-                            </p>
-                          )}
+                            <CloseIcon size={16} />
+                          </button>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center rounded-lg border border-border-input">
+                        <div className="flex flex-wrap items-end justify-between gap-3">
+                          <div className="flex items-center border border-linen">
                             <button
                               type="button"
-                              onClick={() =>
-                                updateQuantity(key, item.quantity - 1)
-                              }
-                              className="px-3 py-1.5 text-ink-soft hover:text-navy"
+                              onClick={() => updateQuantity(key, item.quantity - 1)}
+                              className="px-3.5 py-2 text-taupe transition-colors hover:text-espresso"
                               aria-label="Restar cantidad"
                             >
                               −
                             </button>
-                            <span className="min-w-8 text-center font-heading text-sm font-bold text-ink">
-                              {item.quantity}
-                            </span>
+                            <span className="min-w-6 text-center text-sm tabular-nums">{item.quantity}</span>
                             <button
                               type="button"
-                              onClick={() =>
-                                updateQuantity(key, item.quantity + 1)
-                              }
+                              onClick={() => updateQuantity(key, item.quantity + 1)}
                               disabled={item.quantity >= item.maxStock}
-                              className="px-3 py-1.5 text-ink-soft hover:text-navy disabled:opacity-30"
+                              className="px-3.5 py-2 text-taupe transition-colors hover:text-espresso disabled:opacity-30"
                               aria-label="Sumar cantidad"
                             >
                               +
                             </button>
                           </div>
-                          <span className="font-heading text-[17px] font-extrabold text-navy">
-                            {formatPrice(lineTotal)}
-                          </span>
+                          <div className="text-right">
+                            <p className="font-serif text-xl tabular-nums">{formatPrice(lineTotal)}</p>
+                            {discount > 0 && (
+                              <p className="text-[13px] font-semibold text-clay-ink">
+                                Promo aplicada · ahorrás {formatPrice(discount)}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        {discount > 0 && (
-                          <p className="text-right text-[12px] font-semibold text-amber-ink">
-                            Promo aplicada (ahorrás {formatPrice(discount)})
-                          </p>
-                        )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => removeItem(key)}
-                        className="self-start text-ink-faint hover:text-err-ink"
-                        aria-label={`Quitar ${item.name} del carrito`}
-                      >
-                        ✕
-                      </button>
-                    </div>
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
 
-              <div className="h-fit rounded-[14px] border border-line bg-surface p-[22px]">
-                <p className="font-heading text-lg font-bold text-navy">
-                  Resumen
-                </p>
-                <div className="mt-4 flex justify-between text-sm text-ink-soft">
-                  <span>Subtotal</span>
-                  <span className="font-semibold text-ink">
-                    {formatPrice(subtotal)}
-                  </span>
-                </div>
-                <div className="mt-2 flex justify-between text-sm text-ink-soft">
-                  <span>Envío</span>
-                  <span className="font-bold text-amber-ink">Gratis</span>
-                </div>
-                <div className="mt-4 flex items-baseline justify-between border-t border-line pt-4">
-                  <span className="text-[15px] font-semibold text-ink">
-                    Total
-                  </span>
-                  <span className="font-heading text-[26px] font-extrabold text-navy">
-                    {formatPrice(subtotal)}
-                  </span>
+              <aside className="h-fit bg-sand p-7 lg:sticky lg:top-28">
+                <p className="font-serif text-[26px]">Resumen</p>
+                <dl className="mt-6 flex flex-col gap-3 text-[15px]">
+                  <div className="flex justify-between">
+                    <dt className="text-taupe">Subtotal</dt>
+                    <dd className="tabular-nums">{formatPrice(subtotal)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-taupe">Envío</dt>
+                    <dd className="font-semibold text-clay-ink">Gratis</dd>
+                  </div>
+                </dl>
+                <div className="mt-6 flex items-baseline justify-between border-t border-linen pt-6">
+                  <span className="text-[15px] font-semibold">Total</span>
+                  <span className="font-serif text-[36px] leading-none tabular-nums">{formatPrice(subtotal)}</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => router.push("/checkout")}
-                  className="mt-5 w-full rounded-lg bg-navy px-6 py-3 font-heading text-sm font-bold text-white transition-colors hover:bg-navy-deep"
+                  className="b-btn b-btn-clay mt-7 w-full"
                 >
                   Continuar al pago
+                  <ArrowRight size={16} className="b-arrow" />
                 </button>
-                <p className="mt-2 text-center text-xs text-ink-faint">
-                  Pagás con Mercado Pago
+                <p className="mt-4 flex items-center justify-center gap-2 text-[13px] text-taupe">
+                  <LockIcon size={14} /> Pagás con Mercado Pago
                 </p>
-              </div>
+              </aside>
             </div>
           )}
         </section>
-      </main>
+      </StoreMain>
       <Footer />
     </>
   );

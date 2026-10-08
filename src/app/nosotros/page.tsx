@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { StoreMain } from "@/components/store/StoreMain";
+import { Reveal } from "@/components/store/Reveal";
 
 export const metadata: Metadata = {
   title: "Nosotros — Finder",
@@ -17,24 +19,28 @@ export default function NosotrosPage() {
   return (
     <>
       <Header />
-      <main className="flex-1">
-        <section className="mx-auto max-w-[960px] px-6 pb-9 pt-[52px]">
-          <span className="text-xs font-bold uppercase tracking-[0.18em] text-amber-ink">
-            Nosotros
-          </span>
-          <h1 className="mt-2 max-w-[760px] font-heading text-[44px] font-extrabold leading-[1.1] text-navy">
-            La luz correcta cambia cómo vivís tu casa
-          </h1>
-          <span className="mt-[22px] block h-1 w-16 rounded-full bg-amber" />
-          <div className="mt-8 grid gap-7 sm:grid-cols-3">
-            {paragraphs.map((text) => (
-              <p key={text} className="text-[15px]/[1.7] text-ink-soft">
+      <StoreMain>
+        <section className="mx-auto max-w-[1440px] px-6 pb-24 pt-14 md:px-16 md:pb-32 md:pt-24">
+          <Reveal>
+            <p className="t-stagger-line t-stagger-line--1 b-eyebrow">Nosotros</p>
+            <h1 className="t-stagger-line t-stagger-line--2 mt-5 max-w-[900px] font-serif text-[44px]/[1.04] font-medium tracking-[-0.02em] md:text-[72px]/[1.02]">
+              La luz correcta cambia cómo vivís tu casa.
+            </h1>
+          </Reveal>
+          <Reveal className="mt-14 grid grid-cols-1 gap-10 border-t border-espresso pt-10 md:mt-20 md:grid-cols-3 md:gap-16">
+            {paragraphs.map((text, i) => (
+              <p
+                key={text}
+                className={`t-stagger-line t-stagger-line--${i + 1} text-[17px]/[1.7] text-taupe ${
+                  i === 0 ? "font-serif text-[22px]/[1.45] text-espresso" : ""
+                }`}
+              >
                 {text}
               </p>
             ))}
-          </div>
+          </Reveal>
         </section>
-      </main>
+      </StoreMain>
       <Footer />
     </>
   );
