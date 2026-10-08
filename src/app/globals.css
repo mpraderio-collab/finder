@@ -685,3 +685,10 @@ body:has([data-store]) {
     animation-delay: 0s !important;
   }
 }
+
+/* El header es sticky (barra de promo + toolbar ≈ 104px): los saltos a
+   anchors y el scroll al primer campo inválido dejan el destino visible
+   debajo de él en lugar de taparlo. */
+html {
+  scroll-padding-top: 120px;
+}

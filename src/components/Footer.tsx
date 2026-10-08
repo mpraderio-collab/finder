@@ -33,7 +33,9 @@ export function Footer() {
         ))}
       </div>
 
-      <div className="bg-e-ink px-4 pb-8 pt-14 text-white md:px-8">
+      {/* Margen extra a la derecha y abajo: el botón flotante de WhatsApp no
+          tapa el newsletter ni la última fila al final de la página. */}
+      <div className="bg-e-ink px-4 pb-24 pt-14 text-white md:px-8 md:pb-10 lg:pr-[104px]">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_420px]">
           <div className="flex flex-col gap-2.5">
             <p className="e-mono text-e-faint">Tienda</p>

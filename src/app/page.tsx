@@ -156,7 +156,7 @@ export default async function Home() {
                 <h2 className="e-mono">
                   Combinalas · {tierLabel(promo, topTier)}
                 </h2>
-                <Link href="/catalogo" className="e-mono underline underline-offset-4">
+                <Link href="/catalogo" className="e-mono shrink-0 whitespace-nowrap underline underline-offset-4">
                   Ver catálogo
                 </Link>
               </div>
