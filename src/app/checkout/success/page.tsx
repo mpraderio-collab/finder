@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { PageTransition } from "@/components/store/PageTransition";
 import { ClearCartOnMount } from "@/components/ClearCartOnMount";
 import { SuccessCheck } from "@/components/SuccessCheck";
 import { PurchasePixel } from "@/components/PurchasePixel";
@@ -48,99 +49,82 @@ export default async function CheckoutSuccessPage(
       <Header />
       <ClearCartOnMount />
       {order && <PurchasePixel orderId={order.id} value={order.total} />}
-      <main className="flex-1 px-6 py-16">
-        <div className="mx-auto max-w-[820px] text-center">
-          <span className="mx-auto flex h-[62px] w-[62px] items-center justify-center rounded-full border border-amber-line bg-amber-soft text-amber-ink">
-            <SuccessCheck />
-          </span>
-          {order && (
-            <p className="mt-4 text-xs font-bold uppercase tracking-[0.14em] text-amber-ink">
-              Pedido #{order.id.slice(-6).toUpperCase()} · Pago acreditado
+      <PageTransition>
+        <main className="flex-1 bg-e-bg px-4 py-14 text-e-ink md:px-8">
+          <div className="mx-auto flex max-w-[820px] flex-col items-center text-center">
+            <span className="grid h-16 w-16 place-items-center rounded-full bg-e-ink text-white">
+              <SuccessCheck />
+            </span>
+            {order && (
+              <p className="e-mono mt-6 text-e-muted">
+                Pedido #{order.id.slice(-6).toUpperCase()} · Pago acreditado
+              </p>
+            )}
+            <h1 className="mt-3 text-[40px] font-medium leading-none tracking-[-0.03em] md:text-[56px]">
+              Gracias por tu compra
+            </h1>
+            <p className="mt-4 max-w-[560px] text-[16px]/[1.5] text-e-muted">
+              {order
+                ? `Confirmamos tu pedido por ${formatPrice(order.total)}. Te vamos a escribir a ${order.customerEmail} con los detalles del envío.`
+                : "Confirmamos tu pago. En breve te contactamos con los detalles del envío."}
             </p>
-          )}
-          <h1 className="mt-2 font-heading text-4xl font-extrabold text-navy">
-            ¡Gracias por tu compra!
-          </h1>
-          <p className="mt-3 text-base/[1.6] text-ink-soft">
-            {order
-              ? `Confirmamos tu pedido por ${formatPrice(order.total)}. Te vamos a escribir a ${order.customerEmail} con los detalles del envío.`
-              : "Confirmamos tu pago. En breve te contactamos con los detalles del envío."}
-          </p>
 
-          {order && (
-            <div className="mt-8 rounded-[14px] border border-line text-left">
-              <div className="flex items-center justify-between rounded-t-[14px] bg-surface px-5 py-3.5">
-                <span className="font-heading text-sm font-bold text-navy">
-                  Pedido #{order.id.slice(-6).toUpperCase()}
-                </span>
-                <span className="text-xs text-ink-faint">
-                  {order.createdAt.toLocaleDateString("es-AR")}
-                </span>
+            {order && (
+              <div className="mt-10 w-full bg-e-tile text-left">
+                <div className="flex items-center justify-between border-b border-e-line px-6 py-4">
+                  <span className="e-mono">Pedido #{order.id.slice(-6).toUpperCase()}</span>
+                  <span className="e-mono text-e-muted">{order.createdAt.toLocaleDateString("es-AR")}</span>
+                </div>
+                <ul className="flex flex-col gap-4 px-6 py-5">
+                  {order.items.map((item) => {
+                    const hero = getHeroImageUrl(item.product);
+                    return (
+                      <li key={item.id} className="flex items-center gap-4 text-[14px]">
+                        <div className="relative h-[72px] w-[60px] shrink-0 overflow-hidden bg-e-bg">
+                          {hero && (
+                            <Image src={hero} alt={item.product.name} fill className="object-cover" sizes="60px" />
+                          )}
+                        </div>
+                        <span className="flex-1">
+                          {item.quantity}× {item.product.name}
+                          {item.variantName ? ` (${item.variantName})` : ""}
+                        </span>
+                        <span className="tabular-nums">
+                          {formatPrice(item.lineTotal ?? item.unitPrice * item.quantity)}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <ol className="grid grid-cols-3 border-t border-e-line">
+                  <TimelineStep label="Pago acreditado" detail="Hoy" done />
+                  <TimelineStep label="En preparación" detail="1 día hábil" />
+                  <TimelineStep label="En camino" detail="3 a 5 días hábiles" />
+                </ol>
               </div>
-              <div className="flex flex-col gap-3 px-5 py-4">
-                {order.items.map((item) => {
-                  const hero = getHeroImageUrl(item.product);
-                  return (
-                    <div key={item.id} className="flex items-center gap-3 text-sm">
-                      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-surface">
-                        {hero && (
-                          <Image
-                            src={hero}
-                            alt={item.product.name}
-                            fill
-                            className="object-cover"
-                            sizes="48px"
-                          />
-                        )}
-                      </div>
-                      <span className="flex-1 text-ink-soft">
-                        {item.quantity}× {item.product.name}
-                        {item.variantName ? ` (${item.variantName})` : ""}
-                      </span>
-                      <span className="font-heading font-bold text-ink">
-                        {formatPrice(item.lineTotal ?? item.unitPrice * item.quantity)}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="grid grid-cols-3 divide-x divide-line border-t border-line">
-                <TimelineStep label="Pago acreditado" detail="Hoy" done />
-                <TimelineStep
-                  label="En preparación"
-                  detail="1 día hábil"
-                />
-                <TimelineStep
-                  label="En camino"
-                  detail="3 a 5 días hábiles"
-                />
-              </div>
+            )}
+
+            <div className="mt-10 flex flex-wrap justify-center gap-2">
+              <Link href="/catalogo" className="e-pill e-pill--dark">
+                Seguir comprando
+              </Link>
+              <a
+                href={getWhatsAppUrl(
+                  order
+                    ? `Hola! Tengo una consulta sobre mi pedido #${order.id.slice(-6).toUpperCase()}.`
+                    : "Hola! Tengo una consulta sobre mi pedido.",
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="e-pill e-pill--outline"
+              >
+                Escribinos por WhatsApp
+              </a>
             </div>
-          )}
-
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/catalogo"
-              className="rounded-lg bg-navy px-6 py-3 font-heading text-sm font-bold text-white hover:bg-navy-deep"
-            >
-              Seguir comprando
-            </Link>
-            <a
-              href={getWhatsAppUrl(
-                order
-                  ? `Hola! Tengo una consulta sobre mi pedido #${order.id.slice(-6).toUpperCase()}.`
-                  : "Hola! Tengo una consulta sobre mi pedido.",
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-lg border border-border-btn bg-bg px-6 py-3 font-heading text-sm font-bold text-navy hover:bg-surface"
-            >
-              Escribinos por WhatsApp
-            </a>
           </div>
-        </div>
-      </main>
-      <Footer />
+        </main>
+        <Footer />
+      </PageTransition>
     </>
   );
 }
@@ -155,12 +139,10 @@ function TimelineStep({
   done?: boolean;
 }) {
   return (
-    <div className="px-4 py-4 text-center">
-      <p className={`text-sm ${done ? "text-navy" : "text-ink-faint"}`}>
-        {done ? "●" : "○"}{" "}
-        <span className="font-heading font-bold">{label}</span>
-      </p>
-      <p className="mt-0.5 text-xs text-ink-faint">{detail}</p>
-    </div>
+    <li className="flex flex-col gap-2 px-4 py-4">
+      <span className={`h-[3px] w-full ${done ? "bg-e-ink" : "bg-e-line"}`} />
+      <span className={`e-mono ${done ? "text-e-ink" : "text-e-muted"}`}>{label}</span>
+      <span className="text-[12px] text-e-muted">{detail}</span>
+    </li>
   );
 }

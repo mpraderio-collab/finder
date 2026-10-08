@@ -1,9 +1,12 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatPrice } from "@/lib/products";
+import { CloseIcon, SearchIcon } from "@/components/store/Icons";
+import { usePresence } from "@/components/store/usePresence";
 
 type SearchProduct = {
   slug: string;
@@ -14,36 +17,36 @@ type SearchProduct = {
 };
 
 export function SearchTrigger({
-  triggerClassName = "hidden text-sm font-medium text-ink-soft transition-colors hover:text-navy sm:inline",
+  triggerClassName = "flex h-9 items-center gap-2 rounded-full px-2 text-e-ink transition-colors hover:bg-e-tile",
+  showLabel = false,
 }: {
   triggerClassName?: string;
+  showLabel?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const { state, open, close } = usePresence("--modal-close-dur", 150);
+  const modalRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [products, setProducts] = useState<SearchProduct[] | null>(null);
-  const loading = open && products === null;
+  const isOpen = state !== "closed";
+  const loading = isOpen && products === null;
 
   useEffect(() => {
-    if (!open || products) return;
+    if (!isOpen || products) return;
     fetch("/api/products/search")
       .then((res) => res.json())
       .then((data) => setProducts(data.products))
       .catch(() => setProducts([]));
-  }, [open, products]);
+  }, [isOpen, products]);
 
+  // transitions-dev modal: mount at the resting scale, then flip to .is-open
+  // on the next frame so the scale-up runs.
   useEffect(() => {
-    if (!open) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    window.addEventListener("keydown", handleKey);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKey);
-    };
-  }, [open]);
+    if (state !== "open") return;
+    const frame = requestAnimationFrame(() =>
+      modalRef.current?.classList.add("is-open"),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [state]);
 
   const normalizedQuery = query.trim().toLowerCase();
   const results =
@@ -57,91 +60,107 @@ export function SearchTrigger({
               p.tagline.toLowerCase().includes(normalizedQuery),
           );
 
+  const modalClass = state === "closing" ? "is-closing" : "";
+
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={triggerClassName}>
-        Buscar
+      <button
+        type="button"
+        onClick={open}
+        className={triggerClassName}
+        aria-label="Buscar"
+      >
+        <SearchIcon size={18} />
+        {showLabel ? (
+          <span>Buscar</span>
+        ) : (
+          <span className="e-mono hidden lg:inline">Buscar</span>
+        )}
       </button>
 
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center bg-ink/60 px-4 pt-[12vh]"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="w-full max-w-lg rounded-2xl border border-line bg-bg shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3 border-b border-line px-5 py-4">
-              <span className="text-ink-faint" aria-hidden="true">
-                ⌕
-              </span>
-              <input
-                autoFocus
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar productos…"
-                className="flex-1 bg-transparent text-base outline-none placeholder:text-ink-faint"
-              />
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Cerrar búsqueda"
-                className="text-xl leading-none text-ink-faint hover:text-ink"
-              >
-                ×
-              </button>
-            </div>
+      {isOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[60] flex items-start justify-center px-4 pt-[12vh]">
+            <div
+              data-state={state}
+              className="e-drawer-overlay absolute inset-0 bg-black/50"
+              onClick={close}
+            />
+            <div
+              ref={modalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Buscar productos"
+              className={`t-modal relative w-full max-w-xl overflow-hidden rounded-[24px] bg-e-bg text-e-ink ${modalClass}`}
+            >
+              <div className="flex items-center gap-3 border-b border-e-line px-6 py-4">
+                <SearchIcon size={18} className="text-e-muted" />
+                <input
+                  autoFocus
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Buscar luces…"
+                  className="flex-1 bg-transparent text-[16px] outline-none placeholder:text-e-faint"
+                />
+                <button
+                  type="button"
+                  onClick={close}
+                  aria-label="Cerrar búsqueda"
+                  className="grid h-8 w-8 place-items-center rounded-full hover:bg-e-tile"
+                >
+                  <CloseIcon size={16} />
+                </button>
+              </div>
 
-            <div className="max-h-[60vh] overflow-y-auto p-2">
-              {loading && (
-                <p className="px-3 py-6 text-center text-sm text-ink-soft">
-                  Cargando…
-                </p>
-              )}
-              {!loading && products !== null && results.length === 0 && (
-                <p className="px-3 py-6 text-center text-sm text-ink-soft">
-                  {normalizedQuery === ""
-                    ? "Todavía no hay productos publicados."
-                    : `No encontramos productos para "${query}".`}
-                </p>
-              )}
-              {!loading &&
-                results.map((p) => (
-                  <Link
-                    key={p.slug}
-                    href={`/catalogo/${p.slug}`}
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-surface"
-                  >
-                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-surface">
-                      {p.image && (
-                        <Image
-                          src={p.image}
-                          alt=""
-                          fill
-                          className="object-cover"
-                          sizes="48px"
-                        />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-heading text-sm font-bold text-navy">
-                        {p.name}
-                      </p>
-                      <p className="truncate text-xs text-ink-soft">
-                        {p.tagline}
-                      </p>
-                    </div>
-                    <span className="shrink-0 font-heading text-sm font-bold text-ink">
-                      {formatPrice(p.price)}
-                    </span>
-                  </Link>
-                ))}
+              <div className="max-h-[60vh] overflow-y-auto p-3">
+                {loading && (
+                  <p className="e-mono px-3 py-6 text-center text-e-muted">
+                    Cargando…
+                  </p>
+                )}
+                {!loading && products !== null && results.length === 0 && (
+                  <p className="px-3 py-6 text-center text-sm text-e-muted">
+                    {normalizedQuery === ""
+                      ? "Todavía no hay productos publicados."
+                      : `No encontramos productos para "${query}".`}
+                  </p>
+                )}
+                {!loading &&
+                  results.map((p) => (
+                    <Link
+                      key={p.slug}
+                      href={`/catalogo/${p.slug}`}
+                      transitionTypes={["nav-forward"]}
+                      onClick={close}
+                      className="flex items-center gap-4 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-e-tile"
+                    >
+                      <div className="relative h-14 w-12 shrink-0 overflow-hidden bg-e-tile">
+                        {p.image && (
+                          <Image
+                            src={p.image}
+                            alt=""
+                            fill
+                            className="object-cover"
+                            sizes="48px"
+                          />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[14px]">{p.name}</p>
+                        <p className="truncate text-[12px] text-e-muted">
+                          {p.tagline}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-[13px] tabular-nums">
+                        {formatPrice(p.price)}
+                      </span>
+                    </Link>
+                  ))}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

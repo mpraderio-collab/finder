@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useCart } from "@/lib/cart-context";
+import { openCartDrawer } from "@/lib/cart-drawer";
+import { BagIcon } from "@/components/store/Icons";
 
 export function CartLink() {
   const { itemCount } = useCart();
@@ -37,11 +38,18 @@ export function CartLink() {
   }, [itemCount]);
 
   return (
-    <Link
-      href="/carrito"
-      className="rounded-lg bg-navy px-5 py-2.5 font-heading text-sm font-bold text-white transition-colors hover:bg-navy-deep"
+    <button
+      type="button"
+      onClick={openCartDrawer}
+      aria-label={`Abrir carrito (${itemCount})`}
+      className="flex h-9 items-center gap-1.5 rounded-full px-2 text-e-ink transition-colors hover:bg-e-tile"
     >
-      Carrito · <span ref={groupRef} className="t-digit-group">{itemCount}</span>
-    </Link>
+      <BagIcon size={18} />
+      <span className="e-mono tabular-nums">
+        <span ref={groupRef} className="t-digit-group">
+          {itemCount}
+        </span>
+      </span>
+    </button>
   );
 }

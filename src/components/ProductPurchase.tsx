@@ -1,9 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, ViewTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addCartItem } from "@/lib/cart-context";
+import { openCartDrawer } from "@/lib/cart-drawer";
+import { productImageTransitionName } from "@/components/ProductCard";
+import { ArrowLeftIcon, ArrowRightIcon, CloseIcon, PlayIcon } from "@/components/store/Icons";
+import { QuantityPill } from "@/components/store/QuantityPill";
 import { trackEvent } from "@/lib/analytics";
 import { NotifyStockForm } from "@/components/NotifyStockForm";
 import { formatPrice } from "@/lib/products";
@@ -125,9 +129,9 @@ export function ProductPurchase({
     return () => observer.disconnect();
   }, []);
 
-  function openLightbox() {
+  function openLightbox(index = carouselIndex) {
     const idx = imageGallery.findIndex(
-      (img) => img.id === gallery[carouselIndex]?.id,
+      (img) => img.id === gallery[index]?.id,
     );
     setLightboxIndex(idx === -1 ? 0 : idx);
     setLightboxOpen(true);
@@ -171,6 +175,10 @@ export function ProductPurchase({
     setCarouselIndex(0);
   }
 
+  // La foto principal del producto (no la de una variante) es la que viaja
+  // desde la tarjeta del catálogo en la transición entre páginas.
+  const heroUrl = images.find((img) => img.type !== "video")?.url;
+
   // Swap the "Agregar al carrito" label to a confirmation and back, per
   // transitions-dev's text-states-swap (see globals.css for .t-text-swap).
   function swapAddLabel(next: string) {
@@ -199,7 +207,8 @@ export function ProductPurchase({
     addCartItem(buildCartItem(), quantity);
     trackEvent("add_to_cart", { productId, productName: name, value: price });
     if (addLabelTimeoutRef.current) clearTimeout(addLabelTimeoutRef.current);
-    swapAddLabel("¡Agregado! ✓");
+    swapAddLabel("Agregado");
+    openCartDrawer();
     addLabelTimeoutRef.current = setTimeout(
       () => swapAddLabel("Agregar al carrito"),
       2000,
@@ -220,300 +229,241 @@ export function ProductPurchase({
   }
 
   return (
-    <div className="grid gap-11 md:grid-cols-2">
+    <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(360px,440px)] md:gap-10 lg:gap-14">
+      {/* Galería: grilla 2x2 en desktop (maap.cc), carrusel con miniaturas en mobile. */}
       <div className="flex flex-col gap-3">
-        <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-line bg-surface">
-          {gallery[carouselIndex] &&
-            (gallery[carouselIndex].type === "video" ? (
-              <video
-                key={gallery[carouselIndex].id}
-                src={gallery[carouselIndex].url}
-                controls
-                controlsList="nofullscreen noremoteplayback"
-                disablePictureInPicture
-                playsInline
-                className="h-full w-full object-cover"
+        <div className="hidden grid-cols-2 gap-2 md:grid">
+          {gallery.map((img, i) => (
+            <div key={img.id} className={i === 0 && gallery.length % 2 === 1 ? "col-span-2" : ""}>
+              <GalleryTile
+                img={img}
+                name={name}
+                wide={i === 0 && gallery.length % 2 === 1}
+                priority={i === 0}
+                transitionName={img.url === heroUrl ? productImageTransitionName(slug) : undefined}
+                onOpen={() => openLightbox(i)}
               />
-            ) : (
-              <button
-                type="button"
-                onClick={openLightbox}
-                aria-label="Ver foto en pantalla completa"
-                className="absolute inset-0 h-full w-full cursor-zoom-in"
-              >
-                <Image
-                  src={gallery[carouselIndex].url}
-                  alt={name}
-                  fill
-                  priority
-                  className="object-cover"
-                  sizes="(min-width: 768px) 50vw, 100vw"
-                />
-              </button>
-            ))}
+            </div>
+          ))}
         </div>
-        {gallery.length > 1 && (
-          <div className="grid grid-cols-4 gap-3">
-            {gallery.map((img, i) => (
-              <button
-                key={img.id}
-                type="button"
-                onClick={() => setCarouselIndex(i)}
-                aria-label={
-                  img.type === "video" ? `Ver video ${i + 1}` : `Ver foto ${i + 1}`
-                }
-                className={`relative aspect-square overflow-hidden rounded-[10px] border-2 bg-surface transition-colors ${
-                  i === carouselIndex ? "border-navy" : "border-line"
-                }`}
-              >
-                {img.type === "video" ? (
-                  <>
-                    <video
-                      src={img.url}
-                      muted
-                      playsInline
-                      className="h-full w-full object-cover"
-                    />
-                    <span className="absolute inset-0 flex items-center justify-center bg-ink/20 text-lg text-white">
-                      ▶
-                    </span>
-                  </>
-                ) : (
-                  <Image
-                    src={img.url}
-                    alt=""
-                    fill
-                    className="object-cover"
-                    sizes="150px"
-                  />
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-5">
-        {aboveActions}
-
-        <div
-          ref={buyPanelRef}
-          className="flex flex-col gap-4 rounded-[14px] border border-line bg-surface p-[22px]"
-        >
-          <div className="flex items-baseline gap-3.5">
-            <span className="font-heading text-[34px] font-extrabold text-navy">
-              {formatPrice(price)}
-            </span>
-            <span className="text-[13px] text-ink-soft">
-              {installments} {installments === 1 ? "cuota" : "cuotas"} de{" "}
-              {formatPrice(installment)}
-            </span>
-          </div>
-
-          {promotion && (
-            <div className="flex w-fit flex-col gap-1 rounded-lg bg-amber-soft px-3 py-2 text-[13px] font-semibold text-amber-ink">
-              {promotion.tiers.map((tier) => (
-                <p key={tier.threshold}>{tierLabel(promotion, tier)}</p>
-              ))}
-              {promotion.products && promotion.products.length > 1 && (
-                <p className="font-normal">
-                  Se combina con:{" "}
-                  {promotion.products
-                    .filter((p) => p.id !== productId)
-                    .map((p) => p.name)
-                    .join(", ")}
-                </p>
-              )}
-            </div>
-          )}
-
-          {variants.length > 0 && (
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-amber-ink">
-                Color — {activeVariant?.name ?? ""}
-              </p>
-              <div className="mt-2.5 flex gap-2.5">
-                {variants.map((variant) => (
-                  <button
-                    key={variant.name}
-                    type="button"
-                    title={
-                      variant.stock <= 0
-                        ? `${variant.name} — sin stock`
-                        : variant.name
-                    }
-                    onClick={() => selectVariant(variant.name)}
-                    disabled={variant.stock <= 0}
-                    className={`relative h-[46px] w-[46px] overflow-hidden rounded-full border-2 transition-all disabled:cursor-not-allowed disabled:opacity-30 ${
-                      selectedVariant === variant.name
-                        ? "border-amber"
-                        : "border-border-input"
-                    }`}
-                    style={{ backgroundColor: variant.swatch }}
-                  >
-                    {(() => {
-                      const avatarUrl = variant.images.find(
-                        (img) => img.type !== "video",
-                      )?.url;
-                      return (
-                        avatarUrl && (
-                          <Image
-                            src={avatarUrl}
-                            alt={variant.name}
-                            fill
-                            className="object-cover"
-                            sizes="56px"
-                          />
-                        )
-                      );
-                    })()}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex items-center gap-3">
-            <div className="flex items-center rounded-lg border border-border-input bg-bg">
-              <button
-                type="button"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                disabled={outOfStock}
-                className="px-3 py-2 text-ink-soft hover:text-navy disabled:opacity-30"
-                aria-label="Restar cantidad"
-              >
-                −
-              </button>
-              <span className="min-w-8 text-center font-heading text-sm font-bold text-ink">
-                {quantity}
-              </span>
-              <button
-                type="button"
-                onClick={() => setQuantity((q) => Math.min(maxStock, q + 1))}
-                disabled={outOfStock || quantity >= maxStock}
-                className="px-3 py-2 text-ink-soft hover:text-navy disabled:opacity-30"
-                aria-label="Sumar cantidad"
-              >
-                +
-              </button>
-            </div>
-            {!outOfStock && maxStock <= 5 && (
-              <span className="text-[13px] font-semibold text-amber-ink">
-                Quedan {maxStock} unidades
+        <div className="md:hidden">
+          <div className="relative aspect-[4/5] w-full overflow-hidden bg-e-tile">
+            {gallery[carouselIndex] && (
+              <GalleryTile
+                key={gallery[carouselIndex].id}
+                img={gallery[carouselIndex]}
+                name={name}
+                priority
+                fill
+                onOpen={() => openLightbox()}
+              />
+            )}
+            {gallery.length > 1 && (
+              <span className="e-mono absolute right-3 top-3 rounded-[12px] bg-white px-2.5 py-1">
+                {carouselIndex + 1} / {gallery.length}
               </span>
             )}
           </div>
-
-          {promotion && currentPercentOff(promotion, price, quantity) > 0 && (
-            <p className="text-[13px] font-semibold text-navy">
-              Total: {formatPrice(calculateSingleLineTotal(price, quantity, promotion))}
-            </p>
+          {gallery.length > 1 && (
+            <div className="mt-2 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {gallery.map((img, i) => (
+                <button
+                  key={img.id}
+                  type="button"
+                  onClick={() => setCarouselIndex(i)}
+                  aria-label={img.type === "video" ? `Ver video ${i + 1}` : `Ver foto ${i + 1}`}
+                  className={`relative h-[72px] w-[60px] shrink-0 overflow-hidden bg-e-tile transition-opacity ${
+                    i === carouselIndex ? "opacity-100 outline outline-1 outline-e-ink" : "opacity-55"
+                  }`}
+                >
+                  {img.type === "video" ? (
+                    <span className="grid h-full w-full place-items-center text-e-ink">
+                      <PlayIcon size={14} />
+                    </span>
+                  ) : (
+                    <Image src={img.url} alt="" fill className="object-cover" sizes="60px" />
+                  )}
+                </button>
+              ))}
+            </div>
           )}
-
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <button
-              type="button"
-              disabled={outOfStock}
-              onClick={handleAddToCart}
-              className="flex-1 rounded-lg border border-navy bg-bg px-6 py-3.5 font-heading text-sm font-bold text-navy transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:border-line disabled:text-ink-faint"
-            >
-              {outOfStock ? (
-                "Sin stock"
-              ) : (
-                <span ref={addLabelRef} className="t-text-swap">
-                  Agregar al carrito
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              disabled={outOfStock}
-              onClick={() => {
-                addCartItem(buildCartItem(), quantity);
-                trackEvent("add_to_cart", { productId, productName: name, value: price });
-                router.push("/checkout");
-              }}
-              className="flex-1 rounded-lg bg-navy px-6 py-3.5 font-heading text-sm font-bold text-white transition-colors hover:bg-navy-deep disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-faint"
-            >
-              Comprar ahora
-            </button>
-          </div>
-
-          {outOfStock && (
-            <NotifyStockForm productId={productId} productName={name} />
-          )}
-
-          <p className="text-xs text-ink-faint">
-            Envío a todo el país · Pagos con Mercado Pago · Cambios
-            en 30 días
-          </p>
         </div>
-
-        {belowActions}
       </div>
 
-      {showStickyBar && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-bg/95 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl items-center gap-3 px-6 py-3">
-            <div className="relative hidden h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-surface sm:block">
-              {cartImage && (
-                <Image
-                  src={cartImage}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="44px"
-                />
+      <div className="md:sticky md:top-24 md:self-start">
+        <div className="flex flex-col gap-6">
+          {aboveActions}
+
+          <div ref={buyPanelRef} className="flex flex-col gap-5">
+            <div className="flex flex-col gap-1">
+              <span className="text-[22px] tabular-nums">{formatPrice(price)}</span>
+              <span className="text-[13px] text-e-muted">
+                {installments} {installments === 1 ? "cuota" : "cuotas"} de {formatPrice(installment)} sin interés
+              </span>
+            </div>
+
+            {promotion && (
+              <div className="flex flex-col gap-1 rounded-[16px] bg-e-tile px-4 py-3 text-[13px]">
+                {promotion.tiers.map((tier) => (
+                  <p key={tier.threshold}>{tierLabel(promotion, tier)}</p>
+                ))}
+                {promotion.products && promotion.products.length > 1 && (
+                  <p className="text-e-muted">
+                    Se combina con:{" "}
+                    {promotion.products
+                      .filter((p) => p.id !== productId)
+                      .map((p) => p.name)
+                      .join(", ")}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {variants.length > 0 && (
+              <div className="flex flex-col gap-2.5">
+                <p className="e-mono">
+                  Color <span className="text-e-muted">— {activeVariant?.name ?? ""}</span>
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {variants.map((variant) => {
+                    const selected = selectedVariant === variant.name;
+                    return (
+                      <button
+                        key={variant.name}
+                        type="button"
+                        title={variant.stock <= 0 ? `${variant.name} — sin stock` : variant.name}
+                        onClick={() => selectVariant(variant.name)}
+                        disabled={variant.stock <= 0}
+                        aria-pressed={selected}
+                        className={`e-pill border ${
+                          selected
+                            ? "border-e-ink bg-e-ink text-white"
+                            : "border-e-line text-e-ink hover:border-e-ink"
+                        } ${variant.stock <= 0 ? "line-through" : ""}`}
+                      >
+                        <span
+                          className="h-3 w-3 rounded-full border border-black/10"
+                          style={{ backgroundColor: variant.swatch }}
+                        />
+                        {variant.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3">
+              <QuantityPill
+                value={quantity}
+                onDecrement={() => setQuantity((q) => Math.max(1, q - 1))}
+                onIncrement={() => setQuantity((q) => Math.min(maxStock, q + 1))}
+                canDecrement={!outOfStock && quantity > 1}
+                canIncrement={!outOfStock && quantity < maxStock}
+              />
+              {!outOfStock && maxStock <= 5 && (
+                <span className="e-mono text-e-muted">Quedan {maxStock} unidades</span>
               )}
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-heading text-sm font-bold text-navy">
-                {name}
+
+            {promotion && currentPercentOff(promotion, price, quantity) > 0 && (
+              <p className="text-[13px]">
+                Total: {formatPrice(calculateSingleLineTotal(price, quantity, promotion))}
               </p>
-              <p className="font-heading text-base font-extrabold text-navy">
-                {formatPrice(price)}
-              </p>
+            )}
+
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                disabled={outOfStock}
+                onClick={handleAddToCart}
+                className="e-pill e-pill--dark h-12 w-full"
+              >
+                {outOfStock ? (
+                  "Sin stock"
+                ) : (
+                  <span ref={addLabelRef} className="t-text-swap">
+                    Agregar al carrito
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                disabled={outOfStock}
+                onClick={() => {
+                  addCartItem(buildCartItem(), quantity);
+                  trackEvent("add_to_cart", { productId, productName: name, value: price });
+                  router.push("/checkout");
+                }}
+                className="e-pill e-pill--outline h-12 w-full"
+              >
+                Comprar ahora
+              </button>
             </div>
-            <button
-              type="button"
-              disabled={outOfStock}
-              onClick={handleAddToCart}
-              className="hidden shrink-0 rounded-lg border border-navy px-4 py-2.5 font-heading text-sm font-bold text-navy transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:border-line disabled:text-ink-faint sm:inline-block"
-            >
-              Agregar al carrito
-            </button>
-            <button
-              type="button"
-              disabled={outOfStock}
-              onClick={() => {
-                addCartItem(buildCartItem(), quantity);
-                trackEvent("add_to_cart", { productId, productName: name, value: price });
-                router.push("/checkout");
-              }}
-              className="shrink-0 rounded-lg bg-navy px-5 py-2.5 font-heading text-sm font-bold text-white transition-colors hover:bg-navy-deep disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-faint"
-            >
-              {outOfStock ? "Sin stock" : "Comprar ahora"}
-            </button>
+
+            {outOfStock && <NotifyStockForm productId={productId} productName={name} />}
+
+            <p className="e-mono text-e-muted">Envío a todo el país · Mercado Pago · Cambios en 30 días</p>
           </div>
+
+          {belowActions}
         </div>
-      )}
+      </div>
+
+      <div
+        data-open={showStickyBar}
+        aria-hidden={!showStickyBar}
+        className="t-panel-slide fixed inset-x-0 bottom-0 z-30 border-t border-e-line bg-e-bg/95 backdrop-blur"
+      >
+        <div className="flex items-center gap-3 px-4 py-3 md:px-8">
+          <div className="relative hidden h-12 w-10 shrink-0 overflow-hidden bg-e-tile sm:block">
+            {cartImage && <Image src={cartImage} alt="" fill className="object-cover" sizes="40px" />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px]">{name}</p>
+            <p className="text-[13px] tabular-nums text-e-muted">{formatPrice(price)}</p>
+          </div>
+          <button
+            type="button"
+            disabled={outOfStock}
+            tabIndex={showStickyBar ? 0 : -1}
+            onClick={handleAddToCart}
+            className="e-pill e-pill--outline hidden shrink-0 sm:inline-flex"
+          >
+            Agregar al carrito
+          </button>
+          <button
+            type="button"
+            disabled={outOfStock}
+            tabIndex={showStickyBar ? 0 : -1}
+            onClick={() => {
+              addCartItem(buildCartItem(), quantity);
+              trackEvent("add_to_cart", { productId, productName: name, value: price });
+              router.push("/checkout");
+            }}
+            className="e-pill e-pill--dark shrink-0"
+          >
+            {outOfStock ? "Sin stock" : "Comprar ahora"}
+          </button>
+        </div>
+      </div>
 
       {lightboxOpen && imageGallery[lightboxIndex] && (
         <div
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-ink/90 p-4"
+          className="e-drawer-overlay fixed inset-0 z-[70] flex flex-col items-center justify-center gap-4 bg-black/95 p-4 text-white"
           onClick={closeLightbox}
         >
           <button
             type="button"
             onClick={closeLightbox}
             aria-label="Cerrar"
-            className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-2xl leading-none text-white hover:bg-white/20"
+            className="absolute right-4 top-4 z-10 grid h-10 w-10 place-items-center rounded-full bg-white/10 hover:bg-white/20"
           >
-            ×
+            <CloseIcon size={18} />
           </button>
 
           {imageGallery.length > 1 && (
-            <span className="absolute left-4 top-4 z-10 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">
+            <span className="e-mono absolute left-4 top-4 z-10 rounded-[12px] bg-white/10 px-3 py-1">
               {lightboxIndex + 1} / {imageGallery.length}
             </span>
           )}
@@ -526,9 +476,9 @@ export function ProductPurchase({
                 showPrevLightbox();
               }}
               aria-label="Foto anterior"
-              className="absolute left-4 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-2xl leading-none text-white hover:bg-white/20"
+              className="absolute left-4 top-1/2 z-10 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white/10 hover:bg-white/20"
             >
-              ‹
+              <ArrowLeftIcon size={18} />
             </button>
           )}
           {imageGallery.length > 1 && (
@@ -539,9 +489,9 @@ export function ProductPurchase({
                 showNextLightbox();
               }}
               aria-label="Foto siguiente"
-              className="absolute right-4 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-2xl leading-none text-white hover:bg-white/20"
+              className="absolute right-4 top-1/2 z-10 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white/10 hover:bg-white/20"
             >
-              ›
+              <ArrowRightIcon size={18} />
             </button>
           )}
 
@@ -583,25 +533,16 @@ export function ProductPurchase({
                   type="button"
                   onClick={() => setLightboxIndex(i)}
                   aria-label={img.type === "video" ? `Ver video ${i + 1}` : `Ver foto ${i + 1}`}
-                  className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 bg-surface transition-colors ${
-                    i === lightboxIndex ? "border-amber" : "border-white/20"
+                  className={`relative h-14 w-12 shrink-0 overflow-hidden bg-white/10 transition-opacity ${
+                    i === lightboxIndex ? "opacity-100 outline outline-1 outline-white" : "opacity-50"
                   }`}
                 >
                   {img.type === "video" ? (
-                    <>
-                      <video src={img.url} muted playsInline className="h-full w-full object-cover" />
-                      <span className="absolute inset-0 flex items-center justify-center bg-ink/20 text-sm text-white">
-                        ▶
-                      </span>
-                    </>
+                    <span className="grid h-full w-full place-items-center">
+                      <PlayIcon size={12} />
+                    </span>
                   ) : (
-                    <Image
-                      src={img.url}
-                      alt=""
-                      fill
-                      className="object-cover"
-                      sizes="56px"
-                    />
+                    <Image src={img.url} alt="" fill className="object-cover" sizes="48px" />
                   )}
                 </button>
               ))}
@@ -610,5 +551,67 @@ export function ProductPurchase({
         </div>
       )}
     </div>
+  );
+}
+
+function GalleryTile({
+  img,
+  name,
+  priority,
+  fill = false,
+  wide = false,
+  transitionName,
+  onOpen,
+}: {
+  img: GalleryImage;
+  name: string;
+  priority: boolean;
+  fill?: boolean;
+  wide?: boolean;
+  transitionName?: string;
+  onOpen: () => void;
+}) {
+  const box = fill
+    ? "absolute inset-0"
+    : `relative w-full ${wide ? "aspect-[900/760]" : "aspect-[446/560]"}`;
+  if (img.type === "video") {
+    return (
+      <div className={`${box} overflow-hidden bg-e-tile`}>
+        <video
+          src={img.url}
+          controls
+          controlsList="nofullscreen noremoteplayback"
+          disablePictureInPicture
+          playsInline
+          className="h-full w-full object-cover"
+        />
+      </div>
+    );
+  }
+  const image = (
+    <Image
+      src={img.url}
+      alt={name}
+      fill
+      priority={priority}
+      className="object-cover"
+      sizes={fill ? "(max-width: 767px) 100vw, 30vw" : wide ? "(min-width: 768px) 60vw, 100vw" : "(min-width: 768px) 30vw, 100vw"}
+    />
+  );
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label="Ver foto en pantalla completa"
+      className={`${box} cursor-zoom-in overflow-hidden bg-e-tile`}
+    >
+      {transitionName ? (
+        <ViewTransition name={transitionName} share="e-morph" default="none">
+          {image}
+        </ViewTransition>
+      ) : (
+        image
+      )}
+    </button>
   );
 }

@@ -1,11 +1,29 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ViewTransition } from "react";
 import { formatPrice, getHeroImageUrl } from "@/lib/products";
 import type { ProductWithRelations } from "@/lib/products";
 import { activePromotion, maxPercentOff } from "@/lib/promotions";
 
-export function ProductCard({ product }: { product: ProductWithRelations }) {
+export function productImageTransitionName(slug: string) {
+  return `product-image-${slug}`;
+}
+
+// maap.cc product tile: grey tile, tag top-left, second photo fades in on
+// hover, name + price underneath. The photo morphs into the product page.
+export function ProductCard({
+  product,
+  sizes = "(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw",
+  className = "",
+}: {
+  product: ProductWithRelations;
+  sizes?: string;
+  className?: string;
+}) {
   const heroUrl = getHeroImageUrl(product);
+  const secondaryUrl = product.images.find(
+    (img) => img.type !== "video" && img.url !== heroUrl,
+  )?.url;
   const totalStock =
     product.variants.length > 0
       ? product.variants.reduce((sum, v) => sum + v.stock, 0)
@@ -16,56 +34,56 @@ export function ProductCard({ product }: { product: ProductWithRelations }) {
   return (
     <Link
       href={`/catalogo/${product.slug}`}
-      className="group flex flex-col overflow-hidden rounded-[14px] border border-line bg-bg transition-shadow hover:shadow-[0_2px_8px_rgba(15,67,104,0.08)]"
+      transitionTypes={["nav-forward"]}
+      className={`e-tile group flex flex-col gap-3 ${className}`}
     >
-      <div className="relative aspect-square w-full overflow-hidden bg-surface">
+      <div className="e-tile-media relative aspect-[340/420] w-full overflow-hidden bg-e-tile">
         {heroUrl && (
+          <ViewTransition name={productImageTransitionName(product.slug)} share="e-morph" default="none">
+            <Image
+              src={heroUrl}
+              alt={product.name}
+              fill
+              className="e-tile-primary object-cover"
+              sizes={sizes}
+            />
+          </ViewTransition>
+        )}
+        {secondaryUrl && (
           <Image
-            src={heroUrl}
-            alt={product.name}
+            src={secondaryUrl}
+            alt=""
+            aria-hidden
             fill
-            className="object-cover"
-            sizes="(min-width: 768px) 33vw, 100vw"
+            className="e-tile-secondary object-cover"
+            sizes={sizes}
           />
         )}
-        {outOfStock && (
-          <span className="absolute left-3 top-3 rounded-md bg-navy px-2.5 py-1 font-heading text-xs font-bold text-white">
-            Sin stock
-          </span>
-        )}
-        {!outOfStock && promo && (
-          <span className="absolute left-3 top-3 rounded-md bg-amber px-2.5 py-1 font-heading text-xs font-bold text-[#3a2500]">
-            Hasta {maxPercentOff(promo)}% off
+        {(outOfStock || promo) && (
+          <span className="e-mono absolute left-3 top-3 rounded-[12px] bg-white px-2.5 py-1 text-e-ink">
+            {outOfStock ? "Sin stock" : `Hasta ${maxPercentOff(promo!)}% off`}
           </span>
         )}
       </div>
-      <div className="flex flex-1 flex-col gap-1.5 p-5">
-        <h3 className="font-heading text-lg font-bold text-navy">
-          {product.name}
-        </h3>
-        <p className="line-clamp-2 text-sm text-ink-soft">
-          {product.tagline}
-        </p>
-        <div className="mt-auto flex items-center justify-between pt-3">
-          <span
-            className={`font-heading text-[22px] font-extrabold ${outOfStock ? "text-ink-faint" : "text-navy"}`}
-          >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h3 className="text-[13px] leading-snug text-e-ink">{product.name}</h3>
+          <p className={`text-[13px] tabular-nums ${outOfStock ? "text-e-faint" : "text-e-muted"}`}>
             {formatPrice(product.price)}
-          </span>
-          {outOfStock ? (
-            <span className="rounded-lg border border-border-btn bg-bg px-3 py-1.5 font-heading text-xs font-bold text-navy">
-              Avisame
-            </span>
-          ) : product.variants.length > 0 ? (
-            <span className="rounded-full bg-amber-soft px-2.5 py-1 text-xs font-semibold text-amber-ink">
-              {product.variants.length} colores
-            </span>
-          ) : (
-            <span className="rounded-lg bg-amber px-3 py-1.5 font-heading text-xs font-bold text-[#3a2500]">
-              Agregar
-            </span>
-          )}
+          </p>
         </div>
+        {product.variants.length > 0 && (
+          <span className="flex shrink-0 gap-1 pt-1" aria-label={`${product.variants.length} colores`}>
+            {product.variants.map((v) => (
+              <span
+                key={v.name}
+                title={v.name}
+                className="h-2.5 w-2.5 rounded-full border border-e-line"
+                style={{ backgroundColor: v.swatch }}
+              />
+            ))}
+          </span>
+        )}
       </div>
     </Link>
   );

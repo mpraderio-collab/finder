@@ -7,6 +7,8 @@ import { Footer } from "@/components/Footer";
 import { Stars } from "@/components/Stars";
 import { ProductPurchase } from "@/components/ProductPurchase";
 import { ProductPhotoWall } from "@/components/ProductPhotoWall";
+import { Accordion } from "@/components/store/Accordion";
+import { PageTransition } from "@/components/store/PageTransition";
 import { ReviewForm } from "@/components/ReviewForm";
 import { averageRating, getProductBySlug } from "@/lib/products";
 import { getSiteSettings } from "@/lib/settings";
@@ -52,163 +54,184 @@ export default async function ProductPage(
   const photoCount = media.filter((m) => m.type !== "video").length;
   const videoCount = media.length - photoCount;
 
+  const shipping = [
+    {
+      title: "Envío a todo el país",
+      text: "Despachamos con Correo Argentino y llega en 3 a 5 días hábiles. El costo se calcula en el pago según tu provincia.",
+    },
+    {
+      title: "Pagá como quieras",
+      text:
+        settings.installments > 1
+          ? `Con Mercado Pago: tarjeta, dinero en cuenta y hasta ${settings.installments} cuotas sin interés.`
+          : "Con Mercado Pago: tarjeta o dinero en cuenta.",
+    },
+    {
+      title: "Cambios en 30 días",
+      text: "Si el producto no es lo que esperabas, escribinos y lo resolvemos.",
+    },
+  ];
+
+  // Banda de "tecnologías" (maap.cc): las primeras specs del producto en
+  // grande, sobre sus propias fotos.
+  const techSpecs = product.specs.slice(0, 4);
+  // Fotos de ambiente (marcadas para el carrusel en el admin) para que el
+  // texto encima no choque con una infografía; si no hay, se usa un fondo liso.
+  const techPhotos = orderedImages.filter((img) => img.type !== "video" && img.showInCarousel);
+
   return (
     <>
       <Header />
-      <main className="flex-1">
-        <p className="mx-auto max-w-6xl px-6 pt-[18px] text-[13px] text-ink-faint">
-          <Link href="/catalogo" className="hover:text-navy">
-            Catálogo
-          </Link>{" "}
-          / <span className="font-semibold text-navy">{product.name}</span>
-        </p>
+      <PageTransition>
+        <main className="flex-1 bg-e-bg text-e-ink">
+          <p className="e-mono px-4 pt-6 text-e-muted md:px-8">
+            <Link href="/catalogo" transitionTypes={["nav-back"]} className="hover:text-e-ink">
+              Catálogo
+            </Link>{" "}
+            / <span className="text-e-ink">{product.name}</span>
+          </p>
 
-        <section className="mx-auto max-w-6xl px-6 pb-[52px] pt-[22px]">
-          <ProductPurchase
-            productId={product.id}
-            slug={product.slug}
-            name={product.name}
-            price={product.price}
-            stock={product.stock}
-            variants={product.variants}
-            images={orderedImages}
-            installments={settings.installments}
-            promotion={activePromotion(product)}
-            aboveActions={
-              <>
-                <h1 className="font-heading text-[38px] font-extrabold leading-[1.1] tracking-[-0.025em] text-navy">
-                  {product.name}
-                </h1>
-                <p className="text-[17px]/[1.6] text-ink-soft">
-                  {product.tagline}
-                </p>
-
-                {product.reviews.length > 0 && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Stars rating={avgRating} />
-                    <span className="text-ink-soft">
-                      {avgRating.toFixed(1).replace(".", ",")} ·{" "}
-                      {product.reviews.length} reseñas
-                    </span>
-                  </div>
-                )}
-              </>
-            }
-          />
-        </section>
-
-        <section className="border-t border-line bg-surface">
-          <div className="mx-auto grid max-w-6xl gap-12 px-6 py-14 lg:grid-cols-[1.1fr_0.9fr]">
-            <div>
-              <h2 className="font-heading text-[28px] font-extrabold tracking-[-0.02em] text-navy">
-                Conocé {product.name}
-              </h2>
-              <span className="mt-3 block h-1 w-14 rounded-full bg-amber" />
-              <p className="mt-6 whitespace-pre-line text-[16px]/[1.8] text-ink-soft">
-                {product.description}
-              </p>
-            </div>
-            {product.features.length > 0 && (
-              <div>
-                <h3 className="font-heading text-lg font-bold text-navy">Características</h3>
-                <ul className="mt-4 grid gap-3">
-                  {product.features.map((feature) => (
-                    <li
-                      key={feature.id}
-                      className="flex gap-3 rounded-xl border border-line bg-bg px-4 py-3.5 text-[15px]/[1.5] text-ink"
-                    >
-                      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-amber-soft text-[11px] font-bold text-amber-ink">
-                        ✓
+          <section className="px-4 pb-16 pt-6 md:px-8">
+            <ProductPurchase
+              productId={product.id}
+              slug={product.slug}
+              name={product.name}
+              price={product.price}
+              stock={product.stock}
+              variants={product.variants}
+              images={orderedImages}
+              installments={settings.installments}
+              promotion={activePromotion(product)}
+              aboveActions={
+                <div className="flex flex-col gap-3">
+                  <h1 className="text-[32px] font-medium leading-[1.1] tracking-[-0.02em]">
+                    {product.name}
+                  </h1>
+                  <p className="text-[15px]/[1.5] text-e-muted">{product.tagline}</p>
+                  {product.reviews.length > 0 && (
+                    <a href="#resenas" className="flex items-center gap-2 text-[13px]">
+                      <Stars rating={avgRating} tone="ink" />
+                      <span className="text-e-muted underline underline-offset-4">
+                        {avgRating.toFixed(1).replace(".", ",")} · {product.reviews.length} reseñas
                       </span>
-                      {feature.text}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {product.specs.length > 0 && (
-          <section className="mx-auto max-w-6xl px-6 py-14">
-            <h2 className="font-heading text-[28px] font-extrabold tracking-[-0.02em] text-navy">
-              Especificaciones
-            </h2>
-            <dl className="mt-8 overflow-hidden rounded-xl border border-line bg-bg">
-              {product.specs.map((spec, i) => (
-                <div
-                  key={spec.id}
-                  className={`grid gap-1 px-5 py-3.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-6 ${
-                    i % 2 === 0 ? "bg-surface" : "bg-bg"
-                  }`}
-                >
-                  <dt className="text-sm font-semibold text-navy">{spec.label}</dt>
-                  <dd className="text-sm text-ink-soft">{spec.value}</dd>
+                    </a>
+                  )}
                 </div>
-              ))}
-            </dl>
+              }
+              belowActions={
+                <div className="border-t border-e-line">
+                  <Accordion title="Detalles" defaultOpen>
+                    <p className="whitespace-pre-line">{product.description}</p>
+                  </Accordion>
+                  {product.features.length > 0 && (
+                    <Accordion title="Características">
+                      <ul className="flex flex-col gap-2">
+                        {product.features.map((feature) => (
+                          <li key={feature.id} className="flex gap-3">
+                            <span className="mt-[9px] h-1 w-1 shrink-0 rounded-full bg-e-ink" />
+                            {feature.text}
+                          </li>
+                        ))}
+                      </ul>
+                    </Accordion>
+                  )}
+                  {product.specs.length > 0 && (
+                    <Accordion title="Especificaciones técnicas">
+                      <dl className="flex flex-col">
+                        {product.specs.map((spec) => (
+                          <div
+                            key={spec.id}
+                            className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-4 border-t border-e-line py-2.5 first:border-t-0 first:pt-0"
+                          >
+                            <dt className="text-e-muted">{spec.label}</dt>
+                            <dd>{spec.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </Accordion>
+                  )}
+                  <Accordion title="Envío, pagos y cambios">
+                    <div className="flex flex-col gap-3">
+                      {shipping.map((item) => (
+                        <div key={item.title}>
+                          <p className="font-medium">{item.title}</p>
+                          <p className="text-e-muted">{item.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </Accordion>
+                </div>
+              }
+            />
           </section>
-        )}
 
-        {media.length > 1 && (
-          <ProductPhotoWall
-            name={product.name}
-            media={media}
-            photoCount={photoCount}
-            videoCount={videoCount}
-          />
-        )}
+          {techSpecs.length > 0 && (
+            <section className="flex flex-col gap-5 px-4 pb-16 md:px-8">
+              <h2 className="e-mono">Lo que tiene adentro</h2>
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                {techSpecs.map((spec, i) => {
+                  const photo = techPhotos[i];
+                  return (
+                    <div
+                      key={spec.id}
+                      className="relative flex aspect-[338/480] flex-col justify-between overflow-hidden bg-e-ink p-5 text-white"
+                    >
+                      {photo && (
+                        <Image
+                          src={photo.url}
+                          alt=""
+                          fill
+                          className="object-cover opacity-50"
+                          sizes="(min-width: 1024px) 25vw, 50vw"
+                        />
+                      )}
+                      <span className="e-mono relative">{spec.label}</span>
+                      <span className="relative text-[28px] font-medium leading-[1.05] tracking-[-0.02em] md:text-[40px]">
+                        {spec.value}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
-        <section className="border-t border-line bg-surface">
-          <div className="mx-auto max-w-6xl px-6 py-12">
-            <h2 className="font-heading text-[22px] font-extrabold text-navy">
-              Envío, pagos y cambios
-            </h2>
-            <div className="mt-6 grid gap-4 sm:grid-cols-3">
-              {[
-                {
-                  title: "Envío a todo el país",
-                  text: "Despachamos con Correo Argentino y llega en 3 a 5 días hábiles. El costo se calcula en el pago según tu provincia.",
-                },
-                {
-                  title: "Pagá como quieras",
-                  text:
-                    settings.installments > 1
-                      ? `Con Mercado Pago: tarjeta, dinero en cuenta y hasta ${settings.installments} cuotas sin interés.`
-                      : "Con Mercado Pago: tarjeta o dinero en cuenta.",
-                },
-                {
-                  title: "Cambios en 30 días",
-                  text: "Si el producto no es lo que esperabas, escribinos y lo resolvemos.",
-                },
-              ].map((item) => (
-                <div key={item.title} className="rounded-xl border border-line bg-bg p-5">
-                  <p className="font-heading text-[15px] font-bold text-navy">{item.title}</p>
-                  <p className="mt-2 text-sm/[1.6] text-ink-soft">{item.text}</p>
-                </div>
-              ))}
+          {media.length > 1 && (
+            <ProductPhotoWall
+              name={product.name}
+              media={media}
+              photoCount={photoCount}
+              videoCount={videoCount}
+            />
+          )}
+
+          <section id="resenas" className="grid gap-10 border-t border-e-line px-4 py-16 md:grid-cols-[360px_1fr] md:px-8">
+            <div className="flex flex-col gap-3">
+              <span className="e-mono">Reseñas</span>
+              {product.reviews.length > 0 ? (
+                <>
+                  <span className="text-[64px] font-medium leading-none tracking-[-0.03em]">
+                    {avgRating.toFixed(1).replace(".", ",")}
+                  </span>
+                  <span className="flex items-center gap-2 text-[13px] text-e-muted">
+                    <Stars rating={avgRating} tone="ink" /> {product.reviews.length} reseñas
+                  </span>
+                </>
+              ) : (
+                <p className="text-[14px] text-e-muted">Todavía no hay reseñas. ¡Dejá la primera!</p>
+              )}
+              <div className="mt-4">
+                <ReviewForm productId={product.id} />
+              </div>
             </div>
-          </div>
-        </section>
-
-        <section className="border-t border-line">
-          <div className="mx-auto max-w-6xl px-6 py-11">
-            <h2 className="font-heading text-[26px] font-extrabold text-navy">
-              Lo que dicen nuestros clientes
-            </h2>
             {product.reviews.length > 0 && (
-              <div className="mt-8 grid gap-6 sm:grid-cols-3">
+              <ul className="grid items-start gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {product.reviews.map((review) => (
-                  <div
-                    key={review.id}
-                    className="flex flex-col gap-3 rounded-xl border border-line bg-bg p-5"
-                  >
-                    <Stars rating={review.rating} />
-                    <p className="text-sm/[1.6] text-ink-soft">
-                      &ldquo;{review.text}&rdquo;
-                    </p>
+                  <li key={review.id} className="flex min-h-[260px] flex-col gap-4 bg-e-tile p-6">
+                    <Stars rating={review.rating} tone="ink" />
+                    <p className="text-[16px]/[1.5]">&ldquo;{review.text}&rdquo;</p>
                     {review.photoUrl && (
-                      <div className="relative h-48 w-full overflow-hidden rounded-lg">
+                      <div className="relative h-48 w-full overflow-hidden">
                         <Image
                           src={review.photoUrl}
                           alt={`Foto de ${review.author}`}
@@ -218,26 +241,21 @@ export default async function ProductPage(
                         />
                       </div>
                     )}
-                    <p className="font-heading text-sm font-bold text-navy">
-                      {review.author}
-                    </p>
-                  </div>
+                    <p className="e-mono mt-auto text-e-muted">{review.author}</p>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
-            <div className="mt-8">
-              <ReviewForm productId={product.id} />
-            </div>
-          </div>
-        </section>
+          </section>
 
-        <div className="mx-auto max-w-6xl px-6 pb-12">
-          <Link href="/catalogo" className="font-heading text-sm font-bold text-blue hover:text-navy">
-            ← Volver al catálogo
-          </Link>
-        </div>
-      </main>
-      <Footer />
+          <div className="px-4 pb-16 md:px-8">
+            <Link href="/catalogo" transitionTypes={["nav-back"]} className="e-pill e-pill--outline">
+              Volver al catálogo
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </PageTransition>
     </>
   );
 }

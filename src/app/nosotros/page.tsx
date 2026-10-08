@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { PageTransition } from "@/components/store/PageTransition";
 
 export const metadata: Metadata = {
   title: "Nosotros — Finder",
@@ -17,25 +18,25 @@ export default function NosotrosPage() {
   return (
     <>
       <Header />
-      <main className="flex-1">
-        <section className="mx-auto max-w-[960px] px-6 pb-9 pt-[52px]">
-          <span className="text-xs font-bold uppercase tracking-[0.18em] text-amber-ink">
-            Nosotros
-          </span>
-          <h1 className="mt-2 max-w-[760px] font-heading text-[44px] font-extrabold leading-[1.1] text-navy">
-            La luz correcta cambia cómo vivís tu casa
-          </h1>
-          <span className="mt-[22px] block h-1 w-16 rounded-full bg-amber" />
-          <div className="mt-8 grid gap-7 sm:grid-cols-3">
-            {paragraphs.map((text) => (
-              <p key={text} className="text-[15px]/[1.7] text-ink-soft">
-                {text}
-              </p>
+      <PageTransition>
+        <main className="flex-1 bg-e-bg text-e-ink">
+          <section className="flex flex-col gap-8 px-4 pb-16 pt-14 md:px-8 md:pt-20">
+            <span className="e-mono">Nosotros</span>
+            <h1 className="max-w-[1100px] text-[44px] font-medium leading-[1.02] tracking-[-0.03em] md:text-[80px]">
+              La luz correcta cambia cómo vivís tu casa
+            </h1>
+          </section>
+          <section className="grid gap-8 border-t border-e-line px-4 py-12 sm:grid-cols-3 md:px-8">
+            {paragraphs.map((text, i) => (
+              <div key={text} className="flex flex-col gap-3">
+                <span className="e-mono text-e-muted">{String(i + 1).padStart(2, "0")}</span>
+                <p className="text-[16px]/[1.6]">{text}</p>
+              </div>
             ))}
-          </div>
-        </section>
-      </main>
-      <Footer />
+          </section>
+        </main>
+        <Footer />
+      </PageTransition>
     </>
   );
 }
