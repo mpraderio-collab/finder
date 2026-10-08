@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { FIT_PRODUCT } from "@/components/d/media";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore } from "react";
@@ -140,7 +141,7 @@ export function CartDrawer() {
                   <li key={key} className="flex gap-4 border-b border-d-line py-5">
                     <div className="relative h-24 w-24 shrink-0 overflow-hidden bg-d-surface">
                       {item.image && (
-                        <Image src={item.image} alt={item.name} fill className="object-cover" sizes="96px" />
+                        <Image src={item.image} alt={item.name} fill className={FIT_PRODUCT} sizes="96px" />
                       )}
                     </div>
                     <div className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
@@ -161,7 +162,7 @@ export function CartDrawer() {
                             type="button"
                             onClick={() => updateQuantity(key, item.quantity - 1)}
                             aria-label="Restar cantidad"
-                            className="d-fade"
+                            className="d-step d-fade"
                           >
                             −
                           </button>
@@ -171,7 +172,7 @@ export function CartDrawer() {
                             onClick={() => updateQuantity(key, item.quantity + 1)}
                             disabled={item.quantity >= item.maxStock}
                             aria-label="Sumar cantidad"
-                            className="d-fade disabled:opacity-30"
+                            className="d-step d-fade disabled:opacity-30"
                           >
                             +
                           </button>

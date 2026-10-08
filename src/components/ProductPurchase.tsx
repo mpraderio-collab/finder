@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { mediaFit } from "@/components/d/media";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addCartItem } from "@/lib/cart-context";
@@ -16,7 +17,7 @@ import {
   type PromotionInfo,
 } from "@/lib/promotions";
 
-type GalleryImage = { id: string; url: string; type: string };
+type GalleryImage = { id: string; url: string; type: string; showInCarousel?: boolean | null };
 
 type Variant = {
   name: string;
@@ -248,7 +249,7 @@ export function ProductPurchase({
           alt={i === 0 ? name : ""}
           fill
           priority={i === 0}
-          className="object-cover"
+          className={mediaFit(item)}
           sizes={sizes}
         />
       </button>
@@ -347,7 +348,7 @@ export function ProductPurchase({
                   type="button"
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                   disabled={outOfStock}
-                  className="d-fade disabled:opacity-30"
+                  className="d-step d-fade disabled:opacity-30"
                   aria-label="Restar cantidad"
                 >
                   −
@@ -357,7 +358,7 @@ export function ProductPurchase({
                   type="button"
                   onClick={() => setQuantity((q) => Math.min(maxStock, q + 1))}
                   disabled={outOfStock || quantity >= maxStock}
-                  className="d-fade disabled:opacity-30"
+                  className="d-step d-fade disabled:opacity-30"
                   aria-label="Sumar cantidad"
                 >
                   +

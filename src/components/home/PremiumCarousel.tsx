@@ -162,7 +162,7 @@ export function PremiumCarousel({ slides }: { slides: CarouselSlide[] }) {
 
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-48 bg-gradient-to-t from-d-ink/50 to-transparent"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-56 bg-gradient-to-t from-d-ink/75 via-d-ink/35 to-transparent"
       />
 
       {/* Epígrafe mínimo abajo al centro, como en la referencia */}
@@ -216,7 +216,7 @@ export function PremiumCarousel({ slides }: { slides: CarouselSlide[] }) {
                   </span>
                   <span
                     className={`mt-2 hidden truncate text-sm text-d-bg transition-opacity duration-[var(--d-dur)] ease-[var(--d-ease)] sm:block ${
-                      active ? "opacity-100" : "opacity-50 group-hover:opacity-100"
+                      active ? "opacity-100" : "opacity-75 group-hover:opacity-100"
                     }`}
                   >
                     {g.title}
@@ -226,11 +226,11 @@ export function PremiumCarousel({ slides }: { slides: CarouselSlide[] }) {
             );
           })}
         </ol>
-        <div className="hidden items-center gap-5 pb-2 text-sm text-d-bg sm:flex">
-          <button type="button" onClick={() => go(index - 1)} aria-label="Anterior" className="d-fade">
+        <div className="hidden items-center gap-6 pb-2 text-sm text-d-bg sm:flex">
+          <button type="button" onClick={() => go(index - 1)} aria-label="Anterior" className="d-step d-fade">
             ←
           </button>
-          <button type="button" onClick={() => go(index + 1)} aria-label="Siguiente" className="d-fade">
+          <button type="button" onClick={() => go(index + 1)} aria-label="Siguiente" className="d-step d-fade">
             →
           </button>
         </div>

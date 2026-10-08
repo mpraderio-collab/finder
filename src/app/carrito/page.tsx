@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { FIT_PRODUCT } from "@/components/d/media";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
@@ -48,7 +49,7 @@ export default function CarritoPage() {
                     <li key={key} className="flex gap-5 border-b border-d-line py-6">
                       <div className="relative h-28 w-28 shrink-0 overflow-hidden bg-d-surface">
                         {item.image && (
-                          <Image src={item.image} alt={item.name} fill className="object-cover" sizes="112px" />
+                          <Image src={item.image} alt={item.name} fill className={FIT_PRODUCT} sizes="112px" />
                         )}
                       </div>
                       <div className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
@@ -67,7 +68,7 @@ export default function CarritoPage() {
                             <button
                               type="button"
                               onClick={() => updateQuantity(key, item.quantity - 1)}
-                              className="d-fade"
+                              className="d-step d-fade"
                               aria-label="Restar cantidad"
                             >
                               −
@@ -77,7 +78,7 @@ export default function CarritoPage() {
                               type="button"
                               onClick={() => updateQuantity(key, item.quantity + 1)}
                               disabled={item.quantity >= item.maxStock}
-                              className="d-fade disabled:opacity-30"
+                              className="d-step d-fade disabled:opacity-30"
                               aria-label="Sumar cantidad"
                             >
                               +

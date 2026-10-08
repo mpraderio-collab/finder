@@ -324,6 +324,15 @@ body:has(main.d-store) ::selection {
     opacity var(--modal-close-dur) var(--modal-ease);
 }
 
+/* Quantity −/+ : the glyph stays small but the hit area is 40px (touch). */
+.d-step {
+  display: inline-grid;
+  place-items: center;
+  min-width: 40px;
+  min-height: 40px;
+  margin: -10px;
+}
+
 /* transitions-dev — texts reveal, triggered on scroll by <Reveal>. */
 :root {
   --stagger-dur: 500ms;
@@ -332,11 +341,16 @@ body:has(main.d-store) ::selection {
   --stagger-blur: 3px;
   --stagger-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
+/* Block by default, but in a layer so utilities on the same element (flex,
+   grid) still win. */
+@layer components {
+  .t-stagger-line {
+    display: block;
+  }
+}
+/* Lines are visible by default (server render, no JS); <Reveal> only arms the
+   hidden state for blocks that start below the fold. */
 .t-stagger-line {
-  display: block;
-  opacity: 0;
-  transform: translateY(var(--stagger-distance));
-  filter: blur(var(--stagger-blur));
   transition:
     opacity var(--stagger-dur) var(--stagger-ease),
     transform var(--stagger-dur) var(--stagger-ease),
@@ -352,7 +366,12 @@ body:has(main.d-store) ::selection {
 .t-stagger-line--4 {
   transition-delay: calc(var(--stagger-stagger) * 3);
 }
-.t-stagger.is-shown .t-stagger-line {
+.t-stagger.is-armed .t-stagger-line {
+  opacity: 0;
+  transform: translateY(var(--stagger-distance));
+  filter: blur(var(--stagger-blur));
+}
+.t-stagger.is-armed.is-shown .t-stagger-line {
   opacity: 1;
   transform: translateY(0);
   filter: blur(0);
