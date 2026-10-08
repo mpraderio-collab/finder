@@ -41,7 +41,7 @@ export function CartDrawer() {
             type="button"
             onClick={close}
             aria-label="Cerrar carrito"
-            className="grid h-8 w-8 place-items-center rounded-full transition-colors hover:bg-e-tile"
+            className="-mr-2.5 grid h-11 w-11 place-items-center rounded-full transition-colors hover:bg-e-tile"
           >
             <CloseIcon size={18} />
           </button>

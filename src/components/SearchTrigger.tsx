@@ -17,7 +17,7 @@ type SearchProduct = {
 };
 
 export function SearchTrigger({
-  triggerClassName = "flex h-9 items-center gap-2 rounded-full px-2 text-e-ink transition-colors hover:bg-e-tile",
+  triggerClassName = "flex h-11 min-w-11 items-center justify-center gap-2 rounded-full px-2 text-e-ink transition-colors hover:bg-e-tile",
   showLabel = false,
 }: {
   triggerClassName?: string;
@@ -106,7 +106,7 @@ export function SearchTrigger({
                   type="button"
                   onClick={close}
                   aria-label="Cerrar búsqueda"
-                  className="grid h-8 w-8 place-items-center rounded-full hover:bg-e-tile"
+                  className="-mr-2.5 grid h-11 w-11 place-items-center rounded-full hover:bg-e-tile"
                 >
                   <CloseIcon size={16} />
                 </button>

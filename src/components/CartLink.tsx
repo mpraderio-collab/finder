@@ -42,7 +42,7 @@ export function CartLink() {
       type="button"
       onClick={openCartDrawer}
       aria-label={`Abrir carrito (${itemCount})`}
-      className="flex h-9 items-center gap-1.5 rounded-full px-2 text-e-ink transition-colors hover:bg-e-tile"
+      className="flex h-11 min-w-11 items-center justify-center gap-1.5 rounded-full px-2 text-e-ink transition-colors hover:bg-e-tile"
     >
       <BagIcon size={18} />
       <span className="e-mono tabular-nums">

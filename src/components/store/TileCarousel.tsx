@@ -62,7 +62,7 @@ export function TileCarousel({
               onClick={() => scrollByTile(-1)}
               disabled={atStart}
               aria-label="Anterior"
-              className="e-carousel-arrow grid h-8 w-8 place-items-center rounded-full hover:bg-e-tile"
+              className="e-carousel-arrow grid h-11 w-11 place-items-center rounded-full hover:bg-e-tile"
             >
               <ArrowLeftIcon size={18} />
             </button>
@@ -71,7 +71,7 @@ export function TileCarousel({
               onClick={() => scrollByTile(1)}
               disabled={atEnd}
               aria-label="Siguiente"
-              className="e-carousel-arrow grid h-8 w-8 place-items-center rounded-full hover:bg-e-tile"
+              className="e-carousel-arrow grid h-11 w-11 place-items-center rounded-full hover:bg-e-tile"
             >
               <ArrowRightIcon size={18} />
             </button>

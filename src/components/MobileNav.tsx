@@ -22,7 +22,7 @@ export function MobileNav() {
         type="button"
         onClick={open}
         aria-label="Abrir menú"
-        className="-ml-2 grid h-9 w-9 place-items-center text-e-ink"
+        className="-ml-3 grid h-11 w-11 place-items-center text-e-ink"
       >
         <MenuIcon size={20} />
       </button>
@@ -50,7 +50,7 @@ export function MobileNav() {
                   type="button"
                   onClick={close}
                   aria-label="Cerrar menú"
-                  className="grid h-8 w-8 place-items-center rounded-full hover:bg-e-tile"
+                  className="-mr-2.5 grid h-11 w-11 place-items-center rounded-full hover:bg-e-tile"
                 >
                   <CloseIcon size={18} />
                 </button>

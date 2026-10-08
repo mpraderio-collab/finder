@@ -253,7 +253,7 @@ export function PremiumCarousel({ slides }: { slides: CarouselSlide[] }) {
               type="button"
               onClick={() => go(index - 1)}
               aria-label="Anterior"
-              className="grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-white/15"
+              className="grid h-11 w-11 place-items-center rounded-full transition-colors hover:bg-white/15"
             >
               <ArrowLeftIcon size={18} />
             </button>
@@ -261,7 +261,7 @@ export function PremiumCarousel({ slides }: { slides: CarouselSlide[] }) {
               type="button"
               onClick={() => go(index + 1)}
               aria-label="Siguiente"
-              className="grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-white/15"
+              className="grid h-11 w-11 place-items-center rounded-full transition-colors hover:bg-white/15"
             >
               <ArrowRightIcon size={18} />
             </button>
