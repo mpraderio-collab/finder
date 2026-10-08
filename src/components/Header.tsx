@@ -1,8 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
 import { CartLink } from "@/components/CartLink";
 import { SearchTrigger } from "@/components/SearchTrigger";
 import { MobileNav } from "@/components/MobileNav";
+import { Wordmark } from "@/components/store/Wordmark";
 
 // Las escenas llevan al catálogo, que está ordenado por momento de uso.
 export const sceneLinks = [
@@ -38,14 +38,7 @@ export function Header() {
         <span className="md:hidden" />
 
         <Link href="/" className="shrink-0 justify-self-center" aria-label="Finder — inicio">
-          <Image
-            src="/brand/finder-logo.png"
-            alt="Finder"
-            width={1463}
-            height={303}
-            className="h-[20px] w-auto md:h-[22px]"
-            priority
-          />
+          <Wordmark />
         </Link>
 
         <div className="flex items-center justify-end gap-5 md:gap-7">

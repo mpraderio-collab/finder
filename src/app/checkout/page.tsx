@@ -1,5 +1,6 @@
 "use client";
 
+import { Wordmark } from "@/components/store/Wordmark";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -191,13 +192,7 @@ export default function CheckoutPage() {
             <span className="b-link hidden sm:inline">Volver al carrito</span>
           </Link>
           <Link href="/" className="shrink-0" aria-label="Finder — inicio">
-            <Image
-              src="/brand/finder-logo.png"
-              alt="Finder"
-              width={1463}
-              height={303}
-              className="h-[20px] w-auto md:h-[22px]"
-            />
+            <Wordmark />
           </Link>
           <span className="flex items-center justify-end gap-2 text-sm text-taupe">
             <LockIcon size={15} />
