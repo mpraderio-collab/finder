@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Manrope, DM_Sans } from "next/font/google";
+import { Manrope, DM_Sans, Fraunces, Inter } from "next/font/google";
 import { CartProvider } from "@/lib/cart-context";
 import { WhatsAppButtonGate } from "@/components/WhatsAppButtonGate";
 import { PageViewTracker } from "@/components/PageViewTracker";
@@ -19,6 +19,19 @@ const dmSans = DM_Sans({
   weight: ["400", "500", "700"],
 });
 
+// Tienda (dirección B): Fraunces para títulos, Inter para texto. El admin
+// sigue con Manrope + DM Sans.
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  axes: ["opsz"],
+});
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
   title: "Finder — Iluminación moderna para tu casa",
   description:
@@ -29,7 +42,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
-      className={`${manrope.variable} ${dmSans.variable} h-full antialiased`}
+      className={`${manrope.variable} ${dmSans.variable} ${fraunces.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-bg text-ink">
         <MetaPixel />

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useCart } from "@/lib/cart-context";
+import { BagIcon } from "@/components/store/Icons";
 
 export function CartLink() {
   const { itemCount } = useCart();
@@ -39,9 +40,14 @@ export function CartLink() {
   return (
     <Link
       href="/carrito"
-      className="rounded-lg bg-navy px-5 py-2.5 font-heading text-sm font-bold text-white transition-colors hover:bg-navy-deep"
+      className="group flex items-center gap-2 text-sm text-espresso"
+      aria-label={`Carrito, ${itemCount} ${itemCount === 1 ? "producto" : "productos"}`}
     >
-      Carrito · <span ref={groupRef} className="t-digit-group">{itemCount}</span>
+      <BagIcon size={18} />
+      <span className="hidden sm:inline">Carrito</span>
+      <span className="tabular-nums">
+        (<span ref={groupRef} className="t-digit-group">{itemCount}</span>)
+      </span>
     </Link>
   );
 }

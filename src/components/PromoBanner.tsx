@@ -2,10 +2,11 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { GiftIcon, TruckIcon } from "@/components/store/Icons";
 
 const MESSAGES = [
-  "🚚 Envío a todo el país",
-  "🎁 10% OFF llevando 3 productos — combinalos como quieras",
+  { icon: TruckIcon, text: "Envío a todo el país" },
+  { icon: GiftIcon, text: "10% off llevando 3 productos — combinalos como quieras" },
 ];
 
 const INTERVAL_MS = 4000;
@@ -40,11 +41,19 @@ export function PromoBanner() {
 
   if (pathname.startsWith("/admin")) return null;
 
+  const { icon: Icon, text } = MESSAGES[index];
+
   return (
-    <div className="bg-navy py-2 text-center">
-      <p className="px-4 text-[13px] font-semibold tracking-wide text-white">
+    <div
+      className="store bg-night py-2.5 text-center"
+      style={{ viewTransitionName: "promo-bar" }}
+    >
+      <p className="px-4 text-[13px] text-cream">
         <span ref={textRef} className="t-text-swap">
-          {MESSAGES[index]}
+          <span className="inline-flex items-center gap-2">
+            <Icon size={14} />
+            {text}
+          </span>
         </span>
       </p>
     </div>

@@ -1,8 +1,12 @@
+/// <reference types="react/canary" />
 import Image from "next/image";
 import Link from "next/link";
+import { ViewTransition } from "react";
 import { formatPrice, getHeroImageUrl } from "@/lib/products";
 import type { ProductWithRelations } from "@/lib/products";
 import { activePromotion, maxPercentOff } from "@/lib/promotions";
+import { ArrowRight } from "@/components/store/Icons";
+import { productTransitionName } from "@/components/store/scenes";
 
 export function ProductCard({ product }: { product: ProductWithRelations }) {
   const heroUrl = getHeroImageUrl(product);
@@ -16,55 +20,47 @@ export function ProductCard({ product }: { product: ProductWithRelations }) {
   return (
     <Link
       href={`/catalogo/${product.slug}`}
-      className="group flex flex-col overflow-hidden rounded-[14px] border border-line bg-bg transition-shadow hover:shadow-[0_2px_8px_rgba(15,67,104,0.08)]"
+      transitionTypes={["nav-forward"]}
+      className="group flex flex-col"
     >
-      <div className="relative aspect-square w-full overflow-hidden bg-surface">
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-sand">
         {heroUrl && (
-          <Image
-            src={heroUrl}
-            alt={product.name}
-            fill
-            className="object-cover"
-            sizes="(min-width: 768px) 33vw, 100vw"
-          />
+          <ViewTransition name={productTransitionName(product.slug)} share="morph" default="none">
+            <Image
+              src={heroUrl}
+              alt={product.name}
+              fill
+              className="b-zoom object-cover"
+              sizes="(min-width: 768px) 33vw, 100vw"
+            />
+          </ViewTransition>
         )}
         {outOfStock && (
-          <span className="absolute left-3 top-3 rounded-md bg-navy px-2.5 py-1 font-heading text-xs font-bold text-white">
+          <span className="absolute left-4 top-4 bg-espresso px-2.5 py-1 text-xs font-semibold text-cream">
             Sin stock
           </span>
         )}
         {!outOfStock && promo && (
-          <span className="absolute left-3 top-3 rounded-md bg-amber px-2.5 py-1 font-heading text-xs font-bold text-[#3a2500]">
+          <span className="absolute left-4 top-4 bg-cream px-2.5 py-1 text-xs font-semibold text-clay-ink">
             Hasta {maxPercentOff(promo)}% off
           </span>
         )}
       </div>
-      <div className="flex flex-1 flex-col gap-1.5 p-5">
-        <h3 className="font-heading text-lg font-bold text-navy">
-          {product.name}
-        </h3>
-        <p className="line-clamp-2 text-sm text-ink-soft">
-          {product.tagline}
-        </p>
+      <div className="flex flex-1 flex-col gap-2 border-b border-linen py-5">
+        <h3 className="font-serif text-[22px]/[1.2] text-espresso">{product.name}</h3>
+        <p className="line-clamp-2 text-[15px]/[1.55] text-taupe">{product.tagline}</p>
         <div className="mt-auto flex items-center justify-between pt-3">
-          <span
-            className={`font-heading text-[22px] font-extrabold ${outOfStock ? "text-ink-faint" : "text-navy"}`}
-          >
+          <span className={`font-serif text-[22px] ${outOfStock ? "text-taupe" : "text-espresso"}`}>
             {formatPrice(product.price)}
           </span>
-          {outOfStock ? (
-            <span className="rounded-lg border border-border-btn bg-bg px-3 py-1.5 font-heading text-xs font-bold text-navy">
-              Avisame
-            </span>
-          ) : product.variants.length > 0 ? (
-            <span className="rounded-full bg-amber-soft px-2.5 py-1 text-xs font-semibold text-amber-ink">
-              {product.variants.length} colores
-            </span>
-          ) : (
-            <span className="rounded-lg bg-amber px-3 py-1.5 font-heading text-xs font-bold text-[#3a2500]">
-              Agregar
-            </span>
-          )}
+          <span className="flex items-center gap-2 text-sm font-semibold text-clay-ink">
+            {outOfStock
+              ? "Avisame"
+              : product.variants.length > 0
+                ? `${product.variants.length} colores`
+                : "Ver producto"}
+            <ArrowRight size={16} className="b-arrow" />
+          </span>
         </div>
       </div>
     </Link>

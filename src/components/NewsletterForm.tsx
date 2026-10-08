@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ArrowRight } from "@/components/store/Icons";
 
 export function NewsletterForm() {
   const [email, setEmail] = useState("");
@@ -34,32 +35,34 @@ export function NewsletterForm() {
 
   if (sent) {
     return (
-      <p className="text-sm font-semibold text-amber">
-        ¡Listo! Ya estás suscripto.
+      <p className="font-serif text-lg text-clay-soft">
+        Listo, ya estás suscripto.
       </p>
     );
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-1.5">
-      <div className="flex gap-2">
+      <div className="flex items-end gap-3 border-b border-cream/30 transition-colors focus-within:border-cream">
         <input
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="tu@email.com"
-          className="min-w-0 flex-1 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-white/40 focus:border-amber"
+          aria-label="Tu email"
+          className="min-w-0 flex-1 bg-transparent py-2.5 text-[15px] text-cream outline-none placeholder:text-cream/40"
         />
         <button
           type="submit"
           disabled={submitting}
-          className="shrink-0 rounded-lg bg-amber px-4 py-2 font-heading text-sm font-bold text-[#3a2500] transition-colors hover:bg-amber-hover disabled:opacity-50"
+          className="group flex shrink-0 items-center gap-2 py-2.5 text-[15px] font-semibold text-cream disabled:opacity-50"
         >
-          {submitting ? "…" : "Sumarme"}
+          {submitting ? "Enviando…" : "Sumarme"}
+          <ArrowRight size={16} className="b-arrow" />
         </button>
       </div>
-      {error && <span className="text-xs text-red-300">{error}</span>}
+      {error && <span className="text-xs text-clay-soft">{error}</span>}
     </form>
   );
 }

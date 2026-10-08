@@ -9,7 +9,7 @@ export function WhatsAppButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Escribinos por WhatsApp"
-      className="wa-float fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-whatsapp shadow-lg transition-transform hover:scale-105"
+      className="wa-float fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-whatsapp shadow-[0_8px_24px_rgba(31,24,19,0.25)] transition-[transform,bottom] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:scale-105"
     >
       <svg
         viewBox="0 0 32 32"

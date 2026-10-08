@@ -3,7 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { formatPrice } from "@/lib/products";
+import { CloseIcon, SearchIcon } from "@/components/store/Icons";
+import { usePresence } from "@/components/store/usePresence";
 
 type SearchProduct = {
   slug: string;
@@ -13,8 +16,11 @@ type SearchProduct = {
   image: string | null;
 };
 
+// Duración de cierre del modal (--modal-close-dur).
+const MODAL_CLOSE_MS = 150;
+
 export function SearchTrigger({
-  triggerClassName = "hidden text-sm font-medium text-ink-soft transition-colors hover:text-navy sm:inline",
+  triggerClassName,
 }: {
   triggerClassName?: string;
 }) {
@@ -22,6 +28,7 @@ export function SearchTrigger({
   const [query, setQuery] = useState("");
   const [products, setProducts] = useState<SearchProduct[] | null>(null);
   const loading = open && products === null;
+  const { mounted, visible } = usePresence(open, MODAL_CLOSE_MS);
 
   useEffect(() => {
     if (!open || products) return;
@@ -59,89 +66,96 @@ export function SearchTrigger({
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className={triggerClassName}>
-        Buscar
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Buscar productos"
+        className={
+          triggerClassName ??
+          "hidden h-9 w-9 items-center justify-center text-espresso transition-opacity hover:opacity-70 sm:flex"
+        }
+      >
+        <SearchIcon size={18} />
+        {triggerClassName && <span>Buscar</span>}
       </button>
 
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center bg-ink/60 px-4 pt-[12vh]"
-          onClick={() => setOpen(false)}
-        >
+      {mounted &&
+        createPortal(
           <div
-            className="w-full max-w-lg rounded-2xl border border-line bg-bg shadow-xl"
-            onClick={(e) => e.stopPropagation()}
+            className={`t-scrim store fixed inset-0 z-[60] flex items-start justify-center bg-night/55 px-4 pt-[12vh] ${visible ? "is-open" : ""}`}
+            onClick={() => setOpen(false)}
           >
-            <div className="flex items-center gap-3 border-b border-line px-5 py-4">
-              <span className="text-ink-faint" aria-hidden="true">
-                ⌕
-              </span>
-              <input
-                autoFocus
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar productos…"
-                className="flex-1 bg-transparent text-base outline-none placeholder:text-ink-faint"
-              />
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Cerrar búsqueda"
-                className="text-xl leading-none text-ink-faint hover:text-ink"
-              >
-                ×
-              </button>
-            </div>
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Buscar productos"
+              className={`t-modal w-full max-w-xl rounded-[2px] bg-cream ${visible ? "is-open" : "is-closing"}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 border-b border-linen px-5 py-4">
+                <SearchIcon size={18} className="text-taupe" />
+                <input
+                  autoFocus
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="¿Qué luz estás buscando?"
+                  className="flex-1 bg-transparent font-serif text-xl text-espresso outline-none placeholder:text-taupe/70"
+                />
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  aria-label="Cerrar búsqueda"
+                  className="flex h-8 w-8 items-center justify-center text-taupe hover:text-espresso"
+                >
+                  <CloseIcon size={18} />
+                </button>
+              </div>
 
-            <div className="max-h-[60vh] overflow-y-auto p-2">
-              {loading && (
-                <p className="px-3 py-6 text-center text-sm text-ink-soft">
-                  Cargando…
-                </p>
-              )}
-              {!loading && products !== null && results.length === 0 && (
-                <p className="px-3 py-6 text-center text-sm text-ink-soft">
-                  {normalizedQuery === ""
-                    ? "Todavía no hay productos publicados."
-                    : `No encontramos productos para "${query}".`}
-                </p>
-              )}
-              {!loading &&
-                results.map((p) => (
-                  <Link
-                    key={p.slug}
-                    href={`/catalogo/${p.slug}`}
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-surface"
-                  >
-                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-surface">
-                      {p.image && (
-                        <Image
-                          src={p.image}
-                          alt=""
-                          fill
-                          className="object-cover"
-                          sizes="48px"
-                        />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-heading text-sm font-bold text-navy">
-                        {p.name}
-                      </p>
-                      <p className="truncate text-xs text-ink-soft">
-                        {p.tagline}
-                      </p>
-                    </div>
-                    <span className="shrink-0 font-heading text-sm font-bold text-ink">
-                      {formatPrice(p.price)}
-                    </span>
-                  </Link>
-                ))}
+              <div className="max-h-[60vh] overflow-y-auto px-2 py-2">
+                {loading && (
+                  <p className="px-3 py-6 text-center text-sm text-taupe">Buscando…</p>
+                )}
+                {!loading && products !== null && results.length === 0 && (
+                  <p className="px-3 py-6 text-center text-sm text-taupe">
+                    {normalizedQuery === ""
+                      ? "Todavía no hay productos publicados."
+                      : `No encontramos productos para "${query}".`}
+                  </p>
+                )}
+                {!loading &&
+                  results.map((p) => (
+                    <Link
+                      key={p.slug}
+                      href={`/catalogo/${p.slug}`}
+                      transitionTypes={["nav-forward"]}
+                      onClick={() => setOpen(false)}
+                      className="group flex items-center gap-4 rounded-[2px] px-3 py-3 transition-colors hover:bg-sand"
+                    >
+                      <div className="relative h-14 w-14 shrink-0 overflow-hidden bg-sand">
+                        {p.image && (
+                          <Image
+                            src={p.image}
+                            alt=""
+                            fill
+                            className="object-cover"
+                            sizes="56px"
+                          />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-serif text-[17px] text-espresso">{p.name}</p>
+                        <p className="truncate text-[13px] text-taupe">{p.tagline}</p>
+                      </div>
+                      <span className="shrink-0 text-sm tabular-nums text-espresso">
+                        {formatPrice(p.price)}
+                      </span>
+                    </Link>
+                  ))}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

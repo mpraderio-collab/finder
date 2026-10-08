@@ -2,6 +2,7 @@
 
 import { upload } from "@vercel/blob/client";
 import { useRef, useState } from "react";
+import { CheckIcon, StarIcon } from "@/components/store/Icons";
 
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
 
@@ -73,8 +74,8 @@ export function ReviewForm({ productId }: { productId: string }) {
 
   if (sent) {
     return (
-      <p className="rounded-xl border border-amber-line bg-amber-soft px-4 py-3 text-sm font-semibold text-amber-ink">
-        ¡Gracias por tu reseña! Se va a publicar apenas la revisemos.
+      <p className="border-l-2 border-clay bg-cream px-5 py-4 font-serif text-lg text-espresso">
+        Gracias por tu reseña. Se va a publicar apenas la revisemos.
       </p>
     );
   }
@@ -84,9 +85,8 @@ export function ReviewForm({ productId }: { productId: string }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex max-w-md flex-col gap-3 rounded-xl border border-line bg-bg p-5"
+      className="flex max-w-xl flex-col gap-4"
     >
-      <p className="font-heading text-sm font-bold text-navy">Dejá tu reseña</p>
 
       {/* Campo señuelo, oculto para personas: si un bot lo completa, el
           endpoint descarta el envío en silencio. */}
@@ -111,9 +111,11 @@ export function ReviewForm({ productId }: { productId: string }) {
             onClick={() => setRating(n)}
             onMouseEnter={() => setHoverRating(n)}
             onMouseLeave={() => setHoverRating(0)}
-            className="text-2xl leading-none text-amber"
+            className={`p-0.5 transition-[color,transform] duration-200 hover:scale-110 ${
+              (hoverRating || rating) >= n ? "text-clay" : "text-linen"
+            }`}
           >
-            {(hoverRating || rating) >= n ? "★" : <span className="text-border-input">★</span>}
+            <StarIcon size={24} filled={(hoverRating || rating) >= n} />
           </button>
         ))}
       </div>
@@ -125,7 +127,7 @@ export function ReviewForm({ productId }: { productId: string }) {
         onChange={(e) => setAuthor(e.target.value)}
         placeholder="Tu nombre"
         maxLength={80}
-        className="focus-amber rounded-lg border border-border-input bg-bg px-3 py-2 text-sm outline-none"
+        className="b-input"
       />
 
       <textarea
@@ -135,12 +137,14 @@ export function ReviewForm({ productId }: { productId: string }) {
         placeholder="Contanos qué te pareció el producto"
         maxLength={1000}
         rows={3}
-        className="focus-amber resize-none rounded-lg border border-border-input bg-bg px-3 py-2 text-sm outline-none"
+        className="b-input resize-none"
       />
 
       {photoUrl ? (
-        <div className="flex items-center gap-2 text-xs text-ink-soft">
-          <span className="text-amber-ink">✓ Foto adjuntada</span>
+        <div className="flex items-center gap-3 text-sm text-taupe">
+          <span className="flex items-center gap-1.5 text-clay-ink">
+            <CheckIcon size={14} /> Foto adjuntada
+          </span>
           <button
             type="button"
             onClick={() => {
@@ -153,7 +157,7 @@ export function ReviewForm({ productId }: { productId: string }) {
           </button>
         </div>
       ) : (
-        <label className="w-fit cursor-pointer text-xs font-semibold text-amber-ink hover:underline">
+        <label className="b-link w-fit cursor-pointer text-sm font-semibold text-clay-ink">
           {uploadingPhoto ? "Subiendo foto…" : "+ Agregar una foto (opcional)"}
           <input
             ref={fileInputRef}
@@ -166,12 +170,12 @@ export function ReviewForm({ productId }: { productId: string }) {
         </label>
       )}
 
-      {error && <span className="text-xs text-err-ink">{error}</span>}
+      {error && <span className="text-sm text-err-ink">{error}</span>}
 
       <button
         type="submit"
         disabled={busy}
-        className="w-fit rounded-lg bg-navy px-4 py-2 font-heading text-sm font-bold text-white transition-colors hover:bg-navy-deep disabled:opacity-50"
+        className="b-btn b-btn-ink w-fit"
       >
         {submitting ? "Enviando…" : "Enviar reseña"}
       </button>
