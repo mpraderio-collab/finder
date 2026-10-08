@@ -174,7 +174,7 @@ export function PremiumCarousel({ slides }: { slides: CarouselSlide[] }) {
       </div>
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-[5] bg-[linear-gradient(to_top,rgba(0,0,0,.72)_0%,rgba(0,0,0,.25)_45%,rgba(0,0,0,.1)_100%)]"
+        className="pointer-events-none absolute inset-0 z-[5] bg-black/25 bg-[linear-gradient(to_top,rgba(0,0,0,.86)_0%,rgba(0,0,0,.62)_30%,rgba(0,0,0,.18)_62%,rgba(0,0,0,0)_100%),linear-gradient(to_right,rgba(0,0,0,.45)_0%,rgba(0,0,0,0)_60%)]"
       />
 
       <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-6 px-4 pb-8 md:px-8 md:pb-12">
@@ -202,7 +202,8 @@ export function PremiumCarousel({ slides }: { slides: CarouselSlide[] }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        {/* pr deja libre la esquina del botón flotante de WhatsApp. */}
+        <div className="flex items-center gap-4 pr-[72px] md:pr-[76px]">
           <ol className="flex min-w-0 flex-1 items-stretch gap-3">
             {groups.map((g) => {
               const active = g.indices.includes(index);
