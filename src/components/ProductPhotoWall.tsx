@@ -38,10 +38,17 @@ export function ProductPhotoWall({
     setIndex(Math.round(track.scrollLeft / track.clientWidth));
   }, []);
 
-  // La miniatura activa se mantiene a la vista en la tira de abajo.
+  // La miniatura activa se mantiene a la vista en la tira de abajo. Se
+  // scrollea solo la tira: scrollIntoView también movía la página entera
+  // al cargar la ficha.
   useEffect(() => {
-    const thumb = thumbsRef.current?.children[index] as HTMLElement | undefined;
-    thumb?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+    const strip = thumbsRef.current;
+    const thumb = strip?.children[index] as HTMLElement | undefined;
+    if (!strip || !thumb) return;
+    const t = thumb.getBoundingClientRect();
+    const s = strip.getBoundingClientRect();
+    const left = strip.scrollLeft + (t.left - s.left) - (strip.clientWidth - t.width) / 2;
+    strip.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
   }, [index]);
 
   return (
