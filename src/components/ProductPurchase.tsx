@@ -229,9 +229,9 @@ export function ProductPurchase({
   }
 
   return (
-    <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(360px,440px)] md:gap-10 lg:gap-14">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-8 md:grid-cols-[minmax(0,1fr)_minmax(360px,440px)] md:gap-10 lg:gap-14">
       {/* Galería: grilla 2x2 en desktop (maap.cc), carrusel con miniaturas en mobile. */}
-      <div className="flex flex-col gap-3">
+      <div className="flex min-w-0 flex-col gap-3">
         <div className="hidden grid-cols-2 gap-2 md:grid">
           {gallery.map((img, i) => (
             <div key={img.id} className={i === 0 && gallery.length % 2 === 1 ? "col-span-2" : ""}>
