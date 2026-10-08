@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { FIT_PRODUCT } from "@/components/d/media";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -189,7 +190,7 @@ export default async function Home() {
                   <p className="t-stagger-line text-[18px] leading-[1.35]">{featured.description}</p>
                   {getHeroImageUrl(featured) && (
                     <div className="t-stagger-line t-stagger-line--2 relative aspect-square w-40 overflow-hidden bg-d-surface">
-                      <Image src={getHeroImageUrl(featured)!} alt="" fill className="object-cover" sizes="160px" />
+                      <Image src={getHeroImageUrl(featured)!} alt="" fill className={FIT_PRODUCT} sizes="160px" />
                     </div>
                   )}
                   <div className="t-stagger-line t-stagger-line--3">

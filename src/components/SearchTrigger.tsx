@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { FIT_PRODUCT } from "@/components/d/media";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatPrice } from "@/lib/products";
@@ -137,7 +138,7 @@ export function SearchTrigger({
                     >
                       <div className="relative h-14 w-14 shrink-0 overflow-hidden bg-d-surface">
                         {p.image && (
-                          <Image src={p.image} alt="" fill className="d-zoom object-cover" sizes="56px" />
+                          <Image src={p.image} alt="" fill className={`d-zoom ${FIT_PRODUCT}`} sizes="56px" />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">

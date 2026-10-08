@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { FIT_PRODUCT } from "@/components/d/media";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -329,7 +330,7 @@ export default function CheckoutPage() {
                     >
                       <div className="relative h-14 w-14 shrink-0 overflow-hidden bg-d-bg">
                         {item.image && (
-                          <Image src={item.image} alt={item.name} fill className="object-cover" sizes="56px" />
+                          <Image src={item.image} alt={item.name} fill className={FIT_PRODUCT} sizes="56px" />
                         )}
                       </div>
                       <span className="flex-1">

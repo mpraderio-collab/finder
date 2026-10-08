@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { FIT_PRODUCT } from "@/components/d/media";
 import Link from "next/link";
 import { formatPrice, getHeroImageUrl, type ProductWithRelations } from "@/lib/products";
 import { activePromotion, calculateLineTotals } from "@/lib/promotions";
@@ -42,7 +43,7 @@ export function SetPanel({
           return (
             <li key={p.id} className="flex items-center gap-4 border-t border-d-line py-3">
               <div className="relative h-14 w-14 shrink-0 overflow-hidden bg-d-surface">
-                {hero && <Image src={hero} alt="" fill className="object-cover" sizes="56px" />}
+                {hero && <Image src={hero} alt="" fill className={FIT_PRODUCT} sizes="56px" />}
               </div>
               <Link href={`/catalogo/${p.slug}`} className="d-fade flex-1">
                 {shortTitle(p.name)}

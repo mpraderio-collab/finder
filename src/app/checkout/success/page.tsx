@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { FIT_PRODUCT } from "@/components/d/media";
 import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -80,7 +81,7 @@ export default async function CheckoutSuccessPage(
                       <li key={item.id} className="flex items-center gap-4 border-t border-d-line py-3 text-sm">
                         <div className="relative h-14 w-14 shrink-0 overflow-hidden bg-d-surface">
                           {hero && (
-                            <Image src={hero} alt={item.product.name} fill className="object-cover" sizes="56px" />
+                            <Image src={hero} alt={item.product.name} fill className={FIT_PRODUCT} sizes="56px" />
                           )}
                         </div>
                         <span className="flex-1">

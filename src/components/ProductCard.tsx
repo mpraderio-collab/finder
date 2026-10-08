@@ -5,6 +5,7 @@ import type { ProductWithRelations } from "@/lib/products";
 import { activePromotion, maxPercentOff } from "@/lib/promotions";
 import { ProductPhotoTransition } from "@/components/d/PageTransition";
 import { CtaArrow } from "@/components/d/CtaLink";
+import { mediaFit } from "@/components/d/media";
 
 export function ProductCard({
   product,
@@ -18,6 +19,7 @@ export function ProductCard({
   priority?: boolean;
 }) {
   const heroUrl = getHeroImageUrl(product);
+  const heroImage = product.images.find((img) => img.url === heroUrl);
   const totalStock =
     product.variants.length > 0
       ? product.variants.reduce((sum, v) => sum + v.stock, 0)
@@ -35,7 +37,7 @@ export function ProductCard({
               alt={product.name}
               fill
               priority={priority}
-              className="d-zoom object-cover"
+              className={`d-zoom ${mediaFit(heroImage)}`}
               sizes={sizes}
             />
           )}

@@ -105,7 +105,7 @@ export default async function CatalogoPage() {
                   Así se ven en casas de clientes: sobre la mesa de luz, bajo la repisa, en el pasillo.
                 </p>
               </Reveal>
-              <div className="mt-14 grid grid-cols-2 items-end gap-5 px-5 md:grid-cols-4 md:px-10">
+              <div className={`mt-14 grid grid-cols-2 items-end gap-5 px-5 md:px-10 ${inUseColumns(inUse.length)}`}>
                 {inUse.map((photo, i) => (
                   <figure key={photo.id}>
                     <div
@@ -126,4 +126,11 @@ export default async function CatalogoPage() {
       <Footer />
     </>
   );
+}
+
+// With fewer than four photos the row sits under the section text (same
+// column as the header copy) instead of leaving the right side empty.
+function inUseColumns(count: number) {
+  if (count >= 4) return "md:grid-cols-4";
+  return count === 3 ? "md:grid-cols-3 md:pl-[386px]" : "md:grid-cols-2 md:pl-[386px]";
 }
