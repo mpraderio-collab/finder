@@ -42,6 +42,8 @@ type Seed = {
   price: number;
   stock: number;
   images: string[];
+  // Fotos "de ambiente" que el admin marca para el carrusel.
+  ambience: number[];
   variants: { name: string; swatch: string; stock: number }[];
   features: string[];
   specs: [string, string][];
@@ -64,6 +66,7 @@ const seeds: Seed[] = [
       "/products/lampara-led/gallery-2.png",
       "/products/lampara-led/gallery-3.png",
     ],
+    ambience: [3],
     variants: [
       { name: "Blanco", swatch: "#F5F3EE", stock: 8 },
       { name: "Negro", swatch: "#232019", stock: 8 },
@@ -101,6 +104,7 @@ const seeds: Seed[] = [
       "/products/luz-rgb-sensor/gallery-1.jpg",
       "/products/luz-rgb-sensor/gallery-2.jpg",
     ],
+    ambience: [0],
     variants: [],
     features: [
       "Sensor de movimiento PIR: se activa a 0-3 m y se apaga a los ~25 segundos",
@@ -130,6 +134,7 @@ const seeds: Seed[] = [
       "/products/luz-escritorio-magnetica/hero.jpg",
       "/products/luz-escritorio-magnetica/gallery-1.jpg",
     ],
+    ambience: [1],
     variants: [],
     features: [
       "Temperatura de color ajustable de 3000K a 6000K",
@@ -164,7 +169,7 @@ export const mockProducts: MockProduct[] = seeds.map((s) => ({
     alt: "",
     position: i,
     isHero: i === 0,
-    showInCarousel: true,
+    showInCarousel: s.ambience.includes(i),
     focusX: null,
     focusY: null,
     productId: s.id,
