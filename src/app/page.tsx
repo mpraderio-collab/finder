@@ -269,9 +269,6 @@ export default async function Home() {
             <section className="relative isolate flex min-h-[560px] flex-col justify-between overflow-hidden bg-black px-4 pb-12 pt-10 text-white md:h-[760px] md:px-8">
               <Image src={editorialImage} alt="" fill className="-z-10 object-cover opacity-45" sizes="100vw" />
               <span className="e-mono">Historias Finder · 01</span>
-              <p className="text-[clamp(44px,13vw,200px)] font-semibold leading-[0.9] tracking-[-0.04em] [overflow-wrap:anywhere]">
-                NOCHE:Libre
-              </p>
               <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
                 <p className="max-w-[460px] text-[16px]/[1.4]">
                   {editorialProduct.description.split(". ")[0]}.
