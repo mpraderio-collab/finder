@@ -70,6 +70,8 @@ export default async function EditManualSalePage(
           initialCustomerName={order.customerName === "Venta manual" ? "" : order.customerName}
           initialCustomerPhone={order.customerPhone}
           initialNote={order.note ?? ""}
+          initialIsPaid={order.isPaid}
+          initialShipped={order.status === "shipped"}
         />
       </div>
     </div>

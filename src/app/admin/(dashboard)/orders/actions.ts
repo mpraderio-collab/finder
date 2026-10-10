@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { orderStatusSchema } from "@/lib/validation";
+import { setManualSalePaid } from "../sales/actions";
+import { onlineSaleStates, manualSaleStates, type SaleState } from "@/lib/order-status";
 
 async function requireAdmin() {
   const session = await auth();
@@ -48,6 +50,59 @@ export async function updateOrderStatus(
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${orderId}`);
   return {};
+}
+
+// Cambia solo el estado de la VENTA (cobro / cancelación), dejando el envío
+// como estaba. Por debajo usa el mismo `status` de siempre: una venta pagada
+// y ya enviada sigue siendo "shipped".
+export async function setSaleState(orderId: string, state: string): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const order = await db.order.findUnique({ where: { id: orderId } });
+  if (!order) return { error: "El pedido ya no existe." };
+  if (order.status === "cart" || order.status === "draft") {
+    return { error: "Confirmá la venta antes de cambiar su estado." };
+  }
+
+  const allowed = order.channel === "manual" ? manualSaleStates : onlineSaleStates;
+  if (!allowed.includes(state as SaleState)) return { error: "Estado inválido." };
+
+  if (state === "cancelled") return updateOrderStatus(orderId, "cancelled");
+
+  if (order.channel === "manual") {
+    // Las ventas manuales cobran con un flag aparte; el estado del envío no cambia.
+    if (order.status === "cancelled") {
+      const res = await updateOrderStatus(orderId, "paid");
+      if (res.error) return res;
+    }
+    return setManualSalePaid(orderId, state === "paid");
+  }
+
+  // Online: pagada conserva el envío (shipped sigue shipped); pendiente o
+  // fallida implican que todavía no hay nada para enviar.
+  const next = state === "paid" ? (order.status === "shipped" ? "shipped" : "paid") : state;
+  return updateOrderStatus(orderId, next);
+}
+
+// Cambia solo el estado del ENVÍO (enviado / sin enviar), dejando el cobro como estaba.
+export async function setShippingState(orderId: string, shipped: boolean): Promise<{ error?: string }> {
+  await requireAdmin();
+
+  const order = await db.order.findUnique({ where: { id: orderId } });
+  if (!order) return { error: "El pedido ya no existe." };
+  if (order.status === "cart" || order.status === "draft") {
+    return { error: "Confirmá la venta antes de marcar el envío." };
+  }
+  if (order.status === "cancelled" || order.status === "failed") {
+    return { error: "Una venta cancelada o con pago fallido no se envía." };
+  }
+  // Un pedido online que todavía no se pagó no puede salir. En una venta
+  // manual se puede enviar fiado, así que ahí no se exige.
+  if (shipped && order.channel === "online" && order.status === "pending") {
+    return { error: "Marcá la venta como pagada antes de enviarla." };
+  }
+
+  return updateOrderStatus(orderId, shipped ? "shipped" : "paid");
 }
 
 export async function setTrackingCode(

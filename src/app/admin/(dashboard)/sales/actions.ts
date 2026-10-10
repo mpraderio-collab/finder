@@ -359,6 +359,9 @@ export async function updatePaidManualSale(
           note: data.note,
           subtotal,
           total: subtotal,
+          // Cobro y envío, tal como se eligieron en el formulario de edición.
+          isPaid: formData.get("salePaid") !== "0",
+          status: formData.get("shipped") === "1" ? "shipped" : "paid",
         },
       });
       await tx.orderItem.deleteMany({ where: { orderId } });

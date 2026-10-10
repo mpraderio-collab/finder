@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/products";
-import { orderStatusColors, orderStatusLabels } from "@/lib/order-status";
+import {
+  saleStateColors,
+  saleStateLabels,
+  saleStateOf,
+  shippingStateColors,
+  shippingStateLabels,
+  shippingStateOf,
+} from "@/lib/order-status";
 
 export default async function AdminSalesPage(
   props: PageProps<"/admin/sales">,
@@ -71,10 +78,10 @@ export default async function AdminSalesPage(
                   Total
                 </th>
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                  Estado
+                  Venta
                 </th>
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
-                  Pago
+                  Envío
                 </th>
                 <th className="px-4 py-3" />
               </tr>
@@ -97,21 +104,19 @@ export default async function AdminSalesPage(
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`rounded-md px-2 py-0.5 text-xs font-semibold ${orderStatusColors[sale.status]}`}
+                      className={`rounded-md px-2 py-0.5 text-xs font-semibold ${saleStateColors[saleStateOf(sale)]}`}
                     >
-                      {orderStatusLabels[sale.status]}
+                      {saleStateLabels[saleStateOf(sale)]}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {sale.status === "draft" ? (
+                    {sale.status === "draft" || sale.status === "cancelled" ? (
                       <span className="text-ink-faint">—</span>
                     ) : (
                       <span
-                        className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
-                          sale.isPaid ? "bg-ok-bg text-ok-ink" : "bg-warn-bg text-warn-ink"
-                        }`}
+                        className={`rounded-md px-2 py-0.5 text-xs font-semibold ${shippingStateColors[shippingStateOf(sale)]}`}
                       >
-                        {sale.isPaid ? "Pagada" : "Sin pagar"}
+                        {shippingStateLabels[shippingStateOf(sale)]}
                       </span>
                     )}
                   </td>

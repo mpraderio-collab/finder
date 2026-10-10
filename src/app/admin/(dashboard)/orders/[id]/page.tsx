@@ -2,13 +2,21 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/products";
-import { orderStatusColors, orderStatusLabels, manualSaleStatuses } from "@/lib/order-status";
+import {
+  orderStatusColors,
+  orderStatusLabels,
+  saleStateColors,
+  saleStateLabels,
+  saleStateOf,
+  shippingStateColors,
+  shippingStateLabels,
+  shippingStateOf,
+} from "@/lib/order-status";
 import { shippingMethods, type ShippingMethod } from "@/lib/shipping";
 import { calculateCogs, calculateMargin } from "@/lib/margin";
-import { StatusSelect } from "./StatusSelect";
+import { SaleShippingStatus } from "./SaleShippingStatus";
 import { TrackingCode } from "./TrackingCode";
 import { ActualShippingCost } from "./ActualShippingCost";
-import { PaymentToggle } from "./PaymentToggle";
 
 const timelineSteps = [
   { key: "created", label: "Pedido creado" },
@@ -47,6 +55,8 @@ export default async function OrderDetailPage(
   // Suelto, sigue siendo el costo real de ese pedido puntual.
   const effectiveShippingCost = order.shipmentId ? null : order.actualShippingCost;
   const cogs = calculateCogs(order.items);
+  const saleState = saleStateOf(order);
+  const shippingState = shippingStateOf(order);
   const margin = calculateMargin(order.total, cogs, effectiveShippingCost);
 
   return (
@@ -57,23 +67,29 @@ export default async function OrderDetailPage(
             Pedido #{order.id.slice(-6).toUpperCase()}
           </h1>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <span
-              className={`inline-block rounded-md px-2 py-0.5 text-xs font-semibold ${orderStatusColors[order.status]}`}
-            >
-              {orderStatusLabels[order.status]}
-            </span>
+            {isCart ? (
+              <span
+                className={`inline-block rounded-md px-2 py-0.5 text-xs font-semibold ${orderStatusColors[order.status]}`}
+              >
+                {orderStatusLabels[order.status]}
+              </span>
+            ) : (
+              <>
+                <span
+                  className={`inline-block rounded-md px-2 py-0.5 text-xs font-semibold ${saleStateColors[saleState]}`}
+                >
+                  Venta: {saleStateLabels[saleState]}
+                </span>
+                <span
+                  className={`inline-block rounded-md px-2 py-0.5 text-xs font-semibold ${shippingStateColors[shippingState]}`}
+                >
+                  Envío: {shippingStateLabels[shippingState]}
+                </span>
+              </>
+            )}
             {order.channel === "manual" && (
               <span className="inline-block rounded-md bg-amber-soft px-2 py-0.5 text-xs font-semibold text-amber-ink">
                 Venta manual
-              </span>
-            )}
-            {order.channel === "manual" && order.status !== "draft" && (
-              <span
-                className={`inline-block rounded-md px-2 py-0.5 text-xs font-semibold ${
-                  order.isPaid ? "bg-ok-bg text-ok-ink" : "bg-warn-bg text-warn-ink"
-                }`}
-              >
-                {order.isPaid ? "Pagada" : "Sin pagar (fiado)"}
               </span>
             )}
             <span className="text-xs text-ink-faint">
@@ -82,15 +98,13 @@ export default async function OrderDetailPage(
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
-          {order.status !== "cart" && (
-            <StatusSelect
+          {!isCart && (
+            <SaleShippingStatus
               orderId={order.id}
-              currentStatus={order.status}
-              statuses={order.channel === "manual" ? manualSaleStatuses : undefined}
+              channel={order.channel}
+              saleState={saleState}
+              shippingState={shippingState}
             />
-          )}
-          {order.channel === "manual" && order.status !== "draft" && (
-            <PaymentToggle orderId={order.id} isPaid={order.isPaid} />
           )}
         </div>
       </div>

@@ -43,6 +43,8 @@ export function ManualSaleForm({
   initialCustomerName,
   initialCustomerPhone,
   initialNote,
+  initialIsPaid,
+  initialShipped,
 }: {
   products: ProductOption[];
   // Clientes ya cargados — alimentan el desplegable de autocompletado.
@@ -56,6 +58,9 @@ export function ManualSaleForm({
   initialCustomerName?: string;
   initialCustomerPhone?: string;
   initialNote?: string;
+  // Solo al editar una venta ya confirmada: cobro y envío actuales.
+  initialIsPaid?: boolean;
+  initialShipped?: boolean;
 }) {
   const router = useRouter();
   const isDraft = !orderId || orderStatus === "draft";
@@ -410,6 +415,33 @@ export function ManualSaleForm({
           <p className="rounded-lg bg-err-bg px-3 py-2 text-sm text-err-ink">
             {createConfirmState.error}
           </p>
+        )}
+
+        {orderId && !isDraft && (
+          <div className="flex flex-wrap gap-4">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium text-ink">Estado de la venta</span>
+              <select
+                name="salePaid"
+                defaultValue={initialIsPaid === false ? "0" : "1"}
+                className="input w-fit"
+              >
+                <option value="1">Pagada</option>
+                <option value="0">Sin pagar (fiado)</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium text-ink">Estado del envío</span>
+              <select
+                name="shipped"
+                defaultValue={initialShipped ? "1" : "0"}
+                className="input w-fit"
+              >
+                <option value="0">Sin enviar</option>
+                <option value="1">Enviado</option>
+              </select>
+            </label>
+          </div>
         )}
 
         {isDraft && (
