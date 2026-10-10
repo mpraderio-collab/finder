@@ -15,7 +15,7 @@ export default async function AdminSettingsPage() {
       </p>
 
       <div className="mt-8">
-        <SettingsForm installments={settings.installments} />
+        <SettingsForm installments={settings.installments} mlTaxPercent={settings.mlTaxPercent} />
       </div>
     </div>
   );

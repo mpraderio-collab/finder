@@ -32,6 +32,8 @@ model Product {
   promotions Promotion[]
 
   @@index([status])
+  mlListings   MlListing[]
+  mlOrderItems MlOrderItem[]
 }
 
 // Promoción combinable entre uno o varios productos (mix and match): las
@@ -404,6 +406,9 @@ model NewsletterSubscriber {
 model SiteSettings {
   id           String   @id @default("singleton")
   installments Int      @default(6) // cantidad de cuotas que se muestra en el sitio (home y ficha de producto)
+  // % del precio de venta que se estima de impuestos/retenciones en las ventas
+  // de Mercado Libre (la API no siempre los desglosa) — se usa para el margen.
+  mlTaxPercent Float    @default(5)
   updatedAt    DateTime @updatedAt
 }
 
@@ -412,4 +417,62 @@ model AdminUser {
   email        String   @unique
   passwordHash String
   createdAt    DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Mercado Libre
+// ---------------------------------------------------------------------------
+
+// Vínculo entre una publicación de Mercado Libre y un producto de Finder:
+// con esto se sabe a qué producto (y a qué costo) corresponde cada venta.
+model MlListing {
+  id          String   @id @default(cuid())
+  mlItemId    String   @unique // "MLA1234567890"
+  title       String   @default("")
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantName String? // si la publicación es de un color / variante puntual
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([productId])
+}
+
+// Venta importada de Mercado Libre. Va aparte de Order porque trae datos
+// propios (comisión, envío a cargo del vendedor) y puede tener publicaciones
+// todavía sin vincular a un producto.
+model MlOrder {
+  id                 String        @id @default(cuid())
+  mlOrderId          String        @unique
+  status             String // estado de la orden en ML: paid, cancelled, etc.
+  dateCreated        DateTime
+  buyerNickname      String        @default("")
+  totalAmount        Int // suma de los productos, ARS
+  sellerShippingCost Int           @default(0) // envío que paga el vendedor
+  shipmentId         String?
+  items              MlOrderItem[]
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([dateCreated])
+}
+
+model MlOrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       MlOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  mlItemId    String
+  title       String   @default("")
+  quantity    Int
+  unitPrice   Int
+  saleFee     Int      @default(0) // comisión total de ML por esta línea (ya multiplicada por la cantidad)
+  // Se completan al importar si la publicación está vinculada; si no, quedan
+  // vacíos y se resuelven apenas se vincula.
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variantName String?
+
+  @@index([orderId])
+  @@index([mlItemId])
+  @@index([productId])
 }

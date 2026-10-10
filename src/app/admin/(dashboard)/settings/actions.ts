@@ -26,6 +26,7 @@ export async function updateSiteSettings(
 
   const result = siteSettingsSchema.safeParse({
     installments: formData.get("installments"),
+    mlTaxPercent: formData.get("mlTaxPercent"),
   });
   if (!result.success) {
     const fieldErrors: Record<string, string> = {};

@@ -5,7 +5,13 @@ import { updateSiteSettings, type SettingsActionState } from "./actions";
 
 const initialState: SettingsActionState = {};
 
-export function SettingsForm({ installments }: { installments: number }) {
+export function SettingsForm({
+  installments,
+  mlTaxPercent,
+}: {
+  installments: number;
+  mlTaxPercent: number;
+}) {
   const [state, formAction, pending] = useActionState(updateSiteSettings, initialState);
 
   return (
@@ -42,6 +48,30 @@ export function SettingsForm({ installments }: { installments: number }) {
             Se usa en la home (&quot;X cuotas sin interés&quot;) y en la ficha de cada
             producto (&quot;X cuotas de $...&quot;). No cambia las cuotas reales que
             ofrece Mercado Pago en el checkout, solo el texto informativo del sitio.
+          </span>
+        )}
+      </label>
+
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm font-medium text-ink">
+          Impuestos estimados en ventas de Mercado Libre (%)
+        </span>
+        <input
+          name="mlTaxPercent"
+          type="number"
+          min={0}
+          max={50}
+          step="any"
+          defaultValue={mlTaxPercent}
+          required
+          className="input max-w-[160px]"
+        />
+        {state.fieldErrors?.mlTaxPercent ? (
+          <span className="text-xs text-err-ink">{state.fieldErrors.mlTaxPercent}</span>
+        ) : (
+          <span className="text-xs text-ink-soft">
+            Porcentaje del precio de venta que se descuenta como impuestos y retenciones al
+            calcular el margen de cada venta de Mercado Libre (por ejemplo, IIBB).
           </span>
         )}
       </label>

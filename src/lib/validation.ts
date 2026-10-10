@@ -157,6 +157,10 @@ export const siteSettingsSchema = z.object({
     .int("Tiene que ser un número entero")
     .min(1, "Tiene que ser al menos 1 cuota")
     .max(24, "Máximo 24 cuotas"),
+  mlTaxPercent: z.coerce
+    .number({ message: "Ingresá un porcentaje" })
+    .min(0, "No puede ser negativo")
+    .max(50, "Máximo 50%"),
 });
 
 export const orderStatuses = [

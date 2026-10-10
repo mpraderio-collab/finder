@@ -11,6 +11,7 @@ const navLinks = [
   { href: "/admin/reviews", label: "Reseñas" },
   { href: "/admin/orders", label: "Pedidos" },
   { href: "/admin/sales", label: "Ventas manuales" },
+  { href: "/admin/mercadolibre", label: "Mercado Libre" },
   { href: "/admin/reports/sales", label: "Informes" },
   { href: "/admin/shipments", label: "Envíos" },
   { href: "/admin/customers", label: "Clientes" },
