@@ -111,7 +111,7 @@ export async function createPromotion(
   revalidatePath("/admin/promotions");
   revalidatePath("/admin/products");
   revalidatePath("/catalogo");
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   redirect(`/admin/promotions/${promotion.id}`);
 }
 
@@ -169,7 +169,7 @@ export async function updatePromotion(
   revalidatePath(`/admin/promotions/${id}`);
   revalidatePath("/admin/products");
   revalidatePath("/catalogo");
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   return {};
 }
 
@@ -185,6 +185,6 @@ export async function deletePromotion(id: string): Promise<{ error?: string }> {
   revalidatePath("/admin/promotions");
   revalidatePath("/admin/products");
   revalidatePath("/catalogo");
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   return {};
 }

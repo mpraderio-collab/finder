@@ -5,6 +5,7 @@ import { WhatsAppButtonGate } from "@/components/WhatsAppButtonGate";
 import { PageViewTracker } from "@/components/PageViewTracker";
 import { MetaPixel } from "@/components/MetaPixel";
 import { PromoBanner } from "@/components/PromoBanner";
+import { getBannerMessages } from "@/lib/promo-banner";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -35,7 +36,8 @@ export const metadata: Metadata = {
     "Finder importa luces modernas para leer, trabajar y ambientar tu casa: lámparas de lectura, luces RGB con sensor de movimiento y luces de escritorio magnéticas.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const bannerMessages = await getBannerMessages();
   return (
     <html
       lang="es"
@@ -43,7 +45,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col bg-bg text-ink">
         <MetaPixel />
-        <PromoBanner />
+        <PromoBanner messages={bannerMessages} />
         <CartProvider>{children}</CartProvider>
         <WhatsAppButtonGate />
         <PageViewTracker />
