@@ -8,12 +8,14 @@ import { Footer } from "@/components/Footer";
 import { PageTransition } from "@/components/store/PageTransition";
 import { PromoProgress } from "@/components/store/PromoProgress";
 import { QuantityPill } from "@/components/store/QuantityPill";
-import { cartItemKey, useCart } from "@/lib/cart-context";
+import { cartItemKey, useCart, useCartRefresh } from "@/lib/cart-context";
+import { CartNotices } from "@/components/store/CartNotices";
 import { formatPrice } from "@/lib/products";
 
 export default function CarritoPage() {
   const { items, updateQuantity, removeItem, subtotal, lineTotals, itemCount } = useCart();
   const router = useRouter();
+  useCartRefresh();
 
   return (
     <>
@@ -25,6 +27,10 @@ export default function CarritoPage() {
               Tu carrito
               <sup className="e-mono ml-2 align-super text-e-muted">({itemCount})</sup>
             </h1>
+
+            <div className="mt-6">
+              <CartNotices />
+            </div>
 
             {items.length === 0 ? (
               <div className="mt-10 flex flex-col items-start gap-4 border-t border-e-line pt-10">

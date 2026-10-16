@@ -4,7 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useCart, cartItemKey } from "@/lib/cart-context";
+import { useCart, cartItemKey, useCartRefresh } from "@/lib/cart-context";
+import { CartNotices } from "@/components/store/CartNotices";
 import { trackEvent, getSessionId } from "@/lib/analytics";
 import { formatPrice } from "@/lib/products";
 import { shippingMethods, type ShippingMethod } from "@/lib/shipping";
@@ -34,6 +35,7 @@ const initialForm: FormState = {
 
 export default function CheckoutPage() {
   const { items, subtotal, lineTotals } = useCart();
+  useCartRefresh();
   const router = useRouter();
   const [form, setForm] = useState<FormState>(initialForm);
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod>("correo");
@@ -169,6 +171,7 @@ export default function CheckoutPage() {
       </header>
       <PageTransition>
         <main className="flex-1 bg-e-bg text-e-ink">
+          <CartNotices />
           <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(380px,520px)]">
             <form onSubmit={handleSubmit} className="flex flex-col gap-10 px-4 py-10 md:px-8 lg:px-16">
               {error && (

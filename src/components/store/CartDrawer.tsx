@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect } from "react";
-import { cartItemKey, useCart } from "@/lib/cart-context";
+import { cartItemKey, refreshCartFromServer, useCart } from "@/lib/cart-context";
+import { CartNotices } from "@/components/store/CartNotices";
 import { onCartDrawerOpen } from "@/lib/cart-drawer";
 import { formatPrice } from "@/lib/products";
 import { CloseIcon } from "@/components/store/Icons";
@@ -17,7 +18,14 @@ export function CartDrawer() {
   const { items, itemCount, subtotal, lineTotals, updateQuantity, removeItem } = useCart();
   const { state, open, close } = usePresence("--e-drawer-out");
 
-  useEffect(() => onCartDrawerOpen(open), [open]);
+  useEffect(
+    () =>
+      onCartDrawerOpen(() => {
+        open();
+        void refreshCartFromServer();
+      }),
+    [open],
+  );
 
   if (state === "closed") return null;
 
@@ -46,6 +54,8 @@ export function CartDrawer() {
             <CloseIcon size={18} />
           </button>
         </div>
+
+        <CartNotices />
 
         {items.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
