@@ -150,6 +150,26 @@ export function PromotionForm({ action, products, defaultValues, submitLabel }: 
         </select>
       </Field>
 
+      {/* Un tramo "por cantidad" de 1.000 unidades o más casi seguro es un monto
+          en pesos cargado con la opción equivocada (ej: 50000 → $50.000). */}
+      {triggerType === "quantity" && tiers.some((t) => Number(t.threshold) >= 1000) && (
+        <div className="rounded-lg border border-warn-line bg-warn-bg px-4 py-3 text-sm text-warn-ink">
+          <p className="font-semibold">¿Querías que se cuente por monto?</p>
+          <p className="mt-0.5">
+            Un tramo de {Math.max(...tiers.map((t) => Number(t.threshold) || 0)).toLocaleString("es-AR")}{" "}
+            unidades no se alcanza nunca: el cliente tendría que llevar esa cantidad de luces. Si el
+            número es un monto en pesos, cambialo a &quot;Por monto combinado ($)&quot;.
+          </p>
+          <button
+            type="button"
+            onClick={() => setTriggerType("amount")}
+            className="mt-2 rounded-md border border-warn-ink px-3 py-1 text-xs font-semibold hover:bg-white/60"
+          >
+            Cambiar a monto
+          </button>
+        </div>
+      )}
+
       <label className="flex items-center gap-2 text-sm font-medium text-ink">
         <input
           type="checkbox"
