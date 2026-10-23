@@ -27,8 +27,8 @@ export function calcPurchaseCosts(input: {
   // del costo y lo reparte entre sus unidades.
   containerCostUsd?: number;
   containerShare?: number;
-  // Costo neto e IVA por unidad (USD). Si la línea los trae, el costo unitario se
-  // calcula con ellos: (costo neto + IVA + parte del container por unidad) × cotización.
+  // Costo neto e IVA por unidad (USD). Si la línea los trae, el costo unitario en pesos
+  // se calcula con ellos: (costo neto + IVA) × cotización, sin el container.
   netPriceUsd?: number;
   vatUsd?: number;
   cardFeePercent?: number;
@@ -106,24 +106,23 @@ export function calcPurchaseCosts(input: {
   // costo unitario del producto.
   const unitBoxShippingCostUsd =
     boxShippingCostUsd !== undefined && quantity > 0 ? boxShippingCostUsd / quantity : 0;
-  // Método nuevo: si la línea tiene costo neto o IVA, el costo total por unidad es
-  // costo neto + IVA + su parte del container, y el costo en pesos es ese costo
-  // por la cotización del dólar (sin recargo de tarjeta, impuestos del lote ni
-  // envío de caja, que eran del método anterior).
+  // Método nuevo: si la línea tiene costo neto o IVA, el costo en pesos es
+  // (costo neto + IVA) × cotización del dólar (sin recargo de tarjeta, impuestos
+  // del lote ni envío de caja, que eran del método anterior). El servicio del
+  // container NO entra en el costo en pesos del producto: se ve en el costo total
+  // de la compra (totalUsd), pero no se suma al costo unitario.
   if (netPriceUsd !== undefined || vatUsd !== undefined) {
     const unitGoodsUsd = (netPriceUsd ?? 0) + (vatUsd ?? 0);
     const goodsUsd = unitGoodsUsd * quantity;
-    const totalWithContainerUsd = goodsUsd + containerLineUsd;
-    const unitFinalUsd = quantity > 0 ? totalWithContainerUsd / quantity : 0;
     return {
       taxesUsd,
       containerLineUsd,
       unitContainerUsd,
       netUsd: goodsUsd,
-      totalUsd: totalWithContainerUsd,
+      totalUsd: goodsUsd + containerLineUsd,
       unitCostUsd: unitGoodsUsd,
-      unitCostUsdFinal: unitFinalUsd,
-      unitCostPesos: Math.round(unitFinalUsd * exchangeRate),
+      unitCostUsdFinal: unitGoodsUsd,
+      unitCostPesos: Math.round(unitGoodsUsd * exchangeRate),
       boxVolumeM3,
       boxFillRatio,
       boxShippingCostUsd,
