@@ -351,6 +351,21 @@ export function PurchaseForm({
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   }
 
+  // Completa el precio de venta sugerido de TODAS las líneas con el doble de su costo
+  // unitario en pesos (el costo se calcula con los datos del lote vigentes ahora).
+  function suggestDoubleCostForAll() {
+    const hasPrices = items.some((item) => item.suggestedPrice !== undefined);
+    if (
+      hasPrices &&
+      !window.confirm("Algunas líneas ya tienen precio de venta sugerido. Se van a reemplazar por el doble de su costo unitario en pesos. ¿Continuar?")
+    ) {
+      return;
+    }
+    setItems((prev) =>
+      prev.map((item) => ({ ...item, suggestedPrice: Math.round(costsFor(item).unitCostPesos * 2) })),
+    );
+  }
+
   type SortKey = "productName" | "quantity" | "unitPriceUsd" | "unitCostPesos";
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -707,6 +722,20 @@ export function PurchaseForm({
 
       {items.length > 0 && (
         <div className="overflow-x-auto rounded-xl border border-line bg-bg">
+          {!readOnly && (
+            <div className="flex items-center justify-end gap-3 border-b border-line px-4 py-2">
+              <span className="text-xs text-ink-faint">
+                Completa el precio de venta sugerido de todas las líneas.
+              </span>
+              <button
+                type="button"
+                onClick={suggestDoubleCostForAll}
+                className="rounded-lg border border-border-btn px-3 py-1.5 text-xs font-semibold text-ink hover:bg-surface"
+              >
+                Precio sugerido = 2 × costo unitario
+              </button>
+            </div>
+          )}
           <table className="w-full min-w-[1400px] text-left text-sm">
             <thead className="border-b border-line text-ink-soft">
               <tr>
