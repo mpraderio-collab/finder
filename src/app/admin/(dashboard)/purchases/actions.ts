@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { purchaseSchema } from "@/lib/validation";
-import { calcPurchaseCosts } from "@/lib/purchases";
+import { calcPurchaseCosts, purchaseLineBase } from "@/lib/purchases";
 import { upsertSupplierByName } from "@/lib/suppliers";
 
 async function requireAdmin() {
@@ -54,8 +54,14 @@ function buildItemsData(items: ReturnType<typeof purchaseSchema.parse>["items"])
   // línea; el envío se calcula por línea (una caja por línea, ver
   // calcPurchaseCosts) y nunca se prorratea entre unidades.
   const totalLotQuantity = items.reduce((sum, line) => sum + line.quantity, 0);
+  // El servicio del container se reparte según el % de la compra que es cada línea.
+  const lotBase = items.reduce((sum, line) => sum + purchaseLineBase(line), 0);
   return items.map((line) => {
-    const costs = calcPurchaseCosts({ ...line, totalLotQuantity });
+    const costs = calcPurchaseCosts({
+      ...line,
+      totalLotQuantity,
+      containerShare: lotBase > 0 ? purchaseLineBase(line) / lotBase : 0,
+    });
     return {
       productId: line.productId || null,
       productName: line.productName,

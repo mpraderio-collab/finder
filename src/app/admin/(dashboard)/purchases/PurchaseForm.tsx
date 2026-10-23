@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { upload } from "@vercel/blob/client";
 import { formatPrice } from "@/lib/products";
-import { calcPurchaseCosts } from "@/lib/purchases";
+import { calcPurchaseCosts, purchaseLineBase } from "@/lib/purchases";
 import { purchaseStatusLabels } from "@/lib/purchase-status";
 import {
   createPurchase,
@@ -208,9 +208,30 @@ export function PurchaseForm({
   // Cantidad total del lote hasta ahora (líneas ya agregadas) — se usa para
   // prorratear impuestos/tarjeta, que son del lote completo.
   const addedLotQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
-  // Lo que suma cada unidad por el servicio del container: costo ÷ unidades del lote.
-  const containerPerUnitUsd =
-    containerCostUsd === "" || addedLotQuantity <= 0 ? 0 : containerCostUsd / addedLotQuantity;
+  // Servicio del container: cada línea se lleva el % de la compra que representa
+  // (su costo total operación sobre el total) y de ahí sale su parte del costo.
+  const containerUsd = containerCostUsd === "" ? 0 : containerCostUsd;
+  const lotBaseValue = items.reduce((sum, item) => sum + purchaseLineBase(item), 0);
+  function lineShareOf(item: ItemLine) {
+    return lotBaseValue > 0 ? purchaseLineBase(item) / lotBaseValue : 0;
+  }
+  // Costo total operación de una línea: cantidad × (costo neto + IVA), más lo que
+  // le toca del servicio del container. undefined si todavía no hay nada cargado.
+  function lineOperationUsd(item: ItemLine): number | undefined {
+    const hasCost = item.netPriceUsd !== undefined || item.vatUsd !== undefined;
+    const base = item.quantity * ((item.netPriceUsd ?? 0) + (item.vatUsd ?? 0));
+    const container = containerUsd * lineShareOf(item);
+    return hasCost || container > 0 ? base + container : undefined;
+  }
+  // La línea que se está armando todavía no está en la lista: su % se calcula
+  // como si ya estuviera agregada.
+  const draftBase = purchaseLineBase({
+    quantity: quantity || 0,
+    unitPriceUsd: unitPriceUsd || 0,
+    netPriceUsd: netPriceUsd === "" ? undefined : netPriceUsd,
+    vatUsd: vatUsd === "" ? undefined : vatUsd,
+  });
+  const draftShare = lotBaseValue + draftBase > 0 ? draftBase / (lotBaseValue + draftBase) : 0;
 
   const draftCosts = useMemo(
     () =>
@@ -222,6 +243,9 @@ export function PurchaseForm({
         containerCostUsd: containerCostUsd === "" ? undefined : containerCostUsd,
         cardFeePercent: cardFeePercent === "" ? undefined : cardFeePercent,
         totalLotQuantity: addedLotQuantity + (quantity || 0),
+        containerShare: draftShare,
+        netPriceUsd: netPriceUsd === "" ? undefined : netPriceUsd,
+        vatUsd: vatUsd === "" ? undefined : vatUsd,
         boxWidthM: boxWidthM === "" ? undefined : boxWidthM,
         boxLengthM: boxLengthM === "" ? undefined : boxLengthM,
         boxHeightM: boxHeightM === "" ? undefined : boxHeightM,
@@ -235,6 +259,9 @@ export function PurchaseForm({
       exchangeRate,
       taxesPesos,
       containerCostUsd,
+      draftShare,
+      netPriceUsd,
+      vatUsd,
       cardFeePercent,
       addedLotQuantity,
       boxWidthM,
@@ -341,6 +368,9 @@ export function PurchaseForm({
       containerCostUsd: containerCostUsd === "" ? undefined : containerCostUsd,
       cardFeePercent: cardFeePercent === "" ? undefined : cardFeePercent,
       totalLotQuantity: addedLotQuantity,
+      containerShare: lineShareOf(item),
+      netPriceUsd: item.netPriceUsd,
+      vatUsd: item.vatUsd,
       boxWidthM: item.boxWidthM,
       boxLengthM: item.boxLengthM,
       boxHeightM: item.boxHeightM,
@@ -390,8 +420,8 @@ export function PurchaseForm({
         acc.totalShippingUsd += costs.boxShippingCostUsd ?? 0;
         acc.totalVolumeM3 += costs.boxVolumeM3 ?? 0;
         acc.units += item.quantity;
-        // Costo total de una línea = cantidad × (costo neto + IVA); el total de la operación es la suma de todas.
-        acc.operationTotalUsd += item.quantity * ((item.netPriceUsd ?? 0) + (item.vatUsd ?? 0));
+        // Costo total operación de una línea = cantidad × (costo neto + IVA) + su parte del container; el total de la operación es la suma de todas.
+        acc.operationTotalUsd += lineOperationUsd(item) ?? 0;
         return acc;
       },
       {
@@ -466,8 +496,8 @@ export function PurchaseForm({
                 className="input"
               />
               <span className="text-[11px] text-ink-faint">
-                Se divide por el total de unidades del lote y se suma al costo de cada unidad
-                {containerPerUnitUsd > 0 ? ` (hoy: ${usd(containerPerUnitUsd)} por unidad).` : "."}
+                Cada línea se lleva el % de la compra que representa (según su costo total operación) y
+                esa parte se suma al costo de sus unidades.
               </span>
             </label>
 
@@ -687,6 +717,8 @@ export function PurchaseForm({
                 <th className="px-4 py-2 font-medium">IVA (USD)</th>
                 <th className="px-4 py-2 font-medium">Costo total (USD)</th>
                 <th className="px-4 py-2 font-medium">Costo total operación (USD)</th>
+                <th className="px-4 py-2 font-medium">% de la compra</th>
+                <th className="px-4 py-2 font-medium">Container (USD)</th>
                 <th className="px-4 py-2 font-medium">Link</th>
                 <th className="px-4 py-2 font-medium">
                   <button type="button" onClick={() => toggleSort("unitCostPesos")} className="hover:text-ink">
@@ -801,9 +833,15 @@ export function PurchaseForm({
                       : usd((item.netPriceUsd ?? 0) + (item.vatUsd ?? 0))}
                   </td>
                   <td className="px-4 py-2 font-medium text-ink">
-                    {item.netPriceUsd === undefined && item.vatUsd === undefined
-                      ? "—"
-                      : usd(item.quantity * ((item.netPriceUsd ?? 0) + (item.vatUsd ?? 0)))}
+                    {lineOperationUsd(item) === undefined ? "—" : usd(lineOperationUsd(item))}
+                  </td>
+                  <td className="px-4 py-2 text-ink-soft">
+                    {lotBaseValue > 0
+                      ? `${(lineShareOf(item) * 100).toLocaleString("es-AR", { maximumFractionDigits: 1 })}%`
+                      : "—"}
+                  </td>
+                  <td className="px-4 py-2 text-ink-soft">
+                    {containerUsd > 0 ? usd(containerUsd * lineShareOf(item)) : "—"}
                   </td>
                   <td className="px-4 py-2 text-ink-soft">
                     {readOnly ? (
@@ -888,6 +926,8 @@ export function PurchaseForm({
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2 text-ink">{usd(totals.operationTotalUsd)}</td>
+                <td className="px-4 py-2 text-ink-soft">{lotBaseValue > 0 ? "100%" : ""}</td>
+                <td className="px-4 py-2 text-ink-soft">{containerUsd > 0 ? usd(containerUsd) : ""}</td>
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
@@ -896,7 +936,7 @@ export function PurchaseForm({
             </tfoot>
           </table>
           <div className="flex items-center justify-end gap-3 border-t border-line px-4 py-3">
-            <span className="text-sm text-ink-soft">Total de la operación (suma del costo total operación)</span>
+            <span className="text-sm text-ink-soft">Total de la operación (suma del costo total operación, con el container)</span>
             <strong className="text-base text-ink">{usd(totals.operationTotalUsd)}</strong>
           </div>
         </div>

@@ -22,9 +22,15 @@ export function calcPurchaseCosts(input: {
   unitPriceUsd: number;
   exchangeRate: number;
   taxesPesos?: number;
-  // Servicio anual del container (USD), del lote entero: se divide por la
-  // cantidad total de unidades del lote y se suma al costo de cada unidad.
+  // Servicio anual del container (USD), del lote entero, y la fracción (0 a 1)
+  // de la compra que representa esta línea: la línea se lleva ese porcentaje
+  // del costo y lo reparte entre sus unidades.
   containerCostUsd?: number;
+  containerShare?: number;
+  // Costo neto e IVA por unidad (USD). Si la línea los trae, el costo unitario se
+  // calcula con ellos: (costo neto + IVA + parte del container por unidad) × cotización.
+  netPriceUsd?: number;
+  vatUsd?: number;
   cardFeePercent?: number;
   totalLotQuantity?: number;
   boxWidthM?: number;
@@ -40,6 +46,9 @@ export function calcPurchaseCosts(input: {
     exchangeRate,
     taxesPesos,
     containerCostUsd,
+    containerShare,
+    netPriceUsd,
+    vatUsd,
     cardFeePercent,
     totalLotQuantity,
     boxWidthM,
@@ -63,10 +72,14 @@ export function calcPurchaseCosts(input: {
   const taxesUsd =
     taxesPesos !== undefined && exchangeRate > 0 ? taxesPesos / exchangeRate : undefined;
   const unitTaxesUsd = taxesUsd !== undefined && lotQuantity > 0 ? taxesUsd / lotQuantity : undefined;
-  // Servicio del container: costo del lote ÷ unidades del lote = lo que suma cada unidad.
-  const unitContainerUsd =
-    containerCostUsd !== undefined && lotQuantity > 0 ? containerCostUsd / lotQuantity : 0;
-  const totalUsd = netUsd + ((unitTaxesUsd ?? 0) + unitContainerUsd) * quantity;
+  // Servicio del container: la línea se lleva el % de la compra que representa
+  // (containerShare) del costo anual, y ese monto se reparte entre sus unidades.
+  const containerLineUsd =
+    containerCostUsd !== undefined && containerShare !== undefined
+      ? containerCostUsd * containerShare
+      : 0;
+  const unitContainerUsd = quantity > 0 ? containerLineUsd / quantity : 0;
+  const totalUsd = netUsd + (unitTaxesUsd ?? 0) * quantity + containerLineUsd;
   const unitCostUsd = quantity > 0 ? totalUsd / quantity : 0;
 
   const hasBoxDims = boxWidthM !== undefined && boxLengthM !== undefined && boxHeightM !== undefined;
@@ -93,11 +106,36 @@ export function calcPurchaseCosts(input: {
   // costo unitario del producto.
   const unitBoxShippingCostUsd =
     boxShippingCostUsd !== undefined && quantity > 0 ? boxShippingCostUsd / quantity : 0;
+  // Método nuevo: si la línea tiene costo neto o IVA, el costo total por unidad es
+  // costo neto + IVA + su parte del container, y el costo en pesos es ese costo
+  // por la cotización del dólar (sin recargo de tarjeta, impuestos del lote ni
+  // envío de caja, que eran del método anterior).
+  if (netPriceUsd !== undefined || vatUsd !== undefined) {
+    const unitGoodsUsd = (netPriceUsd ?? 0) + (vatUsd ?? 0);
+    const goodsUsd = unitGoodsUsd * quantity;
+    const totalWithContainerUsd = goodsUsd + containerLineUsd;
+    const unitFinalUsd = quantity > 0 ? totalWithContainerUsd / quantity : 0;
+    return {
+      taxesUsd,
+      containerLineUsd,
+      unitContainerUsd,
+      netUsd: goodsUsd,
+      totalUsd: totalWithContainerUsd,
+      unitCostUsd: unitGoodsUsd,
+      unitCostUsdFinal: unitFinalUsd,
+      unitCostPesos: Math.round(unitFinalUsd * exchangeRate),
+      boxVolumeM3,
+      boxFillRatio,
+      boxShippingCostUsd,
+    };
+  }
+
   const unitCostUsdFinal = unitCostUsd + unitBoxShippingCostUsd;
   const unitCostPesos = Math.round(unitCostUsdFinal * exchangeRate);
 
   return {
     taxesUsd,
+    containerLineUsd,
     unitContainerUsd,
     netUsd,
     totalUsd,
@@ -108,4 +146,20 @@ export function calcPurchaseCosts(input: {
     boxFillRatio,
     boxShippingCostUsd,
   };
+}
+
+// Peso de una línea dentro de la compra, para repartir costos del lote (como el
+// servicio del container) en proporción: su costo total operación (cantidad ×
+// (costo neto + IVA)) y, si todavía no tiene costo neto ni IVA cargados, lo que
+// cuesta según su precio unitario.
+export function purchaseLineBase(line: {
+  quantity: number;
+  unitPriceUsd: number;
+  netPriceUsd?: number;
+  vatUsd?: number;
+}): number {
+  if (line.netPriceUsd !== undefined || line.vatUsd !== undefined) {
+    return line.quantity * ((line.netPriceUsd ?? 0) + (line.vatUsd ?? 0));
+  }
+  return line.quantity * line.unitPriceUsd;
 }
