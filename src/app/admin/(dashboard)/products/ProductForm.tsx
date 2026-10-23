@@ -17,6 +17,7 @@ type Props = {
     price: number;
     costPrice: number | null;
     compareAtPrice?: number | null;
+    mpCommissionPercent?: number | null;
     stock: number;
     status: string;
     features?: string;
@@ -93,26 +94,25 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
   const [cost, setCost] = useState<number | "">(defaultValues?.costPrice ?? "");
   const [price, setPrice] = useState<number | "">(defaultValues?.price ?? "");
   const [compareAtPrice, setCompareAtPrice] = useState<number | "">(defaultValues?.compareAtPrice ?? "");
-  // Las comisiones solo se usan acá para calcular el margen real, no son
-  // datos del producto y no se guardan (siempre arrancan en el default). El
-  // envío no entra: se cobra al final de la venta, según la provincia.
-  const [mpCommissionPercent, setMpCommissionPercent] = useState<number | "">(
-    DEFAULT_MP_COMMISSION_PERCENT,
-  );
+  // La comisión de Mercado Pago se guarda con el producto (si no tiene una guardada
+  // arranca en el default). El IIBB solo se usa acá para calcular el margen real y no
+  // se guarda. El envío no entra: se cobra al final de la venta, según la provincia.
+  const savedMpCommission = defaultValues?.mpCommissionPercent ?? DEFAULT_MP_COMMISSION_PERCENT;
+  const [mpCommissionPercent, setMpCommissionPercent] = useState<number | "">(savedMpCommission);
   const [iibbPercent, setIibbPercent] = useState<number | "">(DEFAULT_IIBB_PERCENT);
   const fees = feeFraction(mpCommissionPercent, iibbPercent);
 
   const [marginPercent, setMarginPercent] = useState<number | "">(() =>
     marginPercentOf(
       defaultValues?.costPrice ?? "",
-      feeFraction(DEFAULT_MP_COMMISSION_PERCENT, DEFAULT_IIBB_PERCENT),
+      feeFraction(savedMpCommission, DEFAULT_IIBB_PERCENT),
       defaultValues?.price ?? "",
     ),
   );
   const [marginAmount, setMarginAmount] = useState<number | "">(() =>
     marginAmountOf(
       defaultValues?.costPrice ?? "",
-      feeFraction(DEFAULT_MP_COMMISSION_PERCENT, DEFAULT_IIBB_PERCENT),
+      feeFraction(savedMpCommission, DEFAULT_IIBB_PERCENT),
       defaultValues?.price ?? "",
     ),
   );
@@ -261,6 +261,7 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
           labelClassName="min-h-10"
         >
           <input
+            name="mpCommissionPercent"
             type="number"
             step="any"
             value={mpCommissionPercent}

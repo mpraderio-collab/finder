@@ -57,6 +57,15 @@ export const productSchema = z.object({
     .positive("El precio tiene que ser mayor a cero")
     .max(100_000_000, "Precio demasiado alto"),
   // Vacío = sin precio tachado (null, para que también se pueda borrar uno ya cargado).
+  // Vacío = sin valor guardado (null): el formulario usa su valor por defecto.
+  mpCommissionPercent: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? null : val),
+    z.coerce
+      .number({ message: "La comisión tiene que ser un número" })
+      .min(0, "La comisión no puede ser negativa")
+      .max(100, "La comisión no puede superar el 100%")
+      .nullable(),
+  ),
   compareAtPrice: z.preprocess(
     (val) => (val === "" || val === null || val === undefined ? null : val),
     z.coerce

@@ -18,6 +18,9 @@ model Product {
   // Precio anterior que se muestra tachado al lado del precio de venta (solo si es
   // mayor a `price`). Null = no se muestra.
   compareAtPrice Int?
+  // % de comisión de Mercado Pago que se descuenta al calcular el margen de este producto.
+  // Null = se usa el valor por defecto del formulario.
+  mpCommissionPercent Float?
   costPrice   Int? // precio de costo — interno, nunca se muestra en la tienda
   stock       Int      @default(0)
   status      String   @default("active") // active | archived
