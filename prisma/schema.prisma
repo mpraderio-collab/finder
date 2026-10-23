@@ -166,6 +166,8 @@ model PurchaseItem {
 
   unitCostPesos  Int     // "Costo en Pesos" — lo que se usa como costPrice del producto
   suggestedPrice Int?    // "Precio de Venta" sugerido por la planilla
+  netPriceUsd    Float?  // "Precio neto" por unidad, sin IVA (USD)
+  vatUsd         Float?  // IVA por unidad (USD)
   referenceUrl   String? // link de referencia al producto en el sitio del proveedor
   // Solo para líneas sin producto vinculado (subida a mano) — si la línea
   // está vinculada a un producto, se muestra la foto principal de ese
