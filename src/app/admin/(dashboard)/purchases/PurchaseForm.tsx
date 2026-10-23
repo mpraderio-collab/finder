@@ -447,6 +447,8 @@ export function PurchaseForm({
         acc.units += item.quantity;
         // Costo total operación de una línea = cantidad × (costo neto + IVA) + su parte del container; el total de la operación es la suma de todas.
         acc.operationTotalUsd += lineOperationUsd(item) ?? 0;
+        acc.netCostUsd += item.quantity * (item.netPriceUsd ?? 0);
+        acc.vatUsd += item.quantity * (item.vatUsd ?? 0);
         return acc;
       },
       {
@@ -455,6 +457,8 @@ export function PurchaseForm({
         totalVolumeM3: 0,
         units: 0,
         operationTotalUsd: 0,
+        netCostUsd: 0,
+        vatUsd: 0,
       },
     );
     return { ...base, totalNetUsd: base.totalGoodsUsd + base.totalShippingUsd };
@@ -544,21 +548,39 @@ export function PurchaseForm({
             </label>
           </div>
 
-          <p className="mt-4 text-sm text-ink-soft">
-            Total neto (Total + impuestos + envío + tarjeta):{" "}
-            <strong className="text-ink">{usd(totals.totalNetUsd)}</strong>
-            {" · "}
-            Envío: <strong className="text-ink">{usd(totals.totalShippingUsd)}</strong>
-            {" · "}
-            Volumen total:{" "}
-            <strong className="text-ink">
-              {totals.totalVolumeM3.toLocaleString("es-AR", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 3,
-              })}{" "}
-              m³
-            </strong>
-          </p>
+          {items.some((item) => item.netPriceUsd !== undefined || item.vatUsd !== undefined) ? (
+            <p className="mt-4 text-sm text-ink-soft">
+              Total de la operación (costo neto + tarjeta + IVA + container):{" "}
+              <strong className="text-ink">{usd(totals.operationTotalUsd)}</strong>
+              {" · "}
+              Costo neto: <strong className="text-ink">{usd(totals.netCostUsd)}</strong>
+              {" · "}
+              Tarjeta:{" "}
+              <strong className="text-ink">
+                {usd((totals.netCostUsd * (cardFeePercent === "" ? 0 : cardFeePercent)) / 100)}
+              </strong>
+              {" · "}
+              IVA: <strong className="text-ink">{usd(totals.vatUsd)}</strong>
+              {" · "}
+              Container: <strong className="text-ink">{usd(lotBaseValue > 0 ? containerUsd : 0)}</strong>
+            </p>
+          ) : (
+            <p className="mt-4 text-sm text-ink-soft">
+              Total neto (Total + impuestos + envío + tarjeta):{" "}
+              <strong className="text-ink">{usd(totals.totalNetUsd)}</strong>
+              {" · "}
+              Envío: <strong className="text-ink">{usd(totals.totalShippingUsd)}</strong>
+              {" · "}
+              Volumen total:{" "}
+              <strong className="text-ink">
+                {totals.totalVolumeM3.toLocaleString("es-AR", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 3,
+                })}{" "}
+                m³
+              </strong>
+            </p>
+          )}
         </div>
       )}
 
