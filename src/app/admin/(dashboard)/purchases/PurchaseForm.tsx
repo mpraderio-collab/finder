@@ -215,13 +215,20 @@ export function PurchaseForm({
   function lineShareOf(item: ItemLine) {
     return lotBaseValue > 0 ? purchaseLineBase(item) / lotBaseValue : 0;
   }
-  // Costo total operación de una línea: cantidad × (costo neto + IVA), más lo que
-  // le toca del servicio del container. undefined si todavía no hay nada cargado.
-  function lineOperationUsd(item: ItemLine): number | undefined {
+  // Costo total de una unidad: costo neto + IVA + lo que le toca del servicio del
+  // container dividido la cantidad. undefined si todavía no hay nada cargado.
+  function lineUnitTotalUsd(item: ItemLine): number | undefined {
     const hasCost = item.netPriceUsd !== undefined || item.vatUsd !== undefined;
-    const base = item.quantity * ((item.netPriceUsd ?? 0) + (item.vatUsd ?? 0));
-    const container = containerUsd * lineShareOf(item);
-    return hasCost || container > 0 ? base + container : undefined;
+    const containerPerUnit =
+      item.quantity > 0 ? (containerUsd * lineShareOf(item)) / item.quantity : 0;
+    return hasCost || containerPerUnit > 0
+      ? (item.netPriceUsd ?? 0) + (item.vatUsd ?? 0) + containerPerUnit
+      : undefined;
+  }
+  // Costo total operación de una línea: cantidad × costo total.
+  function lineOperationUsd(item: ItemLine): number | undefined {
+    const unit = lineUnitTotalUsd(item);
+    return unit === undefined ? undefined : item.quantity * unit;
   }
   // La línea que se está armando todavía no está en la lista: su % se calcula
   // como si ya estuviera agregada.
@@ -715,10 +722,10 @@ export function PurchaseForm({
                 </th>
                 <th className="px-4 py-2 text-right font-medium">Costo neto (USD)</th>
                 <th className="px-4 py-2 text-right font-medium">IVA (USD)</th>
-                <th className="px-4 py-2 text-right font-medium">Costo total (USD)</th>
-                <th className="px-4 py-2 text-right font-medium">Costo total operación (USD)</th>
                 <th className="px-4 py-2 text-right font-medium">% de la compra</th>
                 <th className="px-4 py-2 text-right font-medium">Container (USD)</th>
+                <th className="px-4 py-2 text-right font-medium">Costo total (USD)</th>
+                <th className="px-4 py-2 text-right font-medium">Costo total operación (USD)</th>
                 <th className="px-4 py-2 font-medium">Link</th>
                 <th className="px-4 py-2 text-right font-medium">
                   <button type="button" onClick={() => toggleSort("unitCostPesos")} className="hover:text-ink">
@@ -827,14 +834,6 @@ export function PurchaseForm({
                       />
                     )}
                   </td>
-                  <td className="px-4 py-2 text-right font-medium text-ink">
-                    {item.netPriceUsd === undefined && item.vatUsd === undefined
-                      ? "—"
-                      : usd((item.netPriceUsd ?? 0) + (item.vatUsd ?? 0))}
-                  </td>
-                  <td className="px-4 py-2 text-right font-medium text-ink">
-                    {lineOperationUsd(item) === undefined ? "—" : usd(lineOperationUsd(item))}
-                  </td>
                   <td className="px-4 py-2 text-right text-ink-soft">
                     {lotBaseValue > 0
                       ? `${(lineShareOf(item) * 100).toLocaleString("es-AR", { maximumFractionDigits: 1 })}%`
@@ -842,6 +841,12 @@ export function PurchaseForm({
                   </td>
                   <td className="px-4 py-2 text-right text-ink-soft">
                     {containerUsd > 0 ? usd(containerUsd * lineShareOf(item)) : "—"}
+                  </td>
+                  <td className="px-4 py-2 text-right font-medium text-ink">
+                    {lineUnitTotalUsd(item) === undefined ? "—" : usd(lineUnitTotalUsd(item))}
+                  </td>
+                  <td className="px-4 py-2 text-right font-medium text-ink">
+                    {lineOperationUsd(item) === undefined ? "—" : usd(lineOperationUsd(item))}
                   </td>
                   <td className="px-4 py-2 text-ink-soft">
                     {readOnly ? (
@@ -924,10 +929,10 @@ export function PurchaseForm({
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
-                <td className="px-4 py-2" />
-                <td className="px-4 py-2 text-right text-ink">{usd(totals.operationTotalUsd)}</td>
                 <td className="px-4 py-2 text-right text-ink-soft">{lotBaseValue > 0 ? "100%" : ""}</td>
                 <td className="px-4 py-2 text-right text-ink-soft">{containerUsd > 0 ? usd(containerUsd) : ""}</td>
+                <td className="px-4 py-2" />
+                <td className="px-4 py-2 text-right text-ink">{usd(totals.operationTotalUsd)}</td>
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
