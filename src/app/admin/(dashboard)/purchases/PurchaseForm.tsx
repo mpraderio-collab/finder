@@ -390,8 +390,8 @@ export function PurchaseForm({
         acc.totalShippingUsd += costs.boxShippingCostUsd ?? 0;
         acc.totalVolumeM3 += costs.boxVolumeM3 ?? 0;
         acc.units += item.quantity;
-        // Costo total de una línea = cantidad × costo neto; el total de la operación es la suma de todas.
-        acc.operationTotalUsd += item.quantity * ((item.netPriceUsd ?? 0) + containerPerUnitUsd);
+        // Costo total de una línea = cantidad × (costo neto + IVA); el total de la operación es la suma de todas.
+        acc.operationTotalUsd += item.quantity * ((item.netPriceUsd ?? 0) + (item.vatUsd ?? 0));
         return acc;
       },
       {
@@ -404,7 +404,7 @@ export function PurchaseForm({
     );
     return { ...base, totalNetUsd: base.totalGoodsUsd + base.totalShippingUsd };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- costsFor lee exchangeRate/taxesPesos/cardFeePercent/costPerCubicMeterUsd/addedLotQuantity, ya listados abajo
-  }, [items, exchangeRate, taxesPesos, containerCostUsd, containerPerUnitUsd, cardFeePercent, costPerCubicMeterUsd, addedLotQuantity]);
+  }, [items, exchangeRate, taxesPesos, containerCostUsd, cardFeePercent, costPerCubicMeterUsd, addedLotQuantity]);
 
   useEffect(() => {
     if (state.purchaseId && !purchaseId) router.push("/admin/purchases");
@@ -683,16 +683,17 @@ export function PurchaseForm({
                     P. unitario{sortIndicator("unitPriceUsd")}
                   </button>
                 </th>
-                <th className="px-4 py-2 font-medium">Precio venta sug.</th>
+                <th className="px-4 py-2 font-medium">Costo neto (USD)</th>
+                <th className="px-4 py-2 font-medium">IVA (USD)</th>
+                <th className="px-4 py-2 font-medium">Costo total (USD)</th>
+                <th className="px-4 py-2 font-medium">Costo total operación (USD)</th>
+                <th className="px-4 py-2 font-medium">Link</th>
                 <th className="px-4 py-2 font-medium">
                   <button type="button" onClick={() => toggleSort("unitCostPesos")} className="hover:text-ink">
                     Costo unit. (pesos){sortIndicator("unitCostPesos")}
                   </button>
                 </th>
-                <th className="px-4 py-2 font-medium">Costo neto (USD)</th>
-                <th className="px-4 py-2 font-medium">IVA (USD)</th>
-                <th className="px-4 py-2 font-medium">Costo total (USD)</th>
-                <th className="px-4 py-2 font-medium">Link</th>
+                <th className="px-4 py-2 font-medium">Precio venta sug.</th>
                 {!readOnly && <th className="px-4 py-2" />}
               </tr>
             </thead>
@@ -760,24 +761,6 @@ export function PurchaseForm({
                   </td>
                   <td className="px-4 py-2 text-ink-soft">
                     {readOnly ? (
-                      item.suggestedPrice != null ? formatPrice(item.suggestedPrice) : "—"
-                    ) : (
-                      <input
-                        type="number"
-                        min={0}
-                        value={item.suggestedPrice ?? ""}
-                        onChange={(e) =>
-                          updateItem(index, {
-                            suggestedPrice: e.target.value === "" ? undefined : Number(e.target.value),
-                          })
-                        }
-                        className="input w-24"
-                      />
-                    )}
-                  </td>
-                  <td className="px-4 py-2 text-ink-soft">{formatPrice(unitCostPesos)}</td>
-                  <td className="px-4 py-2 text-ink-soft">
-                    {readOnly ? (
                       usd(item.netPriceUsd)
                     ) : (
                       <input
@@ -813,7 +796,14 @@ export function PurchaseForm({
                     )}
                   </td>
                   <td className="px-4 py-2 font-medium text-ink">
-                    {item.netPriceUsd === undefined ? "—" : usd(item.quantity * (item.netPriceUsd + containerPerUnitUsd))}
+                    {item.netPriceUsd === undefined && item.vatUsd === undefined
+                      ? "—"
+                      : usd((item.netPriceUsd ?? 0) + (item.vatUsd ?? 0))}
+                  </td>
+                  <td className="px-4 py-2 font-medium text-ink">
+                    {item.netPriceUsd === undefined && item.vatUsd === undefined
+                      ? "—"
+                      : usd(item.quantity * ((item.netPriceUsd ?? 0) + (item.vatUsd ?? 0)))}
                   </td>
                   <td className="px-4 py-2 text-ink-soft">
                     {readOnly ? (
@@ -855,6 +845,24 @@ export function PurchaseForm({
                       </div>
                     )}
                   </td>
+                  <td className="px-4 py-2 text-ink-soft">{formatPrice(unitCostPesos)}</td>
+                  <td className="px-4 py-2 text-ink-soft">
+                    {readOnly ? (
+                      item.suggestedPrice != null ? formatPrice(item.suggestedPrice) : "—"
+                    ) : (
+                      <input
+                        type="number"
+                        min={0}
+                        value={item.suggestedPrice ?? ""}
+                        onChange={(e) =>
+                          updateItem(index, {
+                            suggestedPrice: e.target.value === "" ? undefined : Number(e.target.value),
+                          })
+                        }
+                        className="input w-24"
+                      />
+                    )}
+                  </td>
                   {!readOnly && (
                     <td className="px-4 py-2 text-right">
                       <button
@@ -879,15 +887,16 @@ export function PurchaseForm({
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
-                <td className="px-4 py-2" />
                 <td className="px-4 py-2 text-ink">{usd(totals.operationTotalUsd)}</td>
+                <td className="px-4 py-2" />
+                <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
                 {!readOnly && <td className="px-4 py-2" />}
               </tr>
             </tfoot>
           </table>
           <div className="flex items-center justify-end gap-3 border-t border-line px-4 py-3">
-            <span className="text-sm text-ink-soft">Total de la operación (suma del costo total)</span>
+            <span className="text-sm text-ink-soft">Total de la operación (suma del costo total operación)</span>
             <strong className="text-base text-ink">{usd(totals.operationTotalUsd)}</strong>
           </div>
         </div>
