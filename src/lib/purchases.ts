@@ -28,7 +28,7 @@ export function calcPurchaseCosts(input: {
   containerCostUsd?: number;
   containerShare?: number;
   // Costo neto e IVA por unidad (USD). Si la línea los trae, el costo unitario en pesos
-  // se calcula con ellos: (costo neto + IVA) × cotización, sin el container.
+  // se calcula con ellos: (costo neto con el recargo de tarjeta + IVA) × cotización, sin el container.
   netPriceUsd?: number;
   vatUsd?: number;
   cardFeePercent?: number;
@@ -107,12 +107,12 @@ export function calcPurchaseCosts(input: {
   const unitBoxShippingCostUsd =
     boxShippingCostUsd !== undefined && quantity > 0 ? boxShippingCostUsd / quantity : 0;
   // Método nuevo: si la línea tiene costo neto o IVA, el costo en pesos es
-  // (costo neto + IVA) × cotización del dólar (sin recargo de tarjeta, impuestos
-  // del lote ni envío de caja, que eran del método anterior). El servicio del
-  // container NO entra en el costo en pesos del producto: se ve en el costo total
-  // de la compra (totalUsd), pero no se suma al costo unitario.
+  // (costo neto con el recargo por pago con tarjeta + IVA) × cotización del dólar
+  // (sin impuestos del lote ni envío de caja, que eran del método anterior). El
+  // servicio del container NO entra en el costo en pesos del producto: se ve en el
+  // costo total de la compra (totalUsd), pero no se suma al costo unitario.
   if (netPriceUsd !== undefined || vatUsd !== undefined) {
-    const unitGoodsUsd = (netPriceUsd ?? 0) + (vatUsd ?? 0);
+    const unitGoodsUsd = (netPriceUsd ?? 0) * (1 + (cardFeePercent ?? 0) / 100) + (vatUsd ?? 0);
     const goodsUsd = unitGoodsUsd * quantity;
     return {
       taxesUsd,

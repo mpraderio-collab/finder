@@ -166,6 +166,7 @@ model PurchaseItem {
 
   unitCostPesos  Int     // "Costo en Pesos" — lo que se usa como costPrice del producto
   suggestedPrice Int?    // "Precio de Venta" sugerido por la planilla
+  cardFeePercent   Float? // Impuesto por pago con tarjeta (%) — dato del lote
   containerCostUsd Float? // Servicio anual del container (USD) — dato del lote, se reparte por unidad
   netPriceUsd    Float?  // "Precio neto" por unidad, sin IVA (USD)
   vatUsd         Float?  // IVA por unidad (USD)

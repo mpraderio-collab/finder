@@ -83,6 +83,7 @@ function buildItemsData(items: ReturnType<typeof purchaseSchema.parse>["items"])
       costPerCubicMeterUsd: line.costPerCubicMeterUsd ?? null,
       boxShippingCostUsd: costs.boxShippingCostUsd ?? null,
       suggestedPrice: line.suggestedPrice ?? null,
+      cardFeePercent: line.cardFeePercent ?? null,
       containerCostUsd: line.containerCostUsd ?? null,
       netPriceUsd: line.netPriceUsd ?? null,
       vatUsd: line.vatUsd ?? null,

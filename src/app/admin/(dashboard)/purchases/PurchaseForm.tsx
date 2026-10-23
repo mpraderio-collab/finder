@@ -105,10 +105,11 @@ export function PurchaseForm({
   const [costPerCubicMeterUsd] = useState<number | "">(
     initial?.items[0]?.costPerCubicMeterUsd ?? "",
   );
-  // El % de recargo por pago con tarjeta no se guardaba antes de este
-  // campo, así que no hay forma de recuperarlo para compras viejas — se
-  // usa el default también al editarlas.
-  const [cardFeePercent, setCardFeePercent] = useState<number | "">(DEFAULT_CARD_FEE_PERCENT);
+  // El % de recargo por pago con tarjeta se guarda con la compra; en las compras
+  // viejas, que no lo tenían, se usa el default al editarlas.
+  const [cardFeePercent, setCardFeePercent] = useState<number | "">(
+    initial?.items[0]?.cardFeePercent ?? DEFAULT_CARD_FEE_PERCENT,
+  );
 
   // Formulario de la línea que se está armando, todavía no agregada.
   const [productChoice, setProductChoice] = useState(products[0]?.id ?? NEW_PRODUCT);
@@ -215,14 +216,16 @@ export function PurchaseForm({
   function lineShareOf(item: ItemLine) {
     return lotBaseValue > 0 ? purchaseLineBase(item) / lotBaseValue : 0;
   }
-  // Costo total de una unidad: costo neto + IVA + lo que le toca del servicio del
-  // container dividido la cantidad. undefined si todavía no hay nada cargado.
+  // Costo total de una unidad: costo neto con el recargo por pago con tarjeta + IVA,
+  // más lo que le toca del servicio del container dividido la cantidad.
+  // undefined si todavía no hay nada cargado.
   function lineUnitTotalUsd(item: ItemLine): number | undefined {
     const hasCost = item.netPriceUsd !== undefined || item.vatUsd !== undefined;
     const containerPerUnit =
       item.quantity > 0 ? (containerUsd * lineShareOf(item)) / item.quantity : 0;
+    const feeFactor = 1 + (cardFeePercent === "" ? 0 : cardFeePercent) / 100;
     return hasCost || containerPerUnit > 0
-      ? (item.netPriceUsd ?? 0) + (item.vatUsd ?? 0) + containerPerUnit
+      ? (item.netPriceUsd ?? 0) * feeFactor + (item.vatUsd ?? 0) + containerPerUnit
       : undefined;
   }
   // Costo total operación de una línea: cantidad × costo total.
@@ -520,6 +523,9 @@ export function PurchaseForm({
                 }
                 className="input"
               />
+              <span className="text-[11px] text-ink-faint">
+                Se suma solo al costo neto de cada línea (no al IVA) y entra en el costo total y en el costo en pesos.
+              </span>
             </label>
           </div>
 
