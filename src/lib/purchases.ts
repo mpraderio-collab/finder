@@ -22,6 +22,9 @@ export function calcPurchaseCosts(input: {
   unitPriceUsd: number;
   exchangeRate: number;
   taxesPesos?: number;
+  // Servicio anual del container (USD), del lote entero: se divide por la
+  // cantidad total de unidades del lote y se suma al costo de cada unidad.
+  containerCostUsd?: number;
   cardFeePercent?: number;
   totalLotQuantity?: number;
   boxWidthM?: number;
@@ -36,6 +39,7 @@ export function calcPurchaseCosts(input: {
     unitPriceUsd,
     exchangeRate,
     taxesPesos,
+    containerCostUsd,
     cardFeePercent,
     totalLotQuantity,
     boxWidthM,
@@ -59,7 +63,10 @@ export function calcPurchaseCosts(input: {
   const taxesUsd =
     taxesPesos !== undefined && exchangeRate > 0 ? taxesPesos / exchangeRate : undefined;
   const unitTaxesUsd = taxesUsd !== undefined && lotQuantity > 0 ? taxesUsd / lotQuantity : undefined;
-  const totalUsd = netUsd + (unitTaxesUsd ?? 0) * quantity;
+  // Servicio del container: costo del lote ÷ unidades del lote = lo que suma cada unidad.
+  const unitContainerUsd =
+    containerCostUsd !== undefined && lotQuantity > 0 ? containerCostUsd / lotQuantity : 0;
+  const totalUsd = netUsd + ((unitTaxesUsd ?? 0) + unitContainerUsd) * quantity;
   const unitCostUsd = quantity > 0 ? totalUsd / quantity : 0;
 
   const hasBoxDims = boxWidthM !== undefined && boxLengthM !== undefined && boxHeightM !== undefined;
@@ -91,6 +98,7 @@ export function calcPurchaseCosts(input: {
 
   return {
     taxesUsd,
+    unitContainerUsd,
     netUsd,
     totalUsd,
     unitCostUsd,

@@ -36,6 +36,7 @@ type ItemLine = {
   boxCapacityUnits?: number;
   boxCount?: number;
   suggestedPrice?: number;
+  containerCostUsd?: number;
   netPriceUsd?: number;
   vatUsd?: number;
   referenceUrl?: string;
@@ -97,6 +98,10 @@ export function PurchaseForm({
   // Impuestos del lote y costo por m³: ya no se muestran en pantalla, pero el valor
   // guardado se conserva y sigue viajando al guardar (no se pisa en las compras viejas).
   const [taxesPesos] = useState<number | "">(initial?.items[0]?.taxesPesos ?? "");
+  // Servicio anual del container: dato del lote (igual en todas las líneas).
+  const [containerCostUsd, setContainerCostUsd] = useState<number | "">(
+    initial?.items[0]?.containerCostUsd ?? "",
+  );
   const [costPerCubicMeterUsd] = useState<number | "">(
     initial?.items[0]?.costPerCubicMeterUsd ?? "",
   );
@@ -115,11 +120,13 @@ export function PurchaseForm({
   const [suggestedPrice, setSuggestedPrice] = useState<number | "">("");
   const [netPriceUsd, setNetPriceUsd] = useState<number | "">("");
   const [vatUsd, setVatUsd] = useState<number | "">("");
-  const [boxWidthM, setBoxWidthM] = useState<number | "">("");
-  const [boxLengthM, setBoxLengthM] = useState<number | "">("");
-  const [boxHeightM, setBoxHeightM] = useState<number | "">("");
-  const [boxCapacityUnits, setBoxCapacityUnits] = useState<number | "">("");
-  const [boxCount, setBoxCount] = useState<number | "">("");
+  // Las medidas de la caja ya no se cargan al agregar una línea: quedan vacías. Las
+  // líneas viejas conservan las que tenían guardadas en la base.
+  const [boxWidthM] = useState<number | "">("");
+  const [boxLengthM] = useState<number | "">("");
+  const [boxHeightM] = useState<number | "">("");
+  const [boxCapacityUnits] = useState<number | "">("");
+  const [boxCount] = useState<number | "">("");
   const [referenceUrl, setReferenceUrl] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -201,6 +208,9 @@ export function PurchaseForm({
   // Cantidad total del lote hasta ahora (líneas ya agregadas) — se usa para
   // prorratear impuestos/tarjeta, que son del lote completo.
   const addedLotQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+  // Lo que suma cada unidad por el servicio del container: costo ÷ unidades del lote.
+  const containerPerUnitUsd =
+    containerCostUsd === "" || addedLotQuantity <= 0 ? 0 : containerCostUsd / addedLotQuantity;
 
   const draftCosts = useMemo(
     () =>
@@ -209,6 +219,7 @@ export function PurchaseForm({
         unitPriceUsd: unitPriceUsd || 0,
         exchangeRate: exchangeRate || 0,
         taxesPesos: taxesPesos === "" ? undefined : taxesPesos,
+        containerCostUsd: containerCostUsd === "" ? undefined : containerCostUsd,
         cardFeePercent: cardFeePercent === "" ? undefined : cardFeePercent,
         totalLotQuantity: addedLotQuantity + (quantity || 0),
         boxWidthM: boxWidthM === "" ? undefined : boxWidthM,
@@ -223,6 +234,7 @@ export function PurchaseForm({
       unitPriceUsd,
       exchangeRate,
       taxesPesos,
+      containerCostUsd,
       cardFeePercent,
       addedLotQuantity,
       boxWidthM,
@@ -267,6 +279,7 @@ export function PurchaseForm({
         unitPriceUsd,
         exchangeRate,
         taxesPesos: taxesPesos === "" ? undefined : taxesPesos,
+        containerCostUsd: containerCostUsd === "" ? undefined : containerCostUsd,
         cardFeePercent: cardFeePercent === "" ? undefined : cardFeePercent,
         costPerCubicMeterUsd: costPerCubicMeterUsd === "" ? undefined : costPerCubicMeterUsd,
         boxWidthM: boxWidthM === "" ? undefined : boxWidthM,
@@ -289,11 +302,6 @@ export function PurchaseForm({
     setSuggestedPrice("");
     setNetPriceUsd("");
     setVatUsd("");
-    setBoxWidthM("");
-    setBoxLengthM("");
-    setBoxHeightM("");
-    setBoxCapacityUnits("");
-    setBoxCount("");
     setReferenceUrl("");
     setImageUrl("");
   }
@@ -306,7 +314,7 @@ export function PurchaseForm({
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   }
 
-  type SortKey = "productName" | "quantity" | "unitPriceUsd" | "unitCostPesos" | "subtotalUsd";
+  type SortKey = "productName" | "quantity" | "unitPriceUsd" | "unitCostPesos";
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
@@ -330,6 +338,7 @@ export function PurchaseForm({
       unitPriceUsd: item.unitPriceUsd,
       exchangeRate: exchangeRate || 0,
       taxesPesos: taxesPesos === "" ? undefined : taxesPesos,
+      containerCostUsd: containerCostUsd === "" ? undefined : containerCostUsd,
       cardFeePercent: cardFeePercent === "" ? undefined : cardFeePercent,
       totalLotQuantity: addedLotQuantity,
       boxWidthM: item.boxWidthM,
@@ -351,7 +360,6 @@ export function PurchaseForm({
       quantity: item.quantity,
       unitPriceUsd: item.unitPriceUsd,
       unitCostPesos: costsFor(item).unitCostPesos,
-      subtotalUsd: item.quantity * item.unitPriceUsd,
     }));
     if (!sortKey) return withIndex;
     const dir = sortDir === "asc" ? 1 : -1;
@@ -363,7 +371,7 @@ export function PurchaseForm({
       return 0;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- costsFor lee exchangeRate/taxesPesos/cardFeePercent/costPerCubicMeterUsd/addedLotQuantity, ya listados abajo
-  }, [items, sortKey, sortDir, exchangeRate, taxesPesos, cardFeePercent, costPerCubicMeterUsd, addedLotQuantity]);
+  }, [items, sortKey, sortDir, exchangeRate, taxesPesos, containerCostUsd, cardFeePercent, costPerCubicMeterUsd, addedLotQuantity]);
 
   function sortIndicator(key: SortKey) {
     if (sortKey !== key) return null;
@@ -374,7 +382,6 @@ export function PurchaseForm({
     const base = items.reduce(
       (acc, item) => {
         const costs = costsFor(item);
-        acc.totalUsdRaw += item.quantity * item.unitPriceUsd;
         // Costo de la mercadería + impuestos + tarjeta, SIN envío — unitCostUsdFinal
         // ya incluye el envío prorrateado (ver calcPurchaseCosts), así que si se
         // sumara acá el envío quedaría contado dos veces junto con totalShippingUsd.
@@ -383,24 +390,21 @@ export function PurchaseForm({
         acc.totalShippingUsd += costs.boxShippingCostUsd ?? 0;
         acc.totalVolumeM3 += costs.boxVolumeM3 ?? 0;
         acc.units += item.quantity;
-        // Costo neto = cantidad × precio neto; total de la operación = cantidad × costo total (neto + IVA).
-        acc.totalNetCostUsd += item.quantity * (item.netPriceUsd ?? 0);
-        acc.operationTotalUsd += item.quantity * ((item.netPriceUsd ?? 0) + (item.vatUsd ?? 0));
+        // Costo total de una línea = cantidad × costo neto; el total de la operación es la suma de todas.
+        acc.operationTotalUsd += item.quantity * ((item.netPriceUsd ?? 0) + containerPerUnitUsd);
         return acc;
       },
       {
-        totalUsdRaw: 0,
         totalGoodsUsd: 0,
         totalShippingUsd: 0,
         totalVolumeM3: 0,
         units: 0,
-        totalNetCostUsd: 0,
         operationTotalUsd: 0,
       },
     );
     return { ...base, totalNetUsd: base.totalGoodsUsd + base.totalShippingUsd };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- costsFor lee exchangeRate/taxesPesos/cardFeePercent/costPerCubicMeterUsd/addedLotQuantity, ya listados abajo
-  }, [items, exchangeRate, taxesPesos, cardFeePercent, costPerCubicMeterUsd, addedLotQuantity]);
+  }, [items, exchangeRate, taxesPesos, containerCostUsd, containerPerUnitUsd, cardFeePercent, costPerCubicMeterUsd, addedLotQuantity]);
 
   useEffect(() => {
     if (state.purchaseId && !purchaseId) router.push("/admin/purchases");
@@ -447,6 +451,24 @@ export function PurchaseForm({
                 onChange={(e) => setExchangeRate(Number(e.target.value))}
                 className="input"
               />
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Servicio anual del container (USD)</span>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={containerCostUsd}
+                onChange={(e) =>
+                  setContainerCostUsd(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                className="input"
+              />
+              <span className="text-[11px] text-ink-faint">
+                Se divide por el total de unidades del lote y se suma al costo de cada unidad
+                {containerPerUnitUsd > 0 ? ` (hoy: ${usd(containerPerUnitUsd)} por unidad).` : "."}
+              </span>
             </label>
 
             <label className="flex flex-col gap-1.5">
@@ -543,7 +565,7 @@ export function PurchaseForm({
             </label>
 
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-ink-soft">Precio neto (USD)</span>
+              <span className="text-xs text-ink-soft">Costo neto (USD)</span>
               <input
                 type="number"
                 step="0.01"
@@ -577,72 +599,6 @@ export function PurchaseForm({
                 }
                 className="input"
               />
-            </label>
-
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-ink-soft">Ancho de la caja (m)</span>
-              <input
-                type="number"
-                step="0.01"
-                min={0}
-                value={boxWidthM}
-                onChange={(e) => setBoxWidthM(e.target.value === "" ? "" : Number(e.target.value))}
-                className="input"
-              />
-            </label>
-
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-ink-soft">Largo de la caja (m)</span>
-              <input
-                type="number"
-                step="0.01"
-                min={0}
-                value={boxLengthM}
-                onChange={(e) => setBoxLengthM(e.target.value === "" ? "" : Number(e.target.value))}
-                className="input"
-              />
-            </label>
-
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-ink-soft">Alto de la caja (m)</span>
-              <input
-                type="number"
-                step="0.01"
-                min={0}
-                value={boxHeightM}
-                onChange={(e) => setBoxHeightM(e.target.value === "" ? "" : Number(e.target.value))}
-                className="input"
-              />
-            </label>
-
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-ink-soft">Capacidad de la caja (unidades)</span>
-              <input
-                type="number"
-                min={1}
-                value={boxCapacityUnits}
-                onChange={(e) =>
-                  setBoxCapacityUnits(e.target.value === "" ? "" : Number(e.target.value))
-                }
-                className="input"
-              />
-              <span className="text-[11px] text-ink-faint">
-                Si trae menos que esto, el volumen se prorratea por el % que ocupa.
-              </span>
-            </label>
-
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-ink-soft">Cantidad de cajas</span>
-              <input
-                type="number"
-                min={1}
-                value={boxCount}
-                onChange={(e) => setBoxCount(e.target.value === "" ? "" : Number(e.target.value))}
-                className="input"
-              />
-              <span className="text-[11px] text-ink-faint">
-                Cuántas cajas iguales tiene esta línea (por defecto, 1).
-              </span>
             </label>
 
             <label className="flex flex-col gap-1.5">
@@ -694,11 +650,6 @@ export function PurchaseForm({
 
           <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-ink-soft">
             <span>Costo unitario en pesos: <strong className="text-ink">{formatPrice(draftCosts.unitCostPesos)}</strong></span>
-            <span>
-              Envío de esta línea
-              {draftCosts.boxFillRatio < 1 ? ` (${Math.round(draftCosts.boxFillRatio * 100)}% llena)` : ""}:{" "}
-              <strong className="text-ink">{usd(draftCosts.boxShippingCostUsd)}</strong>
-            </span>
             <button
               type="button"
               onClick={addItem}
@@ -738,15 +689,9 @@ export function PurchaseForm({
                     Costo unit. (pesos){sortIndicator("unitCostPesos")}
                   </button>
                 </th>
-                <th className="px-4 py-2 font-medium">
-                  <button type="button" onClick={() => toggleSort("subtotalUsd")} className="hover:text-ink">
-                    Subtotal (USD){sortIndicator("subtotalUsd")}
-                  </button>
-                </th>
-                <th className="px-4 py-2 font-medium">Precio neto (USD)</th>
+                <th className="px-4 py-2 font-medium">Costo neto (USD)</th>
                 <th className="px-4 py-2 font-medium">IVA (USD)</th>
                 <th className="px-4 py-2 font-medium">Costo total (USD)</th>
-                <th className="px-4 py-2 font-medium">Costo neto (USD)</th>
                 <th className="px-4 py-2 font-medium">Link</th>
                 {!readOnly && <th className="px-4 py-2" />}
               </tr>
@@ -831,9 +776,6 @@ export function PurchaseForm({
                     )}
                   </td>
                   <td className="px-4 py-2 text-ink-soft">{formatPrice(unitCostPesos)}</td>
-                  <td className="px-4 py-2 font-medium text-ink">
-                    {usd(item.unitPriceUsd * item.quantity)}
-                  </td>
                   <td className="px-4 py-2 text-ink-soft">
                     {readOnly ? (
                       usd(item.netPriceUsd)
@@ -871,12 +813,7 @@ export function PurchaseForm({
                     )}
                   </td>
                   <td className="px-4 py-2 font-medium text-ink">
-                    {item.netPriceUsd === undefined && item.vatUsd === undefined
-                      ? "—"
-                      : usd((item.netPriceUsd ?? 0) + (item.vatUsd ?? 0))}
-                  </td>
-                  <td className="px-4 py-2 font-medium text-ink">
-                    {item.netPriceUsd === undefined ? "—" : usd(item.quantity * item.netPriceUsd)}
+                    {item.netPriceUsd === undefined ? "—" : usd(item.quantity * (item.netPriceUsd + containerPerUnitUsd))}
                   </td>
                   <td className="px-4 py-2 text-ink-soft">
                     {readOnly ? (
@@ -941,18 +878,16 @@ export function PurchaseForm({
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
-                <td className="px-4 py-2 text-ink">{usd(totals.totalUsdRaw)}</td>
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
-                <td className="px-4 py-2" />
-                <td className="px-4 py-2 text-ink">{usd(totals.totalNetCostUsd)}</td>
+                <td className="px-4 py-2 text-ink">{usd(totals.operationTotalUsd)}</td>
                 <td className="px-4 py-2" />
                 {!readOnly && <td className="px-4 py-2" />}
               </tr>
             </tfoot>
           </table>
           <div className="flex items-center justify-end gap-3 border-t border-line px-4 py-3">
-            <span className="text-sm text-ink-soft">Total de la operación (cantidad × costo total)</span>
+            <span className="text-sm text-ink-soft">Total de la operación (suma del costo total)</span>
             <strong className="text-base text-ink">{usd(totals.operationTotalUsd)}</strong>
           </div>
         </div>
@@ -970,6 +905,7 @@ export function PurchaseForm({
               ...item,
               exchangeRate,
               taxesPesos: taxesPesos === "" ? undefined : taxesPesos,
+              containerCostUsd: containerCostUsd === "" ? undefined : containerCostUsd,
               cardFeePercent: cardFeePercent === "" ? undefined : cardFeePercent,
               costPerCubicMeterUsd: costPerCubicMeterUsd === "" ? undefined : costPerCubicMeterUsd,
             })),

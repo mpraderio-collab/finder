@@ -241,6 +241,7 @@ const purchaseItemSchema = z.object({
     .positive("La cotización tiene que ser mayor a cero"),
   taxesPesos: z.coerce.number().min(0).optional(),
   cardFeePercent: z.coerce.number().min(0).optional(),
+  containerCostUsd: z.coerce.number().min(0).optional(),
   netPriceUsd: z.coerce.number().min(0).optional(),
   vatUsd: z.coerce.number().min(0).optional(),
   boxWidthM: z.coerce.number().min(0).optional(),
