@@ -16,6 +16,7 @@ type Props = {
     description: string;
     price: number;
     costPrice: number | null;
+    compareAtPrice?: number | null;
     stock: number;
     status: string;
     features?: string;
@@ -91,6 +92,7 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
 
   const [cost, setCost] = useState<number | "">(defaultValues?.costPrice ?? "");
   const [price, setPrice] = useState<number | "">(defaultValues?.price ?? "");
+  const [compareAtPrice, setCompareAtPrice] = useState<number | "">(defaultValues?.compareAtPrice ?? "");
   // Las comisiones solo se usan acá para calcular el margen real, no son
   // datos del producto y no se guardan (siempre arrancan en el default). El
   // envío no entra: se cobra al final de la venta, según la provincia.
@@ -293,6 +295,20 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
             value={price}
             onChange={handlePriceChange}
             required
+            className="input"
+          />
+        </Field>
+        <Field
+          label="Precio anterior (ARS, tachado)"
+          name="compareAtPrice"
+          error={state.fieldErrors?.compareAtPrice}
+          hint="Opcional. Si es mayor al precio de venta, se muestra tachado al lado."
+          labelClassName="min-h-10"
+        >
+          <MoneyInput
+            name="compareAtPrice"
+            value={compareAtPrice}
+            onChange={setCompareAtPrice}
             className="input"
           />
         </Field>

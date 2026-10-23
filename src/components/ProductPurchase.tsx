@@ -32,6 +32,7 @@ export function ProductPurchase({
   slug,
   name,
   price,
+  compareAtPrice,
   stock,
   variants,
   images,
@@ -44,6 +45,7 @@ export function ProductPurchase({
   slug: string;
   name: string;
   price: number;
+  compareAtPrice?: number | null;
   stock: number;
   variants: Variant[];
   images: GalleryImage[];
@@ -296,7 +298,14 @@ export function ProductPurchase({
 
           <div ref={buyPanelRef} className="flex flex-col gap-5">
             <div className="flex flex-col gap-1">
-              <span className="text-[22px] tabular-nums">{formatPrice(price)}</span>
+              <span className="flex items-baseline gap-3">
+                <span className="text-[22px] tabular-nums">{formatPrice(price)}</span>
+                {compareAtPrice != null && compareAtPrice > price && (
+                  <span className="text-[16px] tabular-nums text-e-faint line-through">
+                    {formatPrice(compareAtPrice)}
+                  </span>
+                )}
+              </span>
               <span className="text-[13px] text-e-muted">
                 {installments} {installments === 1 ? "cuota" : "cuotas"} de {formatPrice(installment)} sin interés
               </span>
@@ -421,7 +430,12 @@ export function ProductPurchase({
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[13px]">{name}</p>
-            <p className="text-[13px] tabular-nums text-e-muted">{formatPrice(price)}</p>
+            <p className="text-[13px] tabular-nums text-e-muted">
+              {compareAtPrice != null && compareAtPrice > price && (
+                <span className="mr-2 text-e-faint line-through">{formatPrice(compareAtPrice)}</span>
+              )}
+              {formatPrice(price)}
+            </p>
           </div>
           <button
             type="button"

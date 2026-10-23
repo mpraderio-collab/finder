@@ -64,6 +64,7 @@ export default async function EditProductPage(
             description: product.description,
             price: product.price,
             costPrice: product.costPrice,
+            compareAtPrice: product.compareAtPrice,
             stock: product.stock,
             status: product.status,
             features: product.features.map((f) => f.text).join("\n"),

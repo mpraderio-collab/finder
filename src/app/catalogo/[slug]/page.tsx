@@ -95,6 +95,7 @@ export default async function ProductPage(
               slug={product.slug}
               name={product.name}
               price={product.price}
+              compareAtPrice={product.compareAtPrice}
               stock={product.stock}
               variants={product.variants}
               images={orderedImages}

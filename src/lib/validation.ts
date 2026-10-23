@@ -56,6 +56,16 @@ export const productSchema = z.object({
     .int("El precio no puede tener centavos")
     .positive("El precio tiene que ser mayor a cero")
     .max(100_000_000, "Precio demasiado alto"),
+  // Vacío = sin precio tachado (null, para que también se pueda borrar uno ya cargado).
+  compareAtPrice: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? null : val),
+    z.coerce
+      .number({ message: "El precio anterior tiene que ser un número" })
+      .int("El precio anterior no puede tener centavos")
+      .positive("El precio anterior tiene que ser mayor a cero")
+      .max(100_000_000, "Precio demasiado alto")
+      .nullable(),
+  ),
   costPrice: z.preprocess(
     (val) => (val === "" || val === null || val === undefined ? undefined : val),
     z.coerce

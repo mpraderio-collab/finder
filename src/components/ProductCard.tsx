@@ -81,6 +81,9 @@ export function ProductCard({
         <div className="flex min-w-0 flex-col gap-1">
           <h3 className="text-[13px] leading-snug text-e-ink">{product.name}</h3>
           <p className={`text-[13px] tabular-nums ${outOfStock ? "text-e-faint" : "text-e-muted"}`}>
+            {product.compareAtPrice != null && product.compareAtPrice > product.price && (
+              <span className="mr-2 text-e-faint line-through">{formatPrice(product.compareAtPrice)}</span>
+            )}
             {formatPrice(product.price)}
           </p>
         </div>
