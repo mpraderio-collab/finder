@@ -4,7 +4,9 @@ import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeftIcon, ArrowRightIcon } from "@/components/store/Icons";
 
-type Media = { id: string; url: string; type: string };
+type ReviewInfo = { author: string; text: string; rating: number };
+// type "review" = foto real de un cliente, con su comentario.
+type Media = { id: string; url: string; type: string; review?: ReviewInfo };
 
 // Carrusel de ancho completo con todas las fotos y videos del producto.
 // Cada foto se muestra entera (nunca recortada — hay infografías con texto)
@@ -14,11 +16,13 @@ export function ProductPhotoWall({
   media,
   photoCount,
   videoCount,
+  reviewCount = 0,
 }: {
   name: string;
   media: Media[];
   photoCount: number;
   videoCount: number;
+  reviewCount?: number;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const thumbsRef = useRef<HTMLDivElement>(null);
@@ -67,8 +71,10 @@ export function ProductPhotoWall({
         </h2>
         <p className="e-mono text-white/60">
           {photoCount} {photoCount === 1 ? "foto" : "fotos"}
-          {videoCount > 0 && ` y ${videoCount} ${videoCount === 1 ? "video" : "videos"}`} · deslizá
-          o usá las flechas
+          {videoCount > 0 && ` y ${videoCount} ${videoCount === 1 ? "video" : "videos"}`}
+          {reviewCount > 0 &&
+            ` + ${reviewCount} ${reviewCount === 1 ? "foto real de un cliente" : "fotos reales de clientes"}`}{" "}
+          · deslizá o usá las flechas
         </p>
       </div>
 
@@ -97,22 +103,37 @@ export function ProductPhotoWall({
                 />
               ) : (
                 <>
-                  <Image
-                    src={m.url}
-                    alt=""
-                    aria-hidden
-                    fill
-                    sizes="20vw"
-                    className="scale-125 object-cover opacity-45 blur-2xl"
-                  />
-                  <Image
-                    src={m.url}
-                    alt={`${name} — foto ${i + 1}`}
-                    fill
-                    priority={i === 0}
-                    sizes="100vw"
-                    className="object-contain"
-                  />
+                  <span className={`absolute inset-x-0 top-0 ${m.review ? "bottom-[150px]" : "bottom-0"}`}>
+                    <Image
+                      src={m.url}
+                      alt=""
+                      aria-hidden
+                      fill
+                      sizes="20vw"
+                      className="scale-125 object-cover opacity-45 blur-2xl"
+                    />
+                    <Image
+                      src={m.url}
+                      alt={m.review ? `Foto de ${m.review.author}` : `${name} — foto ${i + 1}`}
+                      fill
+                      priority={i === 0}
+                      sizes="100vw"
+                      className="object-contain"
+                    />
+                  </span>
+                  {m.review && (
+                    <figure className="absolute inset-x-0 bottom-0 flex h-[150px] flex-col justify-center gap-1.5 bg-black/70 px-6 py-3 backdrop-blur-sm md:px-[10%]">
+                      <span className="e-mono text-amber" aria-label={`${m.review.rating} de 5 estrellas`}>
+                        {"★".repeat(m.review.rating)}
+                      </span>
+                      <blockquote className="line-clamp-3 text-[15px]/[1.45] md:text-[17px]/[1.45]">
+                        &ldquo;{m.review.text}&rdquo;
+                      </blockquote>
+                      <figcaption className="e-mono text-[#fff4dc]/70">
+                        {m.review.author} · cliente
+                      </figcaption>
+                    </figure>
+                  )}
                 </>
               )}
             </div>
@@ -165,7 +186,14 @@ export function ProductPhotoWall({
               {m.type === "video" ? (
                 <span className="e-mono grid h-full w-full place-items-center bg-white/10 text-white">Video</span>
               ) : (
-                <Image src={m.url} alt="" fill sizes="72px" className="object-cover" />
+                <>
+                  <Image src={m.url} alt="" fill sizes="72px" className="object-cover" />
+                  {m.review && (
+                    <span className="absolute bottom-0.5 right-0.5 rounded-full bg-black/70 px-1 text-[10px] leading-4 text-amber">
+                      ★
+                    </span>
+                  )}
+                </>
               )}
             </button>
           ))}

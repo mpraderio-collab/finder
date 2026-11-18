@@ -48,9 +48,20 @@ export default async function ProductPage(
   const avgRating = averageRating(product.reviews);
 
   const settings = await getSiteSettings();
-  const media = orderedImages.map(({ id, url, type }) => ({ id, url, type }));
-  const photoCount = media.filter((m) => m.type !== "video").length;
-  const videoCount = media.length - photoCount;
+  const productMedia = orderedImages.map(({ id, url, type }) => ({ id, url, type }));
+  const photoCount = productMedia.filter((m) => m.type !== "video").length;
+  const videoCount = productMedia.length - photoCount;
+  // Fotos reales de clientes (de las reseñas), con su comentario: van al final del
+  // carrusel, después de las fotos y videos del producto.
+  const reviewMedia = product.reviews
+    .filter((r) => r.photoUrl)
+    .map((r) => ({
+      id: `review-${r.id}`,
+      url: r.photoUrl as string,
+      type: "review",
+      review: { author: r.author, text: r.text, rating: r.rating },
+    }));
+  const media = [...productMedia, ...reviewMedia];
 
   const shipping = [
     {
@@ -201,6 +212,7 @@ export default async function ProductPage(
               media={media}
               photoCount={photoCount}
               videoCount={videoCount}
+              reviewCount={reviewMedia.length}
             />
           )}
 
