@@ -47,6 +47,8 @@ export async function attachProductImage(
       type: isVideo ? "video" : "image",
       position: product.images.length,
       isHero: !isVideo && !hasImageHero,
+      // Los videos entran al carrusel de la ficha por defecto; se pueden sacar con el botón.
+      showInCarousel: isVideo,
     },
   });
 
@@ -250,13 +252,10 @@ export async function toggleCarouselImage(
   if (!image || image.productId !== productId) {
     return { error: "La imagen ya no existe." };
   }
-  if (image.type === "video") {
-    return { error: "Un video no puede ir en el carrusel." };
-  }
-
   const turningOn = !image.showInCarousel;
   // Al sumarla al carrusel se detecta dónde está la luz para centrarla.
-  const focus = turningOn && image.focusX === null ? await detectLightFocus(image.url) : null;
+  const focus =
+    turningOn && image.type !== "video" && image.focusX === null ? await detectLightFocus(image.url) : null;
 
   await db.productImage.update({
     where: { id: imageId },

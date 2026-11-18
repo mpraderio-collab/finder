@@ -49,10 +49,11 @@ export default async function ProductPage(
 
   const settings = await getSiteSettings();
   // Carrusel de ancho completo: si en el admin se marcaron fotos con "Al carrusel", solo
-  // entran esas (más los videos); si no se marcó ninguna, se muestran todas.
+  // entran esas; si no se marcó ninguna, se muestran todas. Los videos entran solo si
+  // están marcados (los videos nuevos nacen marcados).
   const hasMarkedPhotos = orderedImages.some((img) => img.type !== "video" && img.showInCarousel);
   const productMedia = orderedImages
-    .filter((img) => img.type === "video" || !hasMarkedPhotos || img.showInCarousel)
+    .filter((img) => (img.type === "video" ? img.showInCarousel : !hasMarkedPhotos || img.showInCarousel))
     .map(({ id, url, type }) => ({ id, url, type }));
   const photoCount = productMedia.filter((m) => m.type !== "video").length;
   const videoCount = productMedia.length - photoCount;
