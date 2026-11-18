@@ -266,7 +266,11 @@ export async function toggleCarouselImage(
     },
   });
 
+  // La marca se usa en el home, en el catálogo y en el carrusel de la ficha del producto.
+  const product = await db.product.findUnique({ where: { id: productId }, select: { slug: true } });
   revalidatePath(`/admin/products/${productId}`);
+  revalidatePath("/catalogo");
+  if (product) revalidatePath(`/catalogo/${product.slug}`);
   revalidatePath("/");
   return {};
 }

@@ -48,7 +48,12 @@ export default async function ProductPage(
   const avgRating = averageRating(product.reviews);
 
   const settings = await getSiteSettings();
-  const productMedia = orderedImages.map(({ id, url, type }) => ({ id, url, type }));
+  // Carrusel de ancho completo: si en el admin se marcaron fotos con "Al carrusel", solo
+  // entran esas (más los videos); si no se marcó ninguna, se muestran todas.
+  const hasMarkedPhotos = orderedImages.some((img) => img.type !== "video" && img.showInCarousel);
+  const productMedia = orderedImages
+    .filter((img) => img.type === "video" || !hasMarkedPhotos || img.showInCarousel)
+    .map(({ id, url, type }) => ({ id, url, type }));
   const photoCount = productMedia.filter((m) => m.type !== "video").length;
   const videoCount = productMedia.length - photoCount;
   // Fotos reales de clientes (de las reseñas), con su comentario: van al final del
