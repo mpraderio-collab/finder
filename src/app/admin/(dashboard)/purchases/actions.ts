@@ -137,8 +137,9 @@ export async function updatePurchase(
 
   const existing = await db.purchase.findUnique({ where: { id: purchaseId } });
   if (!existing) return { error: "Esta compra no existe." };
-  if (existing.status !== "draft") {
-    return { error: "Esta compra ya no es un borrador y no se puede editar." };
+  // Se edita mientras es borrador o está confirmada; recibida o cancelada ya no.
+  if (existing.status !== "draft" && existing.status !== "confirmed") {
+    return { error: "Esta compra ya fue recibida o cancelada y no se puede editar." };
   }
 
   const result = parsePurchaseForm(formData);

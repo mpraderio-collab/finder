@@ -49,7 +49,7 @@ export default async function EditPurchasePage(
   return (
     <div>
       <h1 className="font-heading text-2xl font-extrabold text-navy">
-        {purchase.status === "draft" ? "Editar compra" : "Compra"}
+        {purchase.status === "draft" || purchase.status === "confirmed" ? "Editar compra" : "Compra"}
       </h1>
 
       <div className="mt-8">

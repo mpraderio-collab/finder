@@ -85,7 +85,9 @@ export function PurchaseForm({
   const [statusError, setStatusError] = useState<string | null>(null);
 
   const status = initial?.status ?? "draft";
-  const readOnly = Boolean(initial) && status !== "draft";
+  // Se puede editar mientras es borrador o está confirmada (pedida al proveedor, todavía sin
+  // recibir); una vez recibida o cancelada queda como historial.
+  const readOnly = Boolean(initial) && status !== "draft" && status !== "confirmed";
 
   const [supplierName, setSupplierName] = useState(initial?.supplierName ?? "");
   const [purchaseDate, setPurchaseDate] = useState(initial?.purchaseDate ?? todayIso());
@@ -1117,6 +1119,9 @@ export function PurchaseForm({
 
           {status === "confirmed" && (
             <>
+              <p className="basis-full text-xs text-ink-soft">
+                Si cambiaste algo, guardá los cambios antes de marcarla como recibida: al recibir se usa lo que está guardado.
+              </p>
               <button
                 type="button"
                 disabled={statusPending}
