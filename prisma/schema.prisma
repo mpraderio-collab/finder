@@ -121,6 +121,12 @@ model Purchase {
   // línea) | cancelled. Solo se puede editar libremente mientras es draft.
   status String @default("draft")
 
+  // sea (por barco, método con container) | air (por avión: envío en dólares e
+  // impuestos nacionales en pesos a nivel compra, repartidos entre las líneas).
+  transportMode      String @default("sea")
+  shippingCostUsd    Float?
+  nationalTaxesPesos Float?
+
   createdAt DateTime @default(now())
 
   items PurchaseItem[]

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { upload } from "@vercel/blob/client";
 import { formatPrice } from "@/lib/products";
-import { calcPurchaseCosts, purchaseLineBase } from "@/lib/purchases";
+import { calcPurchaseCosts, purchaseLineBase, airLineBase, calcAirLineCosts } from "@/lib/purchases";
 import { purchaseStatusLabels } from "@/lib/purchase-status";
 import {
   createPurchase,
@@ -51,6 +51,9 @@ type InitialValues = {
   supplierName: string;
   purchaseDate: string; // yyyy-mm-dd
   status: string;
+  transportMode?: string;
+  shippingCostUsd?: number;
+  nationalTaxesPesos?: number;
   items: ItemLine[];
 };
 
@@ -111,6 +114,14 @@ export function PurchaseForm({
   // viejas, que no lo tenían, se usa el default al editarlas.
   const [cardFeePercent, setCardFeePercent] = useState<number | "">(
     initial?.items[0]?.cardFeePercent ?? DEFAULT_CARD_FEE_PERCENT,
+  );
+
+  // Por barco (método con container) o por avión (envío en dólares e impuestos nacionales
+  // a nivel compra, que se suman al costo de los productos).
+  const [air, setAir] = useState(initial?.transportMode === "air");
+  const [shippingCostUsd, setShippingCostUsd] = useState<number | "">(initial?.shippingCostUsd ?? "");
+  const [nationalTaxesPesos, setNationalTaxesPesos] = useState<number | "">(
+    initial?.nationalTaxesPesos ?? "",
   );
 
   // Formulario de la línea que se está armando, todavía no agregada.
@@ -215,13 +226,18 @@ export function PurchaseForm({
   // (su costo total operación sobre el total) y de ahí sale su parte del costo.
   const containerUsd = containerCostUsd === "" ? 0 : containerCostUsd;
   const lotBaseValue = items.reduce((sum, item) => sum + purchaseLineBase(item), 0);
+  const airBaseValue = items.reduce((sum, item) => sum + airLineBase(item), 0);
+  const shippingUsd = shippingCostUsd === "" ? 0 : shippingCostUsd;
+  const nationalTaxes = nationalTaxesPesos === "" ? 0 : nationalTaxesPesos;
   function lineShareOf(item: ItemLine) {
+    if (air) return airBaseValue > 0 ? airLineBase(item) / airBaseValue : 0;
     return lotBaseValue > 0 ? purchaseLineBase(item) / lotBaseValue : 0;
   }
   // Costo total de una unidad: costo neto con el recargo por pago con tarjeta + IVA,
   // más lo que le toca del servicio del container dividido la cantidad.
   // undefined si todavía no hay nada cargado.
   function lineUnitTotalUsd(item: ItemLine): number | undefined {
+    if (air) return costsFor(item).unitCostUsd;
     const hasCost = item.netPriceUsd !== undefined || item.vatUsd !== undefined;
     const containerPerUnit =
       item.quantity > 0 ? (containerUsd * lineShareOf(item)) / item.quantity : 0;
@@ -232,6 +248,7 @@ export function PurchaseForm({
   }
   // Costo total operación de una línea: cantidad × costo total.
   function lineOperationUsd(item: ItemLine): number | undefined {
+    if (air) return costsFor(item).totalUsd;
     const unit = lineUnitTotalUsd(item);
     return unit === undefined ? undefined : item.quantity * unit;
   }
@@ -244,10 +261,22 @@ export function PurchaseForm({
     vatUsd: vatUsd === "" ? undefined : vatUsd,
   });
   const draftShare = lotBaseValue + draftBase > 0 ? draftBase / (lotBaseValue + draftBase) : 0;
+  const draftAirBase = airLineBase({ quantity: quantity || 0, unitPriceUsd: unitPriceUsd || 0 });
+  const draftAirShare =
+    airBaseValue + draftAirBase > 0 ? draftAirBase / (airBaseValue + draftAirBase) : 0;
 
   const draftCosts = useMemo(
     () =>
-      calcPurchaseCosts({
+      air
+        ? calcAirLineCosts({
+            quantity: quantity || 0,
+            unitPriceUsd: unitPriceUsd || 0,
+            exchangeRate: exchangeRate || 0,
+            shippingCostUsd: shippingCostUsd === "" ? undefined : shippingCostUsd,
+            nationalTaxesPesos: nationalTaxesPesos === "" ? undefined : nationalTaxesPesos,
+            lineShare: draftAirShare,
+          })
+        : calcPurchaseCosts({
         quantity: quantity || 0,
         unitPriceUsd: unitPriceUsd || 0,
         exchangeRate: exchangeRate || 0,
@@ -266,6 +295,10 @@ export function PurchaseForm({
         costPerCubicMeterUsd: costPerCubicMeterUsd === "" ? undefined : costPerCubicMeterUsd,
       }),
     [
+      air,
+      shippingCostUsd,
+      nationalTaxesPesos,
+      draftAirShare,
       quantity,
       unitPriceUsd,
       exchangeRate,
@@ -387,6 +420,26 @@ export function PurchaseForm({
   // ya cargadas, no solo en las nuevas. Las medidas de la caja sí son
   // propias de cada línea.
   function costsFor(item: ItemLine) {
+    if (air) {
+      const a = calcAirLineCosts({
+        quantity: item.quantity,
+        unitPriceUsd: item.unitPriceUsd,
+        exchangeRate: exchangeRate || 0,
+        shippingCostUsd: shippingCostUsd === "" ? undefined : shippingCostUsd,
+        nationalTaxesPesos: nationalTaxesPesos === "" ? undefined : nationalTaxesPesos,
+        lineShare: lineShareOf(item),
+      });
+      return {
+        taxesUsd: a.taxesLineUsd as number | undefined,
+        netUsd: a.goodsUsd,
+        totalUsd: a.totalUsd,
+        unitCostUsd: a.unitCostUsd,
+        unitCostUsdFinal: a.unitCostUsd,
+        unitCostPesos: a.unitCostPesos,
+        boxVolumeM3: undefined as number | undefined,
+        boxShippingCostUsd: a.shippingLineUsd as number | undefined,
+      };
+    }
     return calcPurchaseCosts({
       quantity: item.quantity,
       unitPriceUsd: item.unitPriceUsd,
@@ -428,12 +481,14 @@ export function PurchaseForm({
       return 0;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- costsFor lee exchangeRate/taxesPesos/cardFeePercent/costPerCubicMeterUsd/addedLotQuantity, ya listados abajo
-  }, [items, sortKey, sortDir, exchangeRate, taxesPesos, containerCostUsd, cardFeePercent, costPerCubicMeterUsd, addedLotQuantity]);
+  }, [items, sortKey, sortDir, air, shippingCostUsd, nationalTaxesPesos, exchangeRate, taxesPesos, containerCostUsd, cardFeePercent, costPerCubicMeterUsd, addedLotQuantity]);
 
   function sortIndicator(key: SortKey) {
     if (sortKey !== key) return null;
     return <span className="ml-1">{sortDir === "asc" ? "↑" : "↓"}</span>;
   }
+
+  const airGoodsUsd = items.reduce((sum, item) => sum + airLineBase(item), 0);
 
   const totals = useMemo(() => {
     const base = items.reduce(
@@ -465,7 +520,7 @@ export function PurchaseForm({
     );
     return { ...base, totalNetUsd: base.totalGoodsUsd + base.totalShippingUsd };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- costsFor lee exchangeRate/taxesPesos/cardFeePercent/costPerCubicMeterUsd/addedLotQuantity, ya listados abajo
-  }, [items, exchangeRate, taxesPesos, containerCostUsd, cardFeePercent, costPerCubicMeterUsd, addedLotQuantity]);
+  }, [items, air, shippingCostUsd, nationalTaxesPesos, exchangeRate, taxesPesos, containerCostUsd, cardFeePercent, costPerCubicMeterUsd, addedLotQuantity]);
 
   useEffect(() => {
     if (state.purchaseId && !purchaseId) router.push("/admin/purchases");
@@ -492,6 +547,9 @@ export function PurchaseForm({
           <span className="rounded-md bg-surface px-2 py-0.5 text-xs font-semibold text-ink">
             {purchaseStatusLabels[status] ?? status}
           </span>
+          <span className="rounded-md bg-surface px-2 py-0.5 text-xs font-semibold text-ink">
+            {air ? "Por avión" : "Por barco"}
+          </span>
         </div>
       )}
 
@@ -501,6 +559,21 @@ export function PurchaseForm({
           <p className="mt-1 text-xs text-ink-faint">
             Se cargan una sola vez y aplican a todos los productos de esta compra.
           </p>
+          <div className="mt-3 flex w-fit overflow-hidden rounded-lg border border-border-btn text-sm font-semibold">
+            {[
+              { key: false, label: "Por barco" },
+              { key: true, label: "Por avión" },
+            ].map((opt) => (
+              <button
+                key={String(opt.key)}
+                type="button"
+                onClick={() => setAir(opt.key)}
+                className={`px-4 py-1.5 ${air === opt.key ? "bg-navy text-white" : "text-ink hover:bg-surface"}`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="flex flex-col gap-1.5">
               <span className="text-xs text-ink-soft">Cotización del dólar</span>
@@ -514,6 +587,41 @@ export function PurchaseForm({
               />
             </label>
 
+            {air ? (
+              <>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Costo del envío (USD)</span>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={shippingCostUsd}
+                onChange={(e) => setShippingCostUsd(e.target.value === "" ? "" : Number(e.target.value))}
+                className="input"
+              />
+              <span className="text-[11px] text-ink-faint">
+                En pesos: <strong className="text-ink">{formatPrice(Math.round(shippingUsd * (exchangeRate || 0)))}</strong>{" "}
+                (con la cotización). Se suma al costo de los productos.
+              </span>
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Impuestos nacionales (pesos)</span>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={nationalTaxesPesos}
+                onChange={(e) => setNationalTaxesPesos(e.target.value === "" ? "" : Number(e.target.value))}
+                className="input"
+              />
+              <span className="text-[11px] text-ink-faint">
+                Se suman al costo de los productos.
+              </span>
+            </label>
+              </>
+            ) : (
+              <>
             <label className="flex flex-col gap-1.5">
               <span className="text-xs text-ink-soft">Servicio anual del container (USD)</span>
               <input
@@ -548,9 +656,27 @@ export function PurchaseForm({
                 Se suma solo al costo neto de cada línea (no al IVA) y entra en el costo total y en el costo en pesos.
               </span>
             </label>
+              </>
+            )}
           </div>
 
-          {items.some((item) => item.netPriceUsd !== undefined || item.vatUsd !== undefined) ? (
+          {air ? (
+            <p className="mt-4 text-sm text-ink-soft">
+              Mercadería: <strong className="text-ink">{usd(airGoodsUsd)}</strong>
+              {" · "}
+              Envío: <strong className="text-ink">{usd(shippingUsd)}</strong>
+              {" ("}
+              {formatPrice(Math.round(shippingUsd * (exchangeRate || 0)))}
+              {") · "}
+              Impuestos nacionales: <strong className="text-ink">{formatPrice(nationalTaxes)}</strong>
+              {" · "}
+              Total de la compra:{" "}
+              <strong className="text-ink">{usd(totals.operationTotalUsd)}</strong>
+              {" ("}
+              {formatPrice(Math.round(totals.operationTotalUsd * (exchangeRate || 0)))}
+              {")"}
+            </p>
+          ) : items.some((item) => item.netPriceUsd !== undefined || item.vatUsd !== undefined) ? (
             <p className="mt-4 text-sm text-ink-soft">
               Total de la operación (costo neto + tarjeta + IVA + container):{" "}
               <strong className="text-ink">{usd(totals.operationTotalUsd)}</strong>
@@ -646,6 +772,8 @@ export function PurchaseForm({
               )}
             </label>
 
+            {!air && (
+              <>
             <label className="flex flex-col gap-1.5">
               <span className="text-xs text-ink-soft">Costo neto (USD)</span>
               <input
@@ -669,6 +797,9 @@ export function PurchaseForm({
                 className="input"
               />
             </label>
+
+              </>
+            )}
 
             <label className="flex flex-col gap-1.5">
               <span className="text-xs text-ink-soft">Precio de venta sugerido</span>
@@ -779,6 +910,10 @@ export function PurchaseForm({
                     P. unitario{sortIndicator("unitPriceUsd")}
                   </button>
                 </th>
+                {air ? (
+                  <th className="px-4 py-2 text-right font-medium">Precio unitario × cantidad (USD)</th>
+                ) : (
+                  <>
                 <th className="px-4 py-2 text-right font-medium">Costo neto (USD)</th>
                 <th className="px-4 py-2 text-right font-medium">IVA (USD)</th>
                 <th className="px-4 py-2 text-right font-medium">% de la compra</th>
@@ -786,6 +921,8 @@ export function PurchaseForm({
                 <th className="px-4 py-2 text-right font-medium">Costo total (USD)</th>
                 <th className="px-4 py-2 text-right font-medium">Costo total operación (USD)</th>
                 <th className="px-4 py-2 font-medium">Link</th>
+                  </>
+                )}
                 <th className="px-4 py-2 text-right font-medium">
                   <button type="button" onClick={() => toggleSort("unitCostPesos")} className="hover:text-ink">
                     Costo unit. (pesos){sortIndicator("unitCostPesos")}
@@ -857,6 +994,12 @@ export function PurchaseForm({
                       />
                     )}
                   </td>
+                  {air ? (
+                    <td className="px-4 py-2 text-right font-medium text-ink">
+                      {usd(item.quantity * item.unitPriceUsd)}
+                    </td>
+                  ) : (
+                    <>
                   <td className="px-4 py-2 text-right text-ink-soft">
                     {readOnly ? (
                       usd(item.netPriceUsd)
@@ -947,6 +1090,8 @@ export function PurchaseForm({
                       </div>
                     )}
                   </td>
+                    </>
+                  )}
                   <td className="px-4 py-2 text-right text-ink-soft">{formatPrice(unitCostPesos)}</td>
                   <td className="px-4 py-2 text-right text-ink-soft">
                     {readOnly ? (
@@ -985,6 +1130,15 @@ export function PurchaseForm({
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2 text-ink">Total</td>
                 <td className="px-4 py-2 text-right text-ink-soft">{totals.units}</td>
+                {air ? (
+                  <>
+                    <td className="px-4 py-2" />
+                    <td className="px-4 py-2 text-right text-ink">{usd(airGoodsUsd)}</td>
+                    <td className="px-4 py-2" />
+                    <td className="px-4 py-2" />
+                  </>
+                ) : (
+                  <>
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
@@ -995,12 +1149,18 @@ export function PurchaseForm({
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
                 <td className="px-4 py-2" />
+                  </>
+                )}
                 {!readOnly && <td className="px-4 py-2" />}
               </tr>
             </tfoot>
           </table>
           <div className="flex items-center justify-end gap-3 border-t border-line px-4 py-3">
-            <span className="text-sm text-ink-soft">Total de la operación (suma del costo total operación, con el container)</span>
+            <span className="text-sm text-ink-soft">
+              {air
+                ? "Total de la compra (mercadería + envío + impuestos nacionales)"
+                : "Total de la operación (suma del costo total operación, con el container)"}
+            </span>
             <strong className="text-base text-ink">{usd(totals.operationTotalUsd)}</strong>
           </div>
         </div>
@@ -1010,6 +1170,9 @@ export function PurchaseForm({
         action={formAction}
         className="flex flex-col gap-4 rounded-xl border border-line bg-bg p-5"
       >
+        <input type="hidden" name="transportMode" value={air ? "air" : "sea"} />
+        <input type="hidden" name="shippingCostUsd" value={air ? shippingCostUsd : ""} />
+        <input type="hidden" name="nationalTaxesPesos" value={air ? nationalTaxesPesos : ""} />
         <input
           type="hidden"
           name="items"

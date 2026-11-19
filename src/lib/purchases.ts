@@ -162,3 +162,35 @@ export function purchaseLineBase(line: {
   }
   return line.quantity * line.unitPriceUsd;
 }
+
+// Compra por avión: el envío (USD) y los impuestos nacionales (pesos) son de la compra
+// entera y se suman al costo de los productos, repartidos entre las líneas en proporción
+// a lo que vale cada una (cantidad × precio unitario).
+export function airLineBase(line: { quantity: number; unitPriceUsd: number }): number {
+  return line.quantity * line.unitPriceUsd;
+}
+
+export function calcAirLineCosts(input: {
+  quantity: number;
+  unitPriceUsd: number;
+  exchangeRate: number;
+  shippingCostUsd?: number;
+  nationalTaxesPesos?: number;
+  // Fracción (0 a 1) de la compra que representa esta línea.
+  lineShare: number;
+}) {
+  const { quantity, unitPriceUsd, exchangeRate, shippingCostUsd, nationalTaxesPesos, lineShare } = input;
+  const goodsUsd = quantity * unitPriceUsd;
+  const shippingLineUsd = (shippingCostUsd ?? 0) * lineShare;
+  const taxesLineUsd = exchangeRate > 0 ? ((nationalTaxesPesos ?? 0) / exchangeRate) * lineShare : 0;
+  const totalUsd = goodsUsd + shippingLineUsd + taxesLineUsd;
+  const unitCostUsd = quantity > 0 ? totalUsd / quantity : 0;
+  return {
+    goodsUsd,
+    shippingLineUsd,
+    taxesLineUsd,
+    totalUsd,
+    unitCostUsd,
+    unitCostPesos: Math.round(unitCostUsd * exchangeRate),
+  };
+}

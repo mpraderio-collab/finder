@@ -61,6 +61,9 @@ export default async function EditPurchasePage(
             supplierName: purchase.supplier?.name ?? "",
             purchaseDate: purchase.purchaseDate.toISOString().slice(0, 10),
             status: purchase.status,
+            transportMode: purchase.transportMode,
+            shippingCostUsd: purchase.shippingCostUsd ?? undefined,
+            nationalTaxesPesos: purchase.nationalTaxesPesos ?? undefined,
             items: purchase.items.map((item) => ({
               productId: item.productId ?? undefined,
               productName: item.productName,

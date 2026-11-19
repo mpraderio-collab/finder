@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { purchaseSchema } from "@/lib/validation";
-import { calcPurchaseCosts, purchaseLineBase } from "@/lib/purchases";
+import { airLineBase, calcAirLineCosts, calcPurchaseCosts, purchaseLineBase } from "@/lib/purchases";
 import { applyPurchaseReceipt } from "@/lib/purchase-receive";
 import { upsertSupplierByName } from "@/lib/suppliers";
 
@@ -30,6 +30,9 @@ function parsePurchaseForm(formData: FormData) {
   const parsed = purchaseSchema.safeParse({
     supplierName: formData.get("supplierName"),
     purchaseDate: formData.get("purchaseDate"),
+    transportMode: formData.get("transportMode") || "sea",
+    shippingCostUsd: formData.get("shippingCostUsd"),
+    nationalTaxesPesos: formData.get("nationalTaxesPesos"),
     items: itemsRaw,
   });
   if (!parsed.success) {
@@ -48,7 +51,10 @@ function revalidatePurchasePaths(productIds: (string | null | undefined)[] = [])
   revalidatePath("/");
 }
 
-function buildItemsData(items: ReturnType<typeof purchaseSchema.parse>["items"]) {
+function buildItemsData(
+  items: ReturnType<typeof purchaseSchema.parse>["items"],
+  air?: { shippingCostUsd?: number; nationalTaxesPesos?: number },
+) {
   // Cotización, impuestos, costo por m³ y recargo por tarjeta son datos del
   // lote completo (se cargan una sola vez en el form) — los impuestos se
   // prorratean entre TODAS las unidades de la compra, no solo las de cada
@@ -57,19 +63,41 @@ function buildItemsData(items: ReturnType<typeof purchaseSchema.parse>["items"])
   const totalLotQuantity = items.reduce((sum, line) => sum + line.quantity, 0);
   // El servicio del container se reparte según el % de la compra que es cada línea.
   const lotBase = items.reduce((sum, line) => sum + purchaseLineBase(line), 0);
+  const airBase = items.reduce((sum, line) => sum + airLineBase(line), 0);
   return items.map((line) => {
-    const costs = calcPurchaseCosts({
-      ...line,
-      totalLotQuantity,
-      containerShare: lotBase > 0 ? purchaseLineBase(line) / lotBase : 0,
-    });
+    // Por avión: costo = mercadería + parte del envío y de los impuestos nacionales.
+    const costs = air
+      ? (() => {
+          const a = calcAirLineCosts({
+            quantity: line.quantity,
+            unitPriceUsd: line.unitPriceUsd,
+            exchangeRate: line.exchangeRate,
+            shippingCostUsd: air.shippingCostUsd,
+            nationalTaxesPesos: air.nationalTaxesPesos,
+            lineShare: airBase > 0 ? airLineBase(line) / airBase : 0,
+          });
+          return {
+            taxesUsd: a.taxesLineUsd as number | undefined,
+            netUsd: a.goodsUsd,
+            totalUsd: a.totalUsd,
+            unitCostUsd: a.unitCostUsd,
+            unitCostUsdFinal: a.unitCostUsd,
+            unitCostPesos: a.unitCostPesos,
+            boxShippingCostUsd: a.shippingLineUsd as number | undefined,
+          };
+        })()
+      : calcPurchaseCosts({
+          ...line,
+          totalLotQuantity,
+          containerShare: lotBase > 0 ? purchaseLineBase(line) / lotBase : 0,
+        });
     return {
       productId: line.productId || null,
       productName: line.productName,
       quantity: line.quantity,
       unitPriceUsd: line.unitPriceUsd,
       exchangeRate: line.exchangeRate,
-      taxesPesos: line.taxesPesos ?? null,
+      taxesPesos: air ? null : (line.taxesPesos ?? null),
       taxesUsd: costs.taxesUsd ?? null,
       netUsd: costs.netUsd,
       totalUsd: costs.totalUsd,
@@ -84,14 +112,31 @@ function buildItemsData(items: ReturnType<typeof purchaseSchema.parse>["items"])
       costPerCubicMeterUsd: line.costPerCubicMeterUsd ?? null,
       boxShippingCostUsd: costs.boxShippingCostUsd ?? null,
       suggestedPrice: line.suggestedPrice ?? null,
-      cardFeePercent: line.cardFeePercent ?? null,
-      containerCostUsd: line.containerCostUsd ?? null,
-      netPriceUsd: line.netPriceUsd ?? null,
-      vatUsd: line.vatUsd ?? null,
+      cardFeePercent: air ? null : (line.cardFeePercent ?? null),
+      containerCostUsd: air ? null : (line.containerCostUsd ?? null),
+      netPriceUsd: air ? null : (line.netPriceUsd ?? null),
+      vatUsd: air ? null : (line.vatUsd ?? null),
       referenceUrl: line.referenceUrl ?? null,
       imageUrl: line.imageUrl ?? null,
     };
   });
+}
+
+type PurchaseData = ReturnType<typeof purchaseSchema.parse>;
+
+function airArgs(data: PurchaseData) {
+  return data.transportMode === "air"
+    ? { shippingCostUsd: data.shippingCostUsd, nationalTaxesPesos: data.nationalTaxesPesos }
+    : undefined;
+}
+
+function airFields(data: PurchaseData) {
+  const air = data.transportMode === "air";
+  return {
+    transportMode: data.transportMode,
+    shippingCostUsd: air ? (data.shippingCostUsd ?? null) : null,
+    nationalTaxesPesos: air ? (data.nationalTaxesPesos ?? null) : null,
+  };
 }
 
 // Toda compra nace como borrador — se puede seguir editando (agregar,
@@ -117,7 +162,8 @@ export async function createPurchase(
         supplierId,
         purchaseDate: data.purchaseDate,
         status: "draft",
-        items: { create: buildItemsData(data.items) },
+        ...airFields(data),
+        items: { create: buildItemsData(data.items, airArgs(data)) },
       },
     });
   });
@@ -153,11 +199,11 @@ export async function updatePurchase(
 
     await tx.purchase.update({
       where: { id: purchaseId },
-      data: { supplierId, purchaseDate: data.purchaseDate },
+      data: { supplierId, purchaseDate: data.purchaseDate, ...airFields(data) },
     });
     await tx.purchaseItem.deleteMany({ where: { purchaseId } });
     await tx.purchaseItem.createMany({
-      data: buildItemsData(data.items).map((item) => ({ ...item, purchaseId })),
+      data: buildItemsData(data.items, airArgs(data)).map((item) => ({ ...item, purchaseId })),
     });
   });
 

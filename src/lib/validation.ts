@@ -315,6 +315,15 @@ export const purchaseSchema = z.object({
     }
     return val;
   }, z.coerce.date({ message: "Ingresá una fecha válida" })),
+  transportMode: z.enum(["sea", "air"]).default("sea"),
+  shippingCostUsd: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.coerce.number().min(0).optional(),
+  ),
+  nationalTaxesPesos: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.coerce.number().min(0).optional(),
+  ),
   items: z.array(purchaseItemSchema).min(1, "Agregá al menos un producto"),
 });
 
