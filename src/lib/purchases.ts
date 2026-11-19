@@ -176,19 +176,23 @@ export function calcAirLineCosts(input: {
   exchangeRate: number;
   shippingCostUsd?: number;
   nationalTaxesPesos?: number;
+  // Recargo por pago con tarjeta (%): se aplica a mercadería + envío, no a los impuestos nacionales.
+  cardFeePercent?: number;
   // Fracción (0 a 1) de la compra que representa esta línea.
   lineShare: number;
 }) {
-  const { quantity, unitPriceUsd, exchangeRate, shippingCostUsd, nationalTaxesPesos, lineShare } = input;
+  const { quantity, unitPriceUsd, exchangeRate, shippingCostUsd, nationalTaxesPesos, cardFeePercent, lineShare } = input;
   const goodsUsd = quantity * unitPriceUsd;
   const shippingLineUsd = (shippingCostUsd ?? 0) * lineShare;
   const taxesLineUsd = exchangeRate > 0 ? ((nationalTaxesPesos ?? 0) / exchangeRate) * lineShare : 0;
-  const totalUsd = goodsUsd + shippingLineUsd + taxesLineUsd;
+  const cardFeeUsd = (goodsUsd + shippingLineUsd) * ((cardFeePercent ?? 0) / 100);
+  const totalUsd = goodsUsd + shippingLineUsd + cardFeeUsd + taxesLineUsd;
   const unitCostUsd = quantity > 0 ? totalUsd / quantity : 0;
   return {
     goodsUsd,
     shippingLineUsd,
     taxesLineUsd,
+    cardFeeUsd,
     totalUsd,
     unitCostUsd,
     unitCostPesos: Math.round(unitCostUsd * exchangeRate),

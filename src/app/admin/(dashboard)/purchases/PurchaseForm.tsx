@@ -274,6 +274,7 @@ export function PurchaseForm({
             exchangeRate: exchangeRate || 0,
             shippingCostUsd: shippingCostUsd === "" ? undefined : shippingCostUsd,
             nationalTaxesPesos: nationalTaxesPesos === "" ? undefined : nationalTaxesPesos,
+            cardFeePercent: cardFeePercent === "" ? undefined : cardFeePercent,
             lineShare: draftAirShare,
           })
         : calcPurchaseCosts({
@@ -427,6 +428,7 @@ export function PurchaseForm({
         exchangeRate: exchangeRate || 0,
         shippingCostUsd: shippingCostUsd === "" ? undefined : shippingCostUsd,
         nationalTaxesPesos: nationalTaxesPesos === "" ? undefined : nationalTaxesPesos,
+        cardFeePercent: cardFeePercent === "" ? undefined : cardFeePercent,
         lineShare: lineShareOf(item),
       });
       return {
@@ -619,6 +621,21 @@ export function PurchaseForm({
                 Se suman al costo de los productos.
               </span>
             </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs text-ink-soft">Impuesto pago con tarjeta (%)</span>
+              <input
+                type="number"
+                step="0.01"
+                min={0}
+                value={cardFeePercent}
+                onChange={(e) => setCardFeePercent(e.target.value === "" ? "" : Number(e.target.value))}
+                className="input"
+              />
+              <span className="text-[11px] text-ink-faint">
+                Se suma a la mercadería + el costo del envío (no a los impuestos nacionales).
+              </span>
+            </label>
               </>
             ) : (
               <>
@@ -668,6 +685,11 @@ export function PurchaseForm({
               {" ("}
               {formatPrice(Math.round(shippingUsd * (exchangeRate || 0)))}
               {") · "}
+              Tarjeta:{" "}
+              <strong className="text-ink">
+                {usd(((airGoodsUsd + shippingUsd) * (cardFeePercent === "" ? 0 : cardFeePercent)) / 100)}
+              </strong>
+              {" · "}
               Impuestos nacionales: <strong className="text-ink">{formatPrice(nationalTaxes)}</strong>
               {" · "}
               Total de la compra:{" "}
@@ -911,7 +933,7 @@ export function PurchaseForm({
                   </button>
                 </th>
                 {air ? (
-                  <th className="px-4 py-2 text-right font-medium">Precio unitario × cantidad (USD)</th>
+                  <th className="px-4 py-2 text-right font-medium">Subtotal (USD)</th>
                 ) : (
                   <>
                 <th className="px-4 py-2 text-right font-medium">Costo neto (USD)</th>
@@ -1158,7 +1180,7 @@ export function PurchaseForm({
           <div className="flex items-center justify-end gap-3 border-t border-line px-4 py-3">
             <span className="text-sm text-ink-soft">
               {air
-                ? "Total de la compra (mercadería + envío + impuestos nacionales)"
+                ? "Total de la compra (mercadería + envío + tarjeta + impuestos nacionales)"
                 : "Total de la operación (suma del costo total operación, con el container)"}
             </span>
             <strong className="text-base text-ink">{usd(totals.operationTotalUsd)}</strong>

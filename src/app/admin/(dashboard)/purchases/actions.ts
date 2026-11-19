@@ -74,6 +74,7 @@ function buildItemsData(
             exchangeRate: line.exchangeRate,
             shippingCostUsd: air.shippingCostUsd,
             nationalTaxesPesos: air.nationalTaxesPesos,
+            cardFeePercent: line.cardFeePercent,
             lineShare: airBase > 0 ? airLineBase(line) / airBase : 0,
           });
           return {
@@ -112,7 +113,7 @@ function buildItemsData(
       costPerCubicMeterUsd: line.costPerCubicMeterUsd ?? null,
       boxShippingCostUsd: costs.boxShippingCostUsd ?? null,
       suggestedPrice: line.suggestedPrice ?? null,
-      cardFeePercent: air ? null : (line.cardFeePercent ?? null),
+      cardFeePercent: line.cardFeePercent ?? null,
       containerCostUsd: air ? null : (line.containerCostUsd ?? null),
       netPriceUsd: air ? null : (line.netPriceUsd ?? null),
       vatUsd: air ? null : (line.vatUsd ?? null),
