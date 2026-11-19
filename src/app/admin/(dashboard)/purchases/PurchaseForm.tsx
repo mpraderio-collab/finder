@@ -1120,7 +1120,18 @@ export function PurchaseForm({
               <button
                 type="button"
                 disabled={statusPending}
-                onClick={() => runStatusAction(() => receivePurchase(purchaseId))}
+                onClick={() => {
+                  const unlinked = items.filter((item) => !item.productId).length;
+                  if (
+                    unlinked > 0 &&
+                    !confirm(
+                      `${unlinked} ${unlinked === 1 ? "producto sin vincular se va a agregar" : "productos sin vincular se van a agregar"} a la lista de productos, con el costo de esta compra y el precio de venta sugerido. Quedan ocultos en la tienda hasta que los completes y los publiques. ¿Continuar?`,
+                    )
+                  ) {
+                    return;
+                  }
+                  runStatusAction(() => receivePurchase(purchaseId));
+                }}
                 className="w-fit rounded-lg bg-ok-ink px-5 py-2.5 font-heading text-sm font-bold text-white disabled:opacity-40"
               >
                 {statusPending ? "Recibiendo…" : "Marcar como recibido"}
@@ -1141,7 +1152,7 @@ export function PurchaseForm({
 
           {status === "received" && (
             <p className="text-sm text-ink-soft">
-              Ya se recibió — el stock y el costo de los productos vinculados se actualizaron.
+              Ya se recibió — el stock y el costo de los productos se actualizaron, y los que no estaban vinculados se agregaron a la lista de productos.
             </p>
           )}
 

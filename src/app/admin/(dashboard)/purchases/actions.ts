@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { purchaseSchema } from "@/lib/validation";
 import { calcPurchaseCosts, purchaseLineBase } from "@/lib/purchases";
+import { applyPurchaseReceipt } from "@/lib/purchase-receive";
 import { upsertSupplierByName } from "@/lib/suppliers";
 
 async function requireAdmin() {
@@ -182,33 +183,10 @@ export async function confirmPurchase(purchaseId: string): Promise<{ error?: str
 export async function receivePurchase(purchaseId: string): Promise<{ error?: string }> {
   await requireAdmin();
 
-  const purchase = await db.purchase.findUnique({
-    where: { id: purchaseId },
-    include: { items: true },
-  });
-  if (!purchase) return { error: "Esta compra no existe." };
-  if (purchase.status !== "confirmed") {
-    return { error: "Solo se puede recibir una compra confirmada." };
-  }
-  const linkedItems = purchase.items.filter((i) => i.productId);
-  if (linkedItems.length === 0) {
-    return { error: "Vinculá al menos un producto antes de recibir esta compra." };
-  }
+  const result = await applyPurchaseReceipt(purchaseId);
+  if (result.error) return { error: result.error };
 
-  await db.$transaction([
-    db.purchase.update({ where: { id: purchaseId }, data: { status: "received" } }),
-    ...linkedItems.map((item) =>
-      db.product.update({
-        where: { id: item.productId! },
-        data: {
-          stock: { increment: item.quantity },
-          costPrice: item.unitCostPesos,
-        },
-      }),
-    ),
-  ]);
-
-  revalidatePurchasePaths(purchase.items.map((i) => i.productId));
+  revalidatePurchasePaths(result.productIds);
   return {};
 }
 
