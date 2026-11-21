@@ -63,6 +63,9 @@ export default async function AdminProductsPage(
                   Precio
                 </th>
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
+                  Precio M.
+                </th>
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
                   Margen $
                 </th>
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint">
@@ -111,6 +114,16 @@ export default async function AdminProductsPage(
                     )}
                   </td>
                   <td className="px-4 py-3">{formatPrice(product.price)}</td>
+                  <td
+                    className="px-4 py-3 text-ink-soft"
+                    title={product.wholesalePrice == null ? "Costo + 30%" : undefined}
+                  >
+                    {product.wholesalePrice != null
+                      ? formatPrice(product.wholesalePrice)
+                      : product.costPrice != null
+                        ? formatPrice(Math.round(product.costPrice * 1.3))
+                        : "—"}
+                  </td>
                   <td className="px-4 py-3 text-ink-soft">
                     {product.costPrice == null ? (
                       "—"
