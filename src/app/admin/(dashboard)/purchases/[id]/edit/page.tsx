@@ -78,6 +78,7 @@ export default async function EditPurchasePage(
               boxCount: item.boxCount ?? undefined,
               costPerCubicMeterUsd: item.costPerCubicMeterUsd ?? undefined,
               suggestedPrice: item.suggestedPrice ?? undefined,
+              wholesalePrice: item.wholesalePrice ?? undefined,
               cardFeePercent: item.cardFeePercent ?? undefined,
               containerCostUsd: item.containerCostUsd ?? undefined,
               netPriceUsd: item.netPriceUsd ?? undefined,

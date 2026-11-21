@@ -36,6 +36,7 @@ type ItemLine = {
   boxCapacityUnits?: number;
   boxCount?: number;
   suggestedPrice?: number;
+  wholesalePrice?: number;
   containerCostUsd?: number;
   netPriceUsd?: number;
   vatUsd?: number;
@@ -46,6 +47,8 @@ type ItemLine = {
 const MAX_LINE_IMAGE_SIZE = 5 * 1024 * 1024;
 
 const DEFAULT_CARD_FEE_PERCENT = 2.9;
+// Precio mayorista por defecto: costo unitario en pesos + 30%.
+const WHOLESALE_MARKUP = 1.3;
 
 type InitialValues = {
   supplierName: string;
@@ -951,6 +954,7 @@ export function PurchaseForm({
                   </button>
                 </th>
                 <th className="px-4 py-2 text-right font-medium">Precio venta sug.</th>
+                <th className="px-4 py-2 text-right font-medium">Precio venta mayorista (costo + 30%)</th>
                 {!readOnly && <th className="px-4 py-2" />}
               </tr>
             </thead>
@@ -1132,6 +1136,23 @@ export function PurchaseForm({
                       />
                     )}
                   </td>
+                  <td className="px-4 py-2 text-right text-ink-soft">
+                    {readOnly ? (
+                      formatPrice(item.wholesalePrice ?? Math.round(unitCostPesos * WHOLESALE_MARKUP))
+                    ) : (
+                      <input
+                        type="number"
+                        min={0}
+                        value={item.wholesalePrice ?? Math.round(unitCostPesos * WHOLESALE_MARKUP)}
+                        onChange={(e) =>
+                          updateItem(index, {
+                            wholesalePrice: e.target.value === "" ? undefined : Number(e.target.value),
+                          })
+                        }
+                        className="input text-right w-28"
+                      />
+                    )}
+                  </td>
                   {!readOnly && (
                     <td className="px-4 py-2 text-right">
                       <button
@@ -1173,6 +1194,7 @@ export function PurchaseForm({
                 <td className="px-4 py-2" />
                   </>
                 )}
+                <td className="px-4 py-2" />
                 {!readOnly && <td className="px-4 py-2" />}
               </tr>
             </tfoot>

@@ -22,6 +22,8 @@ model Product {
   // Null = se usa el valor por defecto del formulario.
   mpCommissionPercent Float?
   costPrice   Int? // precio de costo — interno, nunca se muestra en la tienda
+  // Precio de venta mayorista — interno. Null = costo + 30%.
+  wholesalePrice Int?
   stock       Int      @default(0)
   status      String   @default("active") // active | archived
   createdAt   DateTime @default(now())
@@ -178,6 +180,8 @@ model PurchaseItem {
 
   unitCostPesos  Int     // "Costo en Pesos" — lo que se usa como costPrice del producto
   suggestedPrice Int?    // "Precio de Venta" sugerido por la planilla
+  // Precio de venta mayorista cargado a mano; si es null se usa costo × 1,30.
+  wholesalePrice Int?
   cardFeePercent   Float? // Impuesto por pago con tarjeta (%) — dato del lote
   containerCostUsd Float? // Servicio anual del container (USD) — dato del lote, se reparte por unidad
   netPriceUsd    Float?  // "Precio neto" por unidad, sin IVA (USD)

@@ -92,7 +92,12 @@ export async function applyPurchaseReceipt(purchaseId: string): Promise<{
 
         await tx.product.update({
           where: { id: productId },
-          data: { stock: { increment: item.quantity }, costPrice: item.unitCostPesos },
+          data: {
+            stock: { increment: item.quantity },
+            costPrice: item.unitCostPesos,
+            // El mayorista cargado a mano en la compra pasa al producto; si no, queda el default (costo + 30%).
+            ...(item.wholesalePrice != null ? { wholesalePrice: item.wholesalePrice } : {}),
+          },
         });
         productIds.push(productId);
       }

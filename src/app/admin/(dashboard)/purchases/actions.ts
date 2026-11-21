@@ -113,6 +113,7 @@ function buildItemsData(
       costPerCubicMeterUsd: line.costPerCubicMeterUsd ?? null,
       boxShippingCostUsd: costs.boxShippingCostUsd ?? null,
       suggestedPrice: line.suggestedPrice ?? null,
+      wholesalePrice: line.wholesalePrice ?? null,
       cardFeePercent: line.cardFeePercent ?? null,
       containerCostUsd: air ? null : (line.containerCostUsd ?? null),
       netPriceUsd: air ? null : (line.netPriceUsd ?? null),

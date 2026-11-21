@@ -26,6 +26,7 @@ function parseForm(formData: FormData) {
     price: formData.get("price"),
     costPrice: formData.get("costPrice"),
     compareAtPrice: formData.get("compareAtPrice"),
+    wholesalePrice: formData.get("wholesalePrice"),
     mpCommissionPercent: formData.get("mpCommissionPercent"),
     stock: formData.get("stock"),
     status: formData.get("status") ?? "active",

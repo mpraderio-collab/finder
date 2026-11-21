@@ -17,6 +17,7 @@ type Props = {
     price: number;
     costPrice: number | null;
     compareAtPrice?: number | null;
+    wholesalePrice?: number | null;
     mpCommissionPercent?: number | null;
     stock: number;
     status: string;
@@ -94,6 +95,10 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
   const [cost, setCost] = useState<number | "">(defaultValues?.costPrice ?? "");
   const [price, setPrice] = useState<number | "">(defaultValues?.price ?? "");
   const [compareAtPrice, setCompareAtPrice] = useState<number | "">(defaultValues?.compareAtPrice ?? "");
+  // Precio mayorista: si no se cargó uno, se muestra costo + 30% y no se guarda nada (null).
+  const [wholesalePrice, setWholesalePrice] = useState<number | "">(defaultValues?.wholesalePrice ?? "");
+  const wholesaleShown: number | "" =
+    wholesalePrice !== "" ? wholesalePrice : cost !== "" ? Math.round(cost * 1.3) : "";
   // La comisión de Mercado Pago se guarda con el producto (si no tiene una guardada
   // arranca en el default). El IIBB solo se usa acá para calcular el margen real y no
   // se guarda. El envío no entra: se cobra al final de la venta, según la provincia.
@@ -298,6 +303,16 @@ export function ProductForm({ action, defaultValues, submitLabel }: Props) {
             required
             className="input"
           />
+        </Field>
+        <Field
+          label="Precio de venta mayorista (ARS)"
+          name="wholesalePrice"
+          error={state.fieldErrors?.wholesalePrice}
+          hint="Interno. Por defecto, el costo + 30%."
+          labelClassName="min-h-10"
+        >
+          <MoneyInput value={wholesaleShown} onChange={setWholesalePrice} className="input" />
+          <input type="hidden" name="wholesalePrice" value={wholesalePrice} />
         </Field>
         <Field
           label="Precio anterior (ARS, tachado)"

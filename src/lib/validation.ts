@@ -75,6 +75,15 @@ export const productSchema = z.object({
       .max(100_000_000, "Precio demasiado alto")
       .nullable(),
   ),
+  wholesalePrice: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? null : val),
+    z.coerce
+      .number({ message: "El precio mayorista tiene que ser un número" })
+      .int("El precio mayorista no puede tener centavos")
+      .positive("El precio mayorista tiene que ser mayor a cero")
+      .max(100_000_000, "Precio demasiado alto")
+      .nullable(),
+  ),
   costPrice: z.preprocess(
     (val) => (val === "" || val === null || val === undefined ? undefined : val),
     z.coerce
@@ -270,6 +279,7 @@ const purchaseItemSchema = z.object({
   boxCount: z.coerce.number().int().positive().optional(),
   costPerCubicMeterUsd: z.coerce.number().min(0).optional(),
   suggestedPrice: z.coerce.number().int().positive().optional(),
+  wholesalePrice: z.coerce.number().int().positive().optional(),
   referenceUrl: z.preprocess(
     (val) => (val === "" || val === null || val === undefined ? undefined : val),
     z.string().trim().url("El link no es válido").max(500).optional(),
