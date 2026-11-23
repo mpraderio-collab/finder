@@ -4,20 +4,36 @@ import { formatPrice } from "@/lib/products";
 import { orderStatusColors, orderStatusLabels } from "@/lib/order-status";
 import { calculateCogs, calculateMargin } from "@/lib/margin";
 
-function weeklySales(orders: { createdAt: Date; total: number }[]) {
-  const now = new Date();
-  const weekMs = 7 * 24 * 60 * 60 * 1000;
-  // 5 baldes de 7 días, el más reciente termina hoy.
-  const buckets = Array.from({ length: 5 }, (_, i) => {
-    const end = new Date(now.getTime() - (4 - i) * weekMs);
-    const start = new Date(end.getTime() - weekMs);
-    return { start, end, total: 0 };
+const SALES_TZ = "America/Argentina/Buenos_Aires";
+const SALES_MONTHS = 6;
+
+// "2026-11" del mes calendario en hora argentina (no UTC, para que una venta de las 22 h
+// del último día del mes no caiga en el mes siguiente).
+function monthKey(date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: SALES_TZ,
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(date);
+  const year = parts.find((p) => p.type === "year")?.value;
+  const month = parts.find((p) => p.type === "month")?.value;
+  return `${year}-${month}`;
+}
+
+function monthlySales(orders: { createdAt: Date; total: number }[]) {
+  const [year, month] = monthKey(new Date()).split("-").map(Number);
+  // 6 meses calendario, el último es el mes en curso.
+  const buckets = Array.from({ length: SALES_MONTHS }, (_, i) => {
+    const d = new Date(Date.UTC(year, month - 1 - (SALES_MONTHS - 1 - i), 15));
+    const label = new Intl.DateTimeFormat("es-AR", { month: "short", timeZone: "UTC" })
+      .format(d)
+      .replace(".", "")
+      .replace("sept", "sep");
+    return { key: monthKey(d), label, total: 0 };
   });
 
   for (const order of orders) {
-    const bucket = buckets.find(
-      (b) => order.createdAt >= b.start && order.createdAt < b.end,
-    );
+    const bucket = buckets.find((b) => b.key === monthKey(order.createdAt));
     if (bucket) bucket.total += order.total;
   }
 
@@ -198,7 +214,7 @@ export default async function AdminDashboardPage(
     const shippingCost = o.shipmentId ? null : o.actualShippingCost;
     return sum + calculateMargin(o.total, cogs, shippingCost);
   }, 0);
-  const buckets = weeklySales(paidOrders);
+  const buckets = monthlySales(paidOrders);
   const maxBucket = Math.max(...buckets.map((b) => b.total), 1);
 
   const conversionRate =
@@ -289,7 +305,7 @@ export default async function AdminDashboardPage(
         <div className="rounded-xl border border-line bg-bg p-5">
           <div className="flex items-baseline justify-between">
             <p className="font-heading text-[15px] font-bold text-navy">
-              Ventas por semana
+              Ventas por mes
             </p>
             <p className="font-heading text-sm font-bold text-navy">
               {formatPrice(buckets.reduce((sum, b) => sum + b.total, 0))}
@@ -318,12 +334,12 @@ export default async function AdminDashboardPage(
             })}
           </div>
           <div className="mt-2 flex gap-4 border-t border-line pt-2">
-            {buckets.map((_, i) => (
+            {buckets.map((bucket) => (
               <span
-                key={i}
-                className="flex-1 text-center text-xs text-ink-faint"
+                key={bucket.key}
+                className="flex-1 text-center text-xs capitalize text-ink-faint"
               >
-                Sem {i + 1}
+                {bucket.label}
               </span>
             ))}
           </div>
