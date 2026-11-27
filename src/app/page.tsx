@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/ProductCard";
+import { CustomerStories } from "@/components/home/CustomerStories";
 import { PremiumCarousel, type CarouselSlide } from "@/components/home/PremiumCarousel";
 import { PageTransition } from "@/components/store/PageTransition";
 import {
@@ -12,6 +13,7 @@ import {
   type ProductWithRelations,
 } from "@/lib/products";
 import { getSiteSettings } from "@/lib/settings";
+import { getPublishedStories } from "@/lib/stories";
 
 const PHOTOS_PER_PRODUCT = 4;
 const PRODUCTS_IN_CAROUSEL = 4;
@@ -40,7 +42,11 @@ function lifestyleImage(p: ProductWithRelations) {
 }
 
 export default async function Home() {
-  const [products, settings] = await Promise.all([getActiveProducts(), getSiteSettings()]);
+  const [products, settings, stories] = await Promise.all([
+    getActiveProducts(),
+    getSiteSettings(),
+    getPublishedStories(),
+  ]);
 
   // Hasta PHOTOS_PER_PRODUCT fotos por producto (la principal primero) en los
   // primeros PRODUCTS_IN_CAROUSEL productos que tengan fotos.
@@ -120,6 +126,8 @@ export default async function Home() {
               </div>
             </section>
           )}
+
+          {stories.length > 0 && <CustomerStories stories={stories} />}
 
           {editorialProduct && editorialImage && (
             <section className="relative isolate flex min-h-[560px] flex-col justify-between overflow-hidden bg-black px-4 pb-12 pt-10 text-white md:h-[760px] md:px-8">

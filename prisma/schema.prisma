@@ -34,6 +34,7 @@ model Product {
   features ProductFeature[]
   specs    ProductSpec[]
   reviews  Review[]
+  stories  CustomerStory[]
   orderItems OrderItem[]
   stockNotifications StockNotification[]
   purchaseItems PurchaseItem[]
@@ -280,6 +281,24 @@ model Review {
 
   @@index([productId])
   @@index([approved])
+}
+
+// Historias de clientes que carga el admin a mano; las publicadas se muestran
+// en el carrusel de la portada, ordenadas por position (menor primero).
+model CustomerStory {
+  id           String   @id @default(cuid())
+  customerName String
+  location     String?
+  text         String
+  photoUrl     String?
+  published    Boolean  @default(true)
+  position     Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  product      Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productId    String?
+
+  @@index([published, position])
 }
 
 model Customer {

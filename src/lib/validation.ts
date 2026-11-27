@@ -356,3 +356,22 @@ export const shipmentSchema = z.object({
     z.string().trim().max(500).optional(),
   ),
 });
+
+const optionalText = (max: number) =>
+  z.preprocess(
+    (val) => (typeof val !== "string" || val.trim() === "" ? undefined : val),
+    z.string().trim().max(max, `Máximo ${max} caracteres`).optional(),
+  );
+
+export const customerStorySchema = z.object({
+  customerName: z.string().trim().min(1, "Poné el nombre del cliente").max(60, "Máximo 60 caracteres"),
+  location: optionalText(60),
+  text: z.string().trim().min(1, "Escribí la historia").max(500, "Máximo 500 caracteres"),
+  photoUrl: z.preprocess(
+    (val) => (val === "" || val === null ? undefined : val),
+    z.string().url("La foto no es válida").optional(),
+  ),
+  productId: optionalText(60),
+  position: z.coerce.number().int("El orden tiene que ser un número entero").min(0).max(9999),
+  published: z.boolean(),
+});

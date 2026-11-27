@@ -9,6 +9,7 @@ const navLinks = [
   { href: "/admin/promotions", label: "Promociones" },
   { href: "/admin/coupons", label: "Cupones" },
   { href: "/admin/reviews", label: "Reseñas" },
+  { href: "/admin/stories", label: "Historias" },
   { href: "/admin/orders", label: "Pedidos" },
   { href: "/admin/sales", label: "Ventas manuales" },
   { href: "/admin/mercadolibre", label: "Mercado Libre" },
