@@ -9,10 +9,8 @@ import {
   averageRating,
   formatPrice,
   getActiveProducts,
-  getHeroImageUrl,
   type ProductWithRelations,
 } from "@/lib/products";
-import { activePromotion, calculateLineTotals, tierLabel } from "@/lib/promotions";
 import { getSiteSettings } from "@/lib/settings";
 
 const PHOTOS_PER_PRODUCT = 4;
@@ -78,30 +76,6 @@ export default async function Home() {
   const allReviews = products.flatMap((p) => p.reviews);
   const overallRating = averageRating(allReviews);
 
-  // Promo combinable (mix and match) — la de cualquier producto que tenga una.
-  const promoOwner = products.find((p) => activePromotion(p));
-  const promo = promoOwner ? activePromotion(promoOwner) : null;
-  const promoProducts = promo
-    ? products.filter((p) => promo.products?.some((pp) => pp.id === p.id) ?? p.id === promoOwner?.id)
-    : [];
-  const topTier = promo ? [...promo.tiers].sort((a, b) => b.threshold - a.threshold)[0] : null;
-  // Precio de llevar uno de cada producto de la promo, con el mismo cálculo
-  // que aplica el carrito.
-  const bundleFull = promoProducts.reduce((sum, p) => sum + p.price, 0);
-  const bundleTotal = promo
-    ? Array.from(
-        calculateLineTotals(
-          promoProducts.map((p) => ({ key: p.id, unitPrice: p.price, quantity: 1, promotion: promo })),
-        ).values(),
-      ).reduce((sum, v) => sum + v, 0)
-    : 0;
-
-  // Foto de ambiente de un producto distinto al de la banda editorial.
-  const promoImage = promoProducts
-    .filter((p) => p.slug !== "lampara-lectura-led")
-    .map(lifestyleImage)
-    .find(Boolean) ?? (promoProducts[0] ? lifestyleImage(promoProducts[0]) : undefined);
-
   const topReviews = products
     .flatMap((product) => product.reviews.map((review) => ({ review, product })))
     .sort((a, b) => b.review.rating - a.review.rating)
@@ -143,79 +117,6 @@ export default async function Home() {
                     sizes="(min-width: 1024px) 33vw, 50vw"
                   />
                 ))}
-              </div>
-            </section>
-          )}
-
-          {promo && topTier && promoProducts.length > 0 && (
-            <section className="flex flex-col gap-5 px-4 pb-16 md:px-8">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="e-mono">
-                  Combinalas · {tierLabel(promo, topTier)}
-                </h2>
-                <Link href="/catalogo" className="e-mono shrink-0 whitespace-nowrap underline underline-offset-4">
-                  Ver catálogo
-                </Link>
-              </div>
-              <div className="grid gap-2 md:grid-cols-2">
-                <Link
-                  href="/catalogo"
-                  className="e-tile relative flex aspect-[684/720] max-h-[720px] flex-col justify-between overflow-hidden p-5 text-white md:p-8"
-                >
-                  {promoImage && (
-                    <span className="e-tile-media absolute inset-0">
-                      <Image
-                        src={promoImage}
-                        alt=""
-                        fill
-                        className="e-tile-primary object-cover"
-                        sizes="(min-width: 768px) 50vw, 100vw"
-                      />
-                    </span>
-                  )}
-                  <span
-                    aria-hidden
-                    className="absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,.6),rgba(0,0,0,0)_45%,rgba(0,0,0,.35))]"
-                  />
-                  <span className="e-mono relative">{tierLabel(promo, topTier)}</span>
-                  <span className="relative flex items-end justify-between gap-4">
-                    <span className="text-[32px] font-medium leading-none tracking-[-0.02em] md:text-[40px]">
-                      Armá tu combo
-                    </span>
-                    <span className="e-pill e-pill--light shrink-0">Elegir</span>
-                  </span>
-                </Link>
-                <Link
-                  href="/catalogo"
-                  className="e-tile flex aspect-[684/720] max-h-[720px] flex-col justify-between gap-6 bg-e-ink p-5 text-white md:p-8"
-                >
-                  <span className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                    <span className="e-mono">{promoProducts.map((p) => shortTitle(p.name)).join(" · ")}</span>
-                    <span className="e-mono shrink-0">
-                      {bundleTotal < bundleFull
-                        ? `${formatPrice(bundleTotal)} · antes ${formatPrice(bundleFull)}`
-                        : formatPrice(bundleFull)}
-                    </span>
-                  </span>
-                  <span className="grid grid-cols-3 gap-2">
-                    {promoProducts.slice(0, 3).map((p) => {
-                      const hero = getHeroImageUrl(p);
-                      return (
-                        <span key={p.slug} className="relative aspect-[3/4] overflow-hidden bg-e-tile">
-                          {hero && (
-                            <Image src={hero} alt="" fill className="object-contain" sizes="(min-width: 768px) 15vw, 30vw" />
-                          )}
-                        </span>
-                      );
-                    })}
-                  </span>
-                  <span className="flex items-end justify-between gap-4">
-                    <span className="text-[32px] font-medium leading-none tracking-[-0.02em] md:text-[40px]">
-                      {promoProducts.length > 1 ? `Las ${promoProducts.length} luces` : promoProducts[0].name}
-                    </span>
-                    <span className="e-pill e-pill--light shrink-0">Comprar</span>
-                  </span>
-                </Link>
               </div>
             </section>
           )}
