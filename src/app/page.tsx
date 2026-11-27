@@ -5,7 +5,6 @@ import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/ProductCard";
 import { PremiumCarousel, type CarouselSlide } from "@/components/home/PremiumCarousel";
 import { PageTransition } from "@/components/store/PageTransition";
-import { TileCarousel } from "@/components/store/TileCarousel";
 import {
   averageRating,
   formatPrice,
@@ -27,14 +26,6 @@ const EYEBROWS: Record<string, string> = {
   "luz-escritorio-magnetica": "Para trabajar con foco",
 };
 const DEFAULT_EYEBROW = "Luz para cada momento";
-
-// Momento de uso de cada producto para los tiles "Preparate para cada momento".
-const MOMENTS: Record<string, string> = {
-  "lampara-lectura-led": "Leer",
-  "luz-gradiente-rgb-sensor-movimiento": "Ambientar",
-  "luz-rgb-sensor-movimiento": "Ambientar",
-  "luz-escritorio-magnetica": "Trabajar",
-};
 
 // El nombre completo del producto no entra en un título de 64px: se corta
 // antes de "con"/"carga" (el nombre completo sigue en la ficha).
@@ -136,18 +127,24 @@ export default async function Home() {
           {products.length === 0 ? (
             <p className="px-4 py-16 text-e-muted md:px-8">Estamos cargando el catálogo, volvé pronto.</p>
           ) : (
-            <TileCarousel
-              title="Nuevo en Finder"
-              aside={
-                <Link href="/catalogo" className="e-mono hidden underline underline-offset-4 sm:inline">
-                  Ver todo
+            <section className="flex flex-col gap-5 px-4 py-12 md:px-8 md:py-16">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="e-mono">Todos los productos · {products.length}</h2>
+                <Link href="/catalogo" className="e-mono shrink-0 underline underline-offset-4">
+                  Ir al catálogo
                 </Link>
-              }
-            >
-              {products.map((product) => (
-                <ProductCard key={product.slug} product={product} sizes="(min-width: 1024px) 340px, 72vw" />
-              ))}
-            </TileCarousel>
+              </div>
+              {/* Grilla vertical: se ve todo bajando, sin deslizar de costado. */}
+              <div className="grid grid-cols-2 gap-x-2 gap-y-10 lg:grid-cols-3">
+                {products.map((product) => (
+                  <ProductCard
+                    key={product.slug}
+                    product={product}
+                    sizes="(min-width: 1024px) 33vw, 50vw"
+                  />
+                ))}
+              </div>
+            </section>
           )}
 
           {promo && topTier && promoProducts.length > 0 && (
@@ -219,48 +216,6 @@ export default async function Home() {
                     <span className="e-pill e-pill--light shrink-0">Comprar</span>
                   </span>
                 </Link>
-              </div>
-            </section>
-          )}
-
-          {products.length > 0 && (
-            <section className="flex flex-col gap-5 px-4 pb-16 md:px-8">
-              <h2 className="e-mono">Preparate para cada momento</h2>
-              <div className="grid gap-2 md:grid-cols-3">
-                {products.slice(0, 3).map((p, i, list) => {
-                  const image = lifestyleImage(p);
-                  return (
-                    <Link
-                      key={p.slug}
-                      href={`/catalogo/${p.slug}`}
-                      transitionTypes={["nav-forward"]}
-                      className="e-tile relative flex aspect-[4/5] flex-col md:aspect-[453/620] items-center justify-between overflow-hidden bg-e-tile px-6 pb-7 pt-6 text-center text-white"
-                    >
-                      {image && (
-                        <span className="e-tile-media absolute inset-0">
-                          <Image
-                            src={image}
-                            alt=""
-                            fill
-                            className="e-tile-primary object-cover"
-                            sizes="(min-width: 768px) 33vw, 100vw"
-                          />
-                        </span>
-                      )}
-                      <span aria-hidden className="absolute inset-0 bg-black/45" />
-                      <span className="e-mono relative">
-                        {String(i + 1).padStart(2, "0")} / {String(list.length).padStart(2, "0")}
-                      </span>
-                      <span className="relative flex flex-col items-center gap-1.5">
-                        <span className="e-mono">{MOMENTS[p.slug] ?? "Iluminar"}</span>
-                        <span className="text-[24px] font-medium uppercase leading-tight md:text-[28px]">
-                          {shortTitle(p.name)}
-                        </span>
-                      </span>
-                      <span className="e-pill e-pill--light relative">Ver</span>
-                    </Link>
-                  );
-                })}
               </div>
             </section>
           )}
