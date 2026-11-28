@@ -5,6 +5,7 @@ import { WhatsAppButtonGate } from "@/components/WhatsAppButtonGate";
 import { PageViewTracker } from "@/components/PageViewTracker";
 import { MetaPixel } from "@/components/MetaPixel";
 import { PromoBanner } from "@/components/PromoBanner";
+import { TransferBanner } from "@/components/TransferBanner";
 import { getBannerMessages } from "@/lib/promo-banner";
 import "./globals.css";
 
@@ -46,6 +47,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-bg text-ink">
         <MetaPixel />
         <PromoBanner messages={bannerMessages} />
+        <TransferBanner />
         <CartProvider>{children}</CartProvider>
         <WhatsAppButtonGate />
         <PageViewTracker />
